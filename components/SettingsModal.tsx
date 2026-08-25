@@ -33,7 +33,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
     try {
       const response = await fetch('/api/provider-key-test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apiKey: key }) });
       const data = await response.json().catch(() => ({}));
-      setTestMessage(response.ok && data?.success ? 'Klíč je platný.' : (data?.error || 'Klíč se nepodařilo ověřit.'));
+      if (response.ok && data?.success) {
+        const nextSettings = { ...settings, [AIProviderType.OPENROUTER]: { apiKey: key, enabled: true } };
+        onSave(nextSettings);
+        localStorage.setItem('providerSettings', JSON.stringify(nextSettings));
+        setTestMessage('Klíč je platný a uložený.');
+      } else {
+        setTestMessage(data?.error || 'Klíč se nepodařilo ověřit.');
+      }
     } catch { setTestMessage('Klíč se nepodařilo ověřit.'); } finally { setTesting(false); }
   };
 

@@ -24,15 +24,30 @@ type ServerProviderRequest = {
   options?: { agenticVision?: boolean; mediaResolution?: string };
 };
 
+function getStoredOpenRouterKey(): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  try {
+    const stored = JSON.parse(window.localStorage.getItem('providerSettings') || '{}');
+    const key = String(stored?.openrouter?.apiKey || '').trim();
+    return key || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 async function callServerProvider<T>(payload: ServerProviderRequest): Promise<T> {
   const retry = defaultRetryPolicy({ maxAttempts: 3, baseDelayMs: 800 });
+  const requestPayload: ServerProviderRequest = {
+    ...payload,
+    apiKey: payload.apiKey?.trim() || getStoredOpenRouterKey(),
+  };
 
   for (let attempt = 1; attempt <= retry.maxAttempts; attempt += 1) {
     try {
       const response = await fetch('/api/provider-generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(requestPayload),
       });
 
       const raw = await response.text();
