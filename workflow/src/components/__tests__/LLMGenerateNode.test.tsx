@@ -52,8 +52,8 @@ describe("LLMGenerateNode", () => {
     inputPrompt: null,
     inputImages: [],
     outputText: null,
-    provider: "google",
-    model: "gemini-3-flash-preview",
+    provider: "openrouter",
+    model: "google/gemini-3-flash-preview",
     temperature: 1.0,
     maxTokens: 2048,
     status: "idle",
@@ -113,82 +113,32 @@ describe("LLMGenerateNode", () => {
     });
   });
 
-  describe("Provider Selector", () => {
-    it("should render provider selector with Google selected by default", () => {
-      render(
-        <TestWrapper>
-          <LLMGenerateNode {...createNodeProps({ provider: "google" })} />
-        </TestWrapper>
-      );
-
-      const providerSelect = screen.getByDisplayValue("Google");
-      expect(providerSelect).toBeInTheDocument();
-    });
-
-    it("should show Google and OpenAI as provider options", () => {
+  describe("Model Selector", () => {
+    it("should offer only OpenRouter models", () => {
       render(
         <TestWrapper>
           <LLMGenerateNode {...createNodeProps()} />
         </TestWrapper>
       );
 
-      expect(screen.getByRole("option", { name: "Google" })).toBeInTheDocument();
-      expect(screen.getByRole("option", { name: "OpenAI" })).toBeInTheDocument();
-    });
-
-    it("should call updateNodeData when provider is changed", () => {
-      render(
-        <TestWrapper>
-          <LLMGenerateNode {...createNodeProps({ provider: "google" })} />
-        </TestWrapper>
-      );
-
-      const providerSelect = screen.getByDisplayValue("Google");
-      fireEvent.change(providerSelect, { target: { value: "openai" } });
-
-      expect(mockUpdateNodeData).toHaveBeenCalledWith("test-llm-1", {
-        provider: "openai",
-        model: "gpt-4.1-mini",
-      });
-    });
-  });
-
-  describe("Model Selector", () => {
-    it("should show Google models when Google provider is selected", () => {
-      render(
-        <TestWrapper>
-          <LLMGenerateNode {...createNodeProps({ provider: "google" })} />
-        </TestWrapper>
-      );
-
       expect(screen.getByRole("option", { name: "Gemini 3 Flash" })).toBeInTheDocument();
-      expect(screen.getByRole("option", { name: "Gemini 2.5 Flash" })).toBeInTheDocument();
-      expect(screen.getByRole("option", { name: "Gemini 3.0 Pro" })).toBeInTheDocument();
-    });
-
-    it("should show OpenAI models when OpenAI provider is selected", () => {
-      render(
-        <TestWrapper>
-          <LLMGenerateNode {...createNodeProps({ provider: "openai", model: "gpt-4.1-mini" })} />
-        </TestWrapper>
-      );
-
+      expect(screen.getByRole("option", { name: "Gemini 3 Pro" })).toBeInTheDocument();
       expect(screen.getByRole("option", { name: "GPT-4.1 Mini" })).toBeInTheDocument();
-      expect(screen.getByRole("option", { name: "GPT-4.1 Nano" })).toBeInTheDocument();
+      expect(screen.getAllByRole("combobox")).toHaveLength(1);
     });
 
     it("should call updateNodeData when model is changed", () => {
       render(
         <TestWrapper>
-          <LLMGenerateNode {...createNodeProps({ provider: "google", model: "gemini-3-flash-preview" })} />
+          <LLMGenerateNode {...createNodeProps()} />
         </TestWrapper>
       );
 
       const modelSelect = screen.getByDisplayValue("Gemini 3 Flash");
-      fireEvent.change(modelSelect, { target: { value: "gemini-2.5-flash" } });
+      fireEvent.change(modelSelect, { target: { value: "google/gemini-3-pro-preview" } });
 
       expect(mockUpdateNodeData).toHaveBeenCalledWith("test-llm-1", {
-        model: "gemini-2.5-flash",
+        model: "google/gemini-3-pro-preview",
       });
     });
   });

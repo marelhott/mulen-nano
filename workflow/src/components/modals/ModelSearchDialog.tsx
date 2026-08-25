@@ -7,27 +7,6 @@ import { useReactFlow } from "@xyflow/react";
 import { ProviderType, RecentModel } from "@/types";
 import { ProviderModel, ModelCapability } from "@/lib/providers/types";
 
-// Provider icons
-const ReplicateIcon = () => (
-  <svg className="w-4 h-4" viewBox="0 0 1000 1000" fill="currentColor">
-    <polygon points="1000,427.6 1000,540.6 603.4,540.6 603.4,1000 477,1000 477,427.6" />
-    <polygon points="1000,213.8 1000,327 364.8,327 364.8,1000 238.4,1000 238.4,213.8" />
-    <polygon points="1000,0 1000,113.2 126.4,113.2 126.4,1000 0,1000 0,0" />
-  </svg>
-);
-
-const FalIcon = () => (
-  <svg className="w-4 h-4" viewBox="0 0 1855 1855" fill="currentColor">
-    <path fillRule="evenodd" clipRule="evenodd" d="M1181.65 78C1212.05 78 1236.42 101.947 1239.32 131.261C1265.25 392.744 1480.07 600.836 1750.02 625.948C1780.28 628.764 1805 652.366 1805 681.816V1174.18C1805 1203.63 1780.28 1227.24 1750.02 1230.05C1480.07 1255.16 1265.25 1463.26 1239.32 1724.74C1236.42 1754.05 1212.05 1778 1181.65 1778H673.354C642.951 1778 618.585 1754.05 615.678 1724.74C589.754 1463.26 374.927 1255.16 104.984 1230.05C74.7212 1227.24 50 1203.63 50 1174.18V681.816C50 652.366 74.7213 628.764 104.984 625.948C374.927 600.836 589.754 392.744 615.678 131.261C618.585 101.946 642.951 78 673.353 78H1181.65ZM402.377 926.561C402.377 1209.41 638.826 1438.71 930.501 1438.71C1222.18 1438.71 1458.63 1209.41 1458.63 926.561C1458.63 643.709 1222.18 414.412 930.501 414.412C638.826 414.412 402.377 643.709 402.377 926.561Z" />
-  </svg>
-);
-
-const GeminiIcon = () => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" />
-  </svg>
-);
-
 // Get the center of the React Flow pane in screen coordinates
 function getPaneCenter() {
   const pane = document.querySelector(".react-flow");
@@ -64,7 +43,6 @@ interface ModelSearchDialogProps {
 export function ModelSearchDialog({
   isOpen,
   onClose,
-  initialProvider,
   onModelSelected,
   initialCapabilityFilter,
 }: ModelSearchDialogProps) {
@@ -81,9 +59,6 @@ export function ModelSearchDialog({
   // State
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [providerFilter, setProviderFilter] = useState<ProviderType | "all">(
-    initialProvider || "all"
-  );
   const [capabilityFilter, setCapabilityFilter] =
     useState<CapabilityFilter>(initialCapabilityFilter || "all");
   const [models, setModels] = useState<ProviderModel[]>([]);
@@ -110,13 +85,6 @@ export function ModelSearchDialog({
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Update provider filter when initialProvider changes
-  useEffect(() => {
-    if (initialProvider) {
-      setProviderFilter(initialProvider);
-    }
-  }, [initialProvider]);
-
   // Fetch models
   const fetchModels = useCallback(async () => {
     // Cancel previous request
@@ -134,9 +102,6 @@ export function ModelSearchDialog({
       if (debouncedSearch) {
         params.set("search", debouncedSearch);
       }
-      if (providerFilter !== "all") {
-        params.set("provider", providerFilter);
-      }
       if (capabilityFilter !== "all") {
         const capabilities =
           capabilityFilter === "image"
@@ -147,14 +112,9 @@ export function ModelSearchDialog({
 
       // Build headers with API keys
       const headers: Record<string, string> = {};
-      const replicateKey = providerSettings.providers.replicate?.apiKey;
-      const falKey = providerSettings.providers.fal?.apiKey;
-
-      if (replicateKey) {
-        headers["X-Replicate-Key"] = replicateKey;
-      }
-      if (falKey) {
-        headers["X-Fal-Key"] = falKey;
+      const openRouterKey = providerSettings.providers.openrouter?.apiKey;
+      if (openRouterKey) {
+        headers["X-OpenRouter-API-Key"] = openRouterKey;
       }
 
       const response = await fetch(`/api/models?${params.toString()}`, {
@@ -179,7 +139,7 @@ export function ModelSearchDialog({
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedSearch, providerFilter, capabilityFilter, providerSettings]);
+  }, [debouncedSearch, capabilityFilter, providerSettings]);
 
   // Fetch models when filters change
   useEffect(() => {
@@ -266,33 +226,8 @@ export function ModelSearchDialog({
     [onClose]
   );
 
-  // Get provider badge color
-  const getProviderBadgeColor = (provider: ProviderType) => {
-    switch (provider) {
-      case "gemini":
-        return "bg-green-500/20 text-green-300";
-      case "replicate":
-        return "bg-blue-500/20 text-blue-300";
-      case "fal":
-        return "bg-yellow-500/20 text-yellow-300";
-      default:
-        return "bg-neutral-500/20 text-neutral-300";
-    }
-  };
-
-  // Get provider display name
-  const getProviderDisplayName = (provider: ProviderType) => {
-    switch (provider) {
-      case "gemini":
-        return "Gemini";
-      case "replicate":
-        return "Replicate";
-      case "fal":
-        return "OpenRouter";
-      default:
-        return provider;
-    }
-  };
+  const getProviderBadgeColor = (_provider: ProviderType) => "bg-yellow-500/20 text-yellow-300";
+  const getProviderDisplayName = (_provider: ProviderType) => "OpenRouter";
 
   // Filter recent models by capability
   const filteredRecentModels = useMemo(() => {
@@ -321,9 +256,9 @@ export function ModelSearchDialog({
       .slice(0, 4); // Show max 4
   }, [recentModels, models, capabilityFilter]);
 
-  // Get display name with suffix for OpenRouter models to differentiate variants
+  // Přidá přesný konec identifikátoru jen tehdy, když rozlišuje varianty modelu.
   const getDisplayName = (model: ProviderModel): string => {
-    if (model.provider === "fal") {
+    if (model.provider === "openrouter") {
       // Extract the last segment of the ID (e.g., "effects" from "kling-video/v1.6/pro/effects")
       const segments = model.id.split("/");
       const lastSegment = segments[segments.length - 1];
@@ -336,14 +271,8 @@ export function ModelSearchDialog({
     return model.name;
   };
 
-  // Get model page URL for the provider's website
   const getModelUrl = (model: ProviderModel): string => {
-    if (model.provider === "replicate") {
-      return `https://replicate.com/${model.id}`;
-    } else if (model.provider === "fal") {
-      return `https://openrouter.ai/api/v1/models/${model.id}`;
-    }
-    return "#";
+    return `https://openrouter.ai/models/${model.id}`;
   };
 
   // Get capability badges - show all capabilities to differentiate similar models
@@ -449,53 +378,9 @@ export function ModelSearchDialog({
               />
             </div>
 
-            {/* Provider Filter - Icon Buttons */}
-            <div className="flex items-center gap-0.5 bg-neutral-700/50 rounded p-0.5">
-              <button
-                onClick={() => setProviderFilter("all")}
-                title="All Providers"
-                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-                  providerFilter === "all"
-                    ? "bg-neutral-600 text-neutral-100"
-                    : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700"
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setProviderFilter("gemini")}
-                title="Gemini"
-                className={`p-2 rounded transition-colors ${
-                  providerFilter === "gemini"
-                    ? "bg-green-500/20 text-green-300"
-                    : "text-neutral-400 hover:text-green-300 hover:bg-neutral-700"
-                }`}
-              >
-                <GeminiIcon />
-              </button>
-              <button
-                onClick={() => setProviderFilter("replicate")}
-                title="Replicate"
-                className={`p-2 rounded transition-colors ${
-                  providerFilter === "replicate"
-                    ? "bg-blue-500/20 text-blue-300"
-                    : "text-neutral-400 hover:text-blue-300 hover:bg-neutral-700"
-                }`}
-              >
-                <ReplicateIcon />
-              </button>
-              <button
-                onClick={() => setProviderFilter("fal")}
-                title="OpenRouter"
-                className={`p-2 rounded transition-colors ${
-                  providerFilter === "fal"
-                    ? "bg-yellow-500/20 text-yellow-300"
-                    : "text-neutral-400 hover:text-yellow-300 hover:bg-neutral-700"
-                }`}
-              >
-                <FalIcon />
-              </button>
-            </div>
+            <span className="px-3 py-2 text-xs font-medium text-neutral-300 bg-neutral-700/50 rounded">
+              OpenRouter modely
+            </span>
 
             {/* Capability Filter */}
             <select

@@ -145,7 +145,7 @@ export function calculatePredictedCost(
     }
 
     // Fallback to hardcoded Gemini pricing for legacy models
-    if (provider === "gemini") {
+    if (provider === "openrouter") {
       if (modelId === "nano-banana" || modelId === "gemini-2.5-flash-preview-image-generation") {
         return { unitCost: PRICING["nano-banana"]["1K"], unit: "image" };
       }
@@ -176,7 +176,7 @@ export function calculatePredictedCost(
         modelName = data.selectedModel.displayName;
       } else {
         // Legacy Gemini-only model
-        provider = "gemini";
+        provider = "openrouter";
         modelId = data.model;
         modelName = data.model === "nano-banana" ? "Nano Banana" : "Nano Banana Pro";
       }
@@ -217,11 +217,11 @@ export function calculatePredictedCost(
         const resolution = model === "nano-banana" ? "1K" : data.generateSettings.resolution;
         const modelName = model === "nano-banana" ? "Nano Banana" : "Nano Banana Pro";
 
-        const pricing = getPricing("gemini", model, resolution);
+        const pricing = getPricing("openrouter", model, resolution);
         const unitCost = pricing?.unitCost ?? null;
         const unit = pricing?.unit ?? "image";
 
-        addToBreakdown("gemini", model, modelName, unit, unitCost, data.targetCount);
+        addToBreakdown("openrouter", model, modelName, unit, unitCost, data.targetCount);
       }
     }
   });

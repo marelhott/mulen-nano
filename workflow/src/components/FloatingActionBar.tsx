@@ -2,10 +2,9 @@
 
 import { useRef, useState, useEffect, useMemo } from "react";
 import { useWorkflowStore } from "@/store/workflowStore";
-import { NodeType, ProviderType } from "@/types";
+import { NodeType } from "@/types";
 import { useReactFlow } from "@xyflow/react";
 import { ModelSearchDialog } from "./modals/ModelSearchDialog";
-import { EnvStatusResponse } from "@/app/api/env-status/route";
 
 // Get the center of the React Flow pane in screen coordinates
 function getPaneCenter() {
@@ -154,14 +153,14 @@ function GenerateComboButton() {
   );
 }
 
-function ProviderIconButton({ provider, onClick }: { provider: ProviderType; onClick: () => void }) {
+function ModelCatalogButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      title={`Browse ${provider === "replicate" ? "Replicate" : "OpenRouter"} models`}
+      title="Procházet modely OpenRouter"
       className="p-1 text-neutral-400 hover:text-neutral-100 hover:bg-neutral-700/70 rounded-md transition-colors"
     >
-      {provider === "replicate" ? (
+      {false ? (
         // Replicate official logo
         <svg className="w-3.5 h-3.5" viewBox="0 0 1000 1000" fill="currentColor">
           <polygon points="1000,427.6 1000,540.6 603.4,540.6 603.4,1000 477,1000 477,427.6" />
@@ -188,7 +187,6 @@ export function FloatingActionBar() {
     validateWorkflow,
     edgeStyle,
     setEdgeStyle,
-    providerSettings,
     setModelSearchOpen,
     modelSearchOpen,
     modelSearchProvider,
@@ -197,20 +195,12 @@ export function FloatingActionBar() {
   const [runMenuOpen, setRunMenuOpen] = useState(false);
   const runMenuRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
-  const [envStatus, setEnvStatus] = useState<EnvStatusResponse | null>(null);
 
   // Defer client-only rendering to avoid hydration mismatch
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Fetch environment status to check for API keys in .env
-  useEffect(() => {
-    fetch("/api/env-status")
-      .then((res) => res.json())
-      .then((data: EnvStatusResponse) => setEnvStatus(data))
-      .catch(() => setEnvStatus(null));
-  }, []);
 
   const { valid, errors } = validateWorkflow();
 
@@ -283,20 +273,11 @@ export function FloatingActionBar() {
         <GenerateComboButton />
         <NodeButton type="output" label="Output" />
 
-        {/* Provider model browser icons */}
+        {/* Modelový katalog OpenRouter */}
         <div className="w-px h-3.5 bg-neutral-600/80 mx-1" />
 
-        {/* Replicate icon - show if API key is configured via env or project settings */}
-        {mounted && (providerSettings.providers.replicate?.apiKey || envStatus?.replicate) && (
-          <ProviderIconButton
-            provider="replicate"
-            onClick={() => setModelSearchOpen(true, "replicate")}
-          />
-        )}
-        {/* OpenRouter icon - always show (works without key but rate limited) */}
-        <ProviderIconButton
-          provider="fal"
-          onClick={() => setModelSearchOpen(true, "fal")}
+        <ModelCatalogButton
+          onClick={() => setModelSearchOpen(true, "openrouter")}
         />
 
         <div className="w-px h-3.5 bg-neutral-600/80 mx-1" />

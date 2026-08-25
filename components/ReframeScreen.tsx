@@ -12,7 +12,7 @@ import { AtelierEmptyState, AtelierInfoRows, AtelierRightPanel, AtelierSection }
 import { decideAdaptiveConcurrency, estimateDataUrlBytes, runConcurrentTasks } from '../utils/concurrencyRunner';
 import { toUserFacingAiError } from '../utils/aiErrorMessage';
 
-const GEMINI_PRO_IMAGE_MODEL = 'gemini-3-pro-image-preview';
+const GEMINI_PRO_IMAGE_MODEL = 'google/gemini-3-pro-image';
 
 type PerspectiveId =
   | 'ext-long-shot'
@@ -168,22 +168,22 @@ const REFRAME_PRESETS: Array<{ label: string; ids: PerspectiveId[] }> = [
   { label: 'Vybrat vše', ids: PERSPECTIVES.map(p => p.id) as PerspectiveId[] },
 ];
 
-function readGeminiKey(): string {
+function readOpenRouterKey(): string {
   try {
     const raw = localStorage.getItem('providerSettings');
     if (!raw) return '';
     const parsed = JSON.parse(raw);
-    return parsed?.gemini?.apiKey || '';
+    return parsed?.openrouter?.apiKey || '';
   } catch {
     return '';
   }
 }
 
-async function getServerGeminiReady(): Promise<boolean> {
+async function getServerOpenRouterReady(): Promise<boolean> {
   try {
     const res = await fetch('/api/public-config');
     const data = await res.json();
-    return Boolean(data?.providers?.gemini);
+    return Boolean(data?.openRouter);
   } catch {
     return false;
   }
@@ -281,15 +281,15 @@ export function ReframeScreen(props: {
   const [outputs, setOutputs] = React.useState<ReframeOutput[]>([]);
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [progress, setProgress] = React.useState<{ completed: number; total: number } | null>(null);
-  const [serverGeminiReady, setServerGeminiReady] = React.useState(false);
+  const [serverOpenRouterReady, setServerOpenRouterReady] = React.useState(false);
   const [selectedOutput, setSelectedOutput] = React.useState<ReframeOutput | null>(null);
   const [activeConcurrency, setActiveConcurrency] = React.useState(3);
   const [concurrencyReason, setConcurrencyReason] = React.useState('bezny reframe');
   const inputId = React.useMemo(() => `reframe-input-${Math.random().toString(36).slice(2)}`, []);
-  const geminiKey = React.useMemo(() => providerSettings[AIProviderType.OPENROUTER]?.apiKey || readGeminiKey(), [providerSettings]);
+  const openRouterKey = React.useMemo(() => providerSettings[AIProviderType.OPENROUTER]?.apiKey || readOpenRouterKey(), [providerSettings]);
 
   React.useEffect(() => {
-    getServerGeminiReady().then(setServerGeminiReady);
+    getServerOpenRouterReady().then(setServerOpenRouterReady);
   }, []);
 
   const selectedPerspectives = React.useMemo(
@@ -335,8 +335,8 @@ export function ReframeScreen(props: {
       onToast({ type: 'error', message: 'Vyber aspoň jednu perspektivu.' });
       return;
     }
-    if (!geminiKey && !serverGeminiReady) {
-      onToast({ type: 'error', message: 'Chybí Gemini klíč v Settings nebo na Vercelu.' });
+    if (!openRouterKey && !serverOpenRouterReady) {
+      onToast({ type: 'error', message: 'Chybí OpenRouter klíč v Nastavení nebo na Vercelu.' });
       return;
     }
 
@@ -358,7 +358,7 @@ export function ReframeScreen(props: {
 
     try {
       const providerInput = await optimizeImageInput(input.dataUrl, input.file.type);
-      const provider = new OpenRouterProvider(geminiKey || '', GEMINI_PRO_IMAGE_MODEL);
+      const provider = new OpenRouterProvider(openRouterKey || '', GEMINI_PRO_IMAGE_MODEL);
       const inputBytes = estimateDataUrlBytes(providerInput.data);
       const decision = decideAdaptiveConcurrency({
         section: 'reframe',
@@ -447,20 +447,20 @@ export function ReframeScreen(props: {
       setIsGenerating(false);
       setProgress(null);
     }
-  }, [geminiKey, input, onToast, originalAspectRatio, resolution, selectedPerspectives, serverGeminiReady]);
+  }, [openRouterKey, input, onToast, originalAspectRatio, resolution, selectedPerspectives, serverOpenRouterReady]);
 
   const handleEditOutput = React.useCallback(async (output: ReframeOutput) => {
     const prompt = output.editPrompt?.trim();
     if (!prompt || !output.dataUrl) return;
-    if (!geminiKey && !serverGeminiReady) {
-      onToast({ type: 'error', message: 'Chybí Gemini klíč v Settings nebo na Vercelu.' });
+    if (!openRouterKey && !serverOpenRouterReady) {
+      onToast({ type: 'error', message: 'Chybí OpenRouter klíč v Nastavení nebo na Vercelu.' });
       return;
     }
 
     setOutputs((prev) => prev.map((item) => item.id === output.id ? { ...item, status: 'running', error: undefined } : item));
     try {
       const providerInput = await optimizeImageInput(output.dataUrl, 'image/png');
-      const provider = new OpenRouterProvider(geminiKey || '', GEMINI_PRO_IMAGE_MODEL);
+      const provider = new OpenRouterProvider(openRouterKey || '', GEMINI_PRO_IMAGE_MODEL);
       const result = await provider.generateImage(
         [providerInput],
         buildEditPrompt(prompt, output.perspectiveLabel, originalAspectRatio),
@@ -499,7 +499,7 @@ export function ReframeScreen(props: {
       ));
       onToast({ type: 'error', message: error?.message || 'Úprava selhala.' });
     }
-  }, [geminiKey, onToast, originalAspectRatio, resolution, serverGeminiReady]);
+  }, [openRouterKey, onToast, originalAspectRatio, resolution, serverOpenRouterReady]);
 
   return (
     <div className="flex-1 relative flex min-w-0 canvas-surface h-full overflow-hidden">
@@ -581,13 +581,13 @@ export function ReframeScreen(props: {
             ))}
           </div>
 
-          {!geminiKey && !serverGeminiReady ? (
+          {!openRouterKey && !serverOpenRouterReady ? (
             <button
               type="button"
               onClick={onOpenSettings}
               className="w-full px-3 py-2 rounded-lg border border-amber-500/30 bg-amber-500/5 text-[10px] font-bold uppercase tracking-widest text-amber-300"
             >
-              Nastavit Gemini
+              Nastavit OpenRouter
             </button>
           ) : null}
         </div>

@@ -337,10 +337,6 @@ export function TemplateExplorerView({
   const [modelsSearch, setModelsSearch] = useState("");
   const [debouncedModelsSearch, setDebouncedModelsSearch] = useState("");
   const modelsSearchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [providerFilter, setProviderFilter] = useState<{ replicate: boolean; fal: boolean }>({
-    replicate: true,
-    fal: true,
-  });
   const [capabilityFilter, setCapabilityFilter] = useState<"all" | "image" | "video">("all");
 
   useEffect(() => {
@@ -373,10 +369,8 @@ export function TemplateExplorerView({
       }
 
       const headers: Record<string, string> = {};
-      const replicateKey = providerSettings.providers.replicate?.apiKey;
-      const falKey = providerSettings.providers.fal?.apiKey;
-      if (replicateKey) headers["X-Replicate-Key"] = replicateKey;
-      if (falKey) headers["X-Fal-Key"] = falKey;
+      const apiKey = providerSettings.providers.openrouter?.apiKey;
+      if (apiKey) headers["X-OpenRouter-API-Key"] = apiKey;
 
       const res = await fetch(`/api/models?${params.toString()}`, { headers });
       const data = await res.json();
@@ -384,8 +378,7 @@ export function TemplateExplorerView({
         throw new Error(data?.error || "Failed to fetch models");
       }
 
-      const onlyExternal = data.models.filter((m: ProviderModel) => m.provider === "replicate" || m.provider === "fal");
-      setModels(onlyExternal);
+      setModels(data.models.filter((m: ProviderModel) => m.provider === "openrouter"));
     } catch (e) {
       setModels([]);
       setModelsError(e instanceof Error ? e.message : "Failed to fetch models");
@@ -400,17 +393,11 @@ export function TemplateExplorerView({
     }
   }, [activeTab, fetchModels]);
 
-  const filteredModels = useMemo(() => {
-    return models.filter((m) => {
-      if (!providerFilter.fal && m.provider === "fal") return false;
-      if (!providerFilter.replicate && m.provider === "replicate") return false;
-      return true;
-    });
-  }, [models, providerFilter]);
+  const filteredModels = models;
 
   const canTranslate = !!(
-    providerSettings.providers.gemini?.apiKey ||
-    providerSettings.providers.openai?.apiKey
+    providerSettings.providers.openrouter?.apiKey ||
+    providerSettings.providers.openrouter?.apiKey
   );
 
   const translateModelDescription = useCallback(
@@ -420,20 +407,16 @@ export function TemplateExplorerView({
       if (translatedDescriptions[key]) return;
       if (translating[key]) return;
 
-      const geminiKey = providerSettings.providers.gemini?.apiKey;
-      const openaiKey = providerSettings.providers.openai?.apiKey;
-      const provider = geminiKey ? "google" : openaiKey ? "openai" : null;
-      if (!provider) return;
+      const apiKey = providerSettings.providers.openrouter?.apiKey;
 
       setTranslating((prev) => ({ ...prev, [key]: true }));
       try {
         const headers: Record<string, string> = { "Content-Type": "application/json" };
-        if (provider === "google" && geminiKey) headers["X-Gemini-API-Key"] = geminiKey;
-        if (provider === "openai" && openaiKey) headers["X-OpenAI-API-Key"] = openaiKey;
+        if (apiKey) headers["X-OpenRouter-API-Key"] = apiKey;
 
         const body: LLMGenerateRequest = {
-          provider,
-          model: provider === "google" ? "gemini-3-flash-preview" : "gpt-4.1-mini",
+          provider: "openrouter",
+          model: "google/gemini-3-flash-preview",
           temperature: 0.2,
           maxTokens: 512,
           prompt: [
@@ -585,33 +568,6 @@ export function TemplateExplorerView({
                 />
               </div>
 
-              <div className="space-y-2">
-                <h3 className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">Provider</h3>
-                <div className="flex flex-col gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setProviderFilter((p) => ({ ...p, replicate: !p.replicate }))}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-md text-left transition-colors ${
-                      providerFilter.replicate
-                        ? "bg-blue-500/20 border border-blue-500/50 text-blue-300"
-                        : "bg-neutral-700/30 border border-transparent text-neutral-400 hover:bg-neutral-700/50 hover:text-neutral-300"
-                    }`}
-                  >
-                    Replicate
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setProviderFilter((p) => ({ ...p, fal: !p.fal }))}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-md text-left transition-colors ${
-                      providerFilter.fal
-                        ? "bg-blue-500/20 border border-blue-500/50 text-blue-300"
-                        : "bg-neutral-700/30 border border-transparent text-neutral-400 hover:bg-neutral-700/50 hover:text-neutral-300"
-                    }`}
-                  >
-                    OpenRouter
-                  </button>
-                </div>
-              </div>
 
               <div className="space-y-2">
                 <h3 className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">Typ</h3>
@@ -637,13 +593,13 @@ export function TemplateExplorerView({
                 </div>
               </div>
 
-              {(!providerSettings.providers.replicate?.apiKey || !providerSettings.providers.fal?.apiKey) && (
+              {(!providerSettings.providers.openrouter?.apiKey || !providerSettings.providers.openrouter?.apiKey) && (
                 <div className="text-[11px] text-neutral-400 space-y-2">
                   <div>
-                    {!providerSettings.providers.replicate?.apiKey && (
+                    {!providerSettings.providers.openrouter?.apiKey && (
                       <div>Replicate: chybí API klíč</div>
                     )}
-                    {!providerSettings.providers.fal?.apiKey && <div>OpenRouter: chybí API klíč</div>}
+                    {!providerSettings.providers.openrouter?.apiKey && <div>OpenRouter: chybí API klíč</div>}
                   </div>
                   {onOpenSettings && (
                     <button

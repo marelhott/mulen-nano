@@ -2,7 +2,7 @@ import { serverProviderProxy } from './serverProviderProxy';
 
 type QueuedParams = { imageUrlOrDataUrl: string; prompt?: string; numImages?: number; onPhase?: (phase: 'queue' | 'running' | 'finalizing') => void; loras?: unknown[]; [key: string]: unknown };
 
-async function runImageTool(params: QueuedParams, model = 'black-forest-labs/flux.2-pro') {
+async function runImageTool(params: QueuedParams, model = 'google/gemini-3-pro-image') {
   if (Array.isArray(params.loras) && params.loras.length > 0) {
     throw new Error('Tato LoRA úloha je blokovaná: OpenRouter pro zvolený model nepřijímá vlastní LoRA adaptéry. Není použit žádný přímý fallback.');
   }
@@ -22,6 +22,6 @@ export const runFalLoraImg2ImgQueued = runImageTool;
 export const runFalFluxLoraImg2ImgQueued = runImageTool;
 export const runFalModelQueued = runImageTool;
 export async function runFalUpscaleQueued(params: QueuedParams & { upscaleFactor?: number }) {
-  return runImageTool({ ...params, prompt: `Upscale ${params.upscaleFactor || 2}x. Preserve geometry, identity and composition; improve only authentic detail, texture, sharpness and lighting. Do not add creative content.` }, 'google/gemini-3-pro-image-preview');
+  return runImageTool({ ...params, prompt: `Upscale ${params.upscaleFactor || 2}x. Preserve geometry, identity and composition; improve only authentic detail, texture, sharpness and lighting. Do not add creative content.` }, 'google/gemini-3-pro-image');
 }
 export const runFalFaithfulUpscaleQueued = runFalUpscaleQueued;

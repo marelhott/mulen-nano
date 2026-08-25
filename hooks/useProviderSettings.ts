@@ -13,16 +13,25 @@ const defaults = (): ProviderSettings => ({
 export function useProviderSettings() {
   const defaultProviderSettings = useMemo(defaults, []);
   const [providerSettings, setProviderSettings] = useState<ProviderSettings>(defaultProviderSettings);
-  const [nanoBananaImageModel, setNanoBananaImageModel] = useState<NanoBananaImageModel>('google/gemini-3.1-flash-image-preview' as NanoBananaImageModel);
+  const [nanoBananaImageModel, setNanoBananaImageModel] = useState<NanoBananaImageModel>('google/gemini-3-pro-image');
 
   useEffect(() => {
-    // Staré lokální provider klíče jsou záměrně ignorovány; klíč žije pouze na serveru.
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(defaultProviderSettings));
+    // Migrujeme pouze jediný OpenRouter klíč; historické provider klíče se zahodí.
+    try {
+      const stored = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') as ProviderSettings;
+      const existing = stored[AIProviderType.OPENROUTER];
+      if (existing?.apiKey) {
+        setProviderSettings({ ...defaultProviderSettings, [AIProviderType.OPENROUTER]: { apiKey: existing.apiKey, enabled: true } });
+      }
+    } catch {
+      localStorage.removeItem(SETTINGS_KEY);
+    }
     const storedModel = localStorage.getItem(MODEL_KEY);
     if (storedModel) setNanoBananaImageModel(storedModel as NanoBananaImageModel);
   }, [defaultProviderSettings]);
 
   useEffect(() => localStorage.setItem(MODEL_KEY, nanoBananaImageModel), [nanoBananaImageModel]);
+  useEffect(() => localStorage.setItem(SETTINGS_KEY, JSON.stringify(providerSettings)), [providerSettings]);
   return {
     defaultProviderSettings,
     providerSettings,

@@ -35,7 +35,7 @@ export function ModelParameters({
 
   // Fetch schema when modelId changes
   useEffect(() => {
-    if (!modelId || provider === "gemini") {
+    if (!modelId || provider === "openrouter") {
       setSchema([]);
       onInputsLoaded?.([]);
       return;
@@ -47,11 +47,11 @@ export function ModelParameters({
 
       try {
         const headers: HeadersInit = {};
-        if (providerSettings.providers.replicate?.apiKey) {
-          headers["X-Replicate-Key"] = providerSettings.providers.replicate.apiKey;
+        if (providerSettings.providers.openrouter?.apiKey) {
+          headers["X-OpenRouter-API-Key"] = providerSettings.providers.openrouter.apiKey;
         }
-        if (providerSettings.providers.fal?.apiKey) {
-          headers["X-Fal-Key"] = providerSettings.providers.fal.apiKey;
+        if (providerSettings.providers.openrouter?.apiKey) {
+          headers["X-OpenRouter-API-Key"] = providerSettings.providers.openrouter.apiKey;
         }
 
         const encodedModelId = encodeURIComponent(modelId);
@@ -110,7 +110,7 @@ export function ModelParameters({
   );
 
   // Don't render anything for Gemini or if no model selected
-  if (provider === "gemini" || !modelId) {
+  if (provider === "openrouter" || !modelId) {
     return null;
   }
 

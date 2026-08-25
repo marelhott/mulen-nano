@@ -13,9 +13,7 @@ export async function GET() {
     uptimeSeconds: Math.round(process.uptime()),
     env: {
       nodeEnv: process.env.NODE_ENV || "development",
-      hasGeminiKey: Boolean(process.env.OPENROUTER_API_KEY),
-      hasReplicateKey: Boolean(process.env.OPENROUTER_API_KEY),
-      hasFalKey: Boolean(process.env.FAL_API_KEY),
+      hasOpenRouterKey: Boolean(process.env.OPENROUTER_API_KEY),
       hasAlertWebhook: Boolean(process.env.ALERT_WEBHOOK_URL),
     },
     generate: {

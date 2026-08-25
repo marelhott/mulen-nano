@@ -39,41 +39,13 @@ const DEFAULT_GENERATE_IMAGE_SETTINGS: GenerateImageDefaults = {
 // Default provider settings
 export const defaultProviderSettings: ProviderSettings = {
   providers: {
-    gemini: { id: "gemini", name: "Google Gemini", enabled: true, apiKey: null, apiKeyEnvVar: "OPENROUTER_API_KEY" },
-    openai: { id: "openai", name: "OpenAI", enabled: true, apiKey: null, apiKeyEnvVar: "OPENROUTER_API_KEY" },
-    replicate: { id: "replicate", name: "Replicate", enabled: false, apiKey: null, apiKeyEnvVar: "OPENROUTER_API_KEY" },
-    fal: { id: "fal", name: "OpenRouter", enabled: false, apiKey: null, apiKeyEnvVar: "FAL_API_KEY" },
+    openrouter: { id: "openrouter", name: "OpenRouter", enabled: true, apiKey: null, apiKeyEnvVar: "OPENROUTER_API_KEY" },
   }
 };
 
 function mergeFromMulenProviderSettings(current: ProviderSettings): ProviderSettings {
   if (typeof window === "undefined") return current;
-  const stored = localStorage.getItem(MULEN_PROVIDER_SETTINGS_KEY);
-  if (!stored) return current;
-
-  try {
-    const parsed = JSON.parse(stored) as Record<string, { apiKey?: string; enabled?: boolean }>;
-    const geminiKey = parsed?.gemini?.apiKey;
-    const openaiKey = parsed?.chatgpt?.apiKey;
-
-    return {
-      providers: {
-        ...current.providers,
-        gemini: {
-          ...current.providers.gemini,
-          apiKey: typeof geminiKey === "string" && geminiKey.trim() ? geminiKey : current.providers.gemini.apiKey,
-          enabled: typeof parsed?.gemini?.enabled === "boolean" ? parsed.gemini.enabled : current.providers.gemini.enabled,
-        },
-        openai: {
-          ...current.providers.openai,
-          apiKey: typeof openaiKey === "string" && openaiKey.trim() ? openaiKey : current.providers.openai.apiKey,
-          enabled: typeof parsed?.chatgpt?.enabled === "boolean" ? parsed.chatgpt.enabled : current.providers.openai.enabled,
-        },
-      },
-    };
-  } catch {
-    return current;
-  }
+  return current;
 }
 
 // Workflow configs helpers
@@ -171,26 +143,7 @@ export const saveProviderSettings = (settings: ProviderSettings): void => {
   if (typeof window === "undefined") return;
   localStorage.setItem(PROVIDER_SETTINGS_KEY, JSON.stringify(settings));
 
-  try {
-    const existingRaw = localStorage.getItem(MULEN_PROVIDER_SETTINGS_KEY);
-    const existing = existingRaw ? (JSON.parse(existingRaw) as Record<string, unknown>) : {};
-
-    const mapped = {
-      ...existing,
-      gemini: {
-        apiKey: settings.providers.gemini.apiKey || "",
-        enabled: settings.providers.gemini.enabled,
-      },
-      chatgpt: {
-        apiKey: settings.providers.openai.apiKey || "",
-        enabled: settings.providers.openai.enabled,
-      },
-    };
-
-    localStorage.setItem(MULEN_PROVIDER_SETTINGS_KEY, JSON.stringify(mapped));
-  } catch {
-    return;
-  }
+  localStorage.removeItem(MULEN_PROVIDER_SETTINGS_KEY);
 };
 
 // Recent models helpers

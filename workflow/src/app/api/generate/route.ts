@@ -13,7 +13,17 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as GenerateRequest & { selectedModel?: { modelId?: string }; parameters?: Record<string, unknown>; dynamicInputs?: Record<string, string | string[]> };
     if (!body.prompt) return NextResponse.json<GenerateResponse>({ success: false, error: 'Prompt is required' }, { status: 400 });
-    const model = String(body.selectedModel?.modelId || body.model === 'nano-banana-pro' ? 'google/gemini-3-pro-image-preview' : 'google/gemini-3.1-flash-image-preview');
+    const selectedModel = body.selectedModel?.modelId;
+    const model = selectedModel === 'nano-banana-pro'
+      ? 'google/gemini-3-pro-image'
+      : selectedModel === 'nano-banana'
+        ? 'google/gemini-3.1-flash-image'
+        : String(
+            selectedModel ||
+            (body.model === 'nano-banana-pro'
+              ? 'google/gemini-3-pro-image'
+              : 'google/gemini-3.1-flash-image')
+          );
     const images = body.images || [];
     const result = await generateImage({
       model,

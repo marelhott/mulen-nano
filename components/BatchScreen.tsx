@@ -12,8 +12,7 @@ import { buildBatchRecipe } from '../utils/generationRecipe';
 import { toUserFacingAiError } from '../utils/aiErrorMessage';
 import { decideAdaptiveConcurrency, estimateDataUrlBytes, runConcurrentTasks } from '../utils/concurrencyRunner';
 import type { ToastType } from './Toast';
-
-type NanoBananaImageModel = 'google/gemini-3.1-flash-image-preview' | 'google/gemini-3-pro-image-preview';
+import type { NanoBananaImageModel } from '../constants/timings';
 
 type BatchPresetId = 'general' | 'portrait' | 'interior';
 
@@ -72,33 +71,28 @@ const IMAGE_MODEL_PRESETS: Array<{
   title: string;
   subtitle: string;
   provider: AIProviderType;
-  model?: NanoBananaImageModel;
+  model: NanoBananaImageModel;
 }> = [
-  {
-    id: 'gemini-flash',
-    title: 'Nano 2',
-    subtitle: 'Gemini 3.1 Flash',
-    provider: AIProviderType.OPENROUTER,
-    model: 'google/gemini-3.1-flash-image-preview',
-  },
   {
     id: 'gemini-pro',
     title: 'Nano Pro',
-    subtitle: 'Gemini 3 Pro',
+    subtitle: 'google/gemini-3-pro-image',
     provider: AIProviderType.OPENROUTER,
-    model: 'google/gemini-3-pro-image-preview',
+    model: 'google/gemini-3-pro-image',
+  },
+  {
+    id: 'gemini-flash',
+    title: 'Nano 2',
+    subtitle: 'google/gemini-3.1-flash-image',
+    provider: AIProviderType.OPENROUTER,
+    model: 'google/gemini-3.1-flash-image',
   },
   {
     id: 'openai-image',
     title: 'GPT Img 2',
-    subtitle: 'OpenAI',
+    subtitle: 'openai/gpt-5.4-image-2',
     provider: AIProviderType.OPENROUTER,
-  },
-  {
-    id: 'flux-pro',
-    title: 'Flux Pro',
-    subtitle: 'OpenRouter',
-    provider: AIProviderType.OPENROUTER,
+    model: 'openai/gpt-5.4-image-2',
   },
 ];
 
@@ -163,13 +157,8 @@ async function optimizeBatchInputDataUrl(dataUrl: string, mimeType: string): Pro
   return { data: output, mimeType: 'image/jpeg' };
 }
 
-function modelPresetId(selectedProvider: AIProviderType, nanoBananaImageModel: NanoBananaImageModel): string | null {
-  if (selectedProvider === AIProviderType.OPENROUTER) {
-    return nanoBananaImageModel === 'google/gemini-3-pro-image-preview' ? 'gemini-pro' : 'gemini-flash';
-  }
-  if (selectedProvider === AIProviderType.OPENROUTER) return 'openai-image';
-  if (selectedProvider === AIProviderType.OPENROUTER) return 'flux-pro';
-  return null;
+function modelPresetId(_selectedProvider: AIProviderType, nanoBananaImageModel: NanoBananaImageModel): string | null {
+  return IMAGE_MODEL_PRESETS.find((preset) => preset.model === nanoBananaImageModel)?.id ?? null;
 }
 
 function modelLabel(selectedProvider: AIProviderType, nanoBananaImageModel: NanoBananaImageModel): string {

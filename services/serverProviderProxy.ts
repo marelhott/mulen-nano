@@ -10,6 +10,7 @@ type ServerProviderAction =
 
 type ServerProviderRequest = {
   action: ServerProviderAction;
+  apiKey?: string;
   preferredModel?: string;
   images?: ImageInput[];
   prompt?: string;
@@ -63,8 +64,8 @@ async function callServerProvider<T>(payload: ServerProviderRequest): Promise<T>
 }
 
 export const serverProviderProxy = {
-  enhancePrompt(shortPrompt: string): Promise<string> {
-    return callServerProvider<string>({ action: 'enhancePrompt', shortPrompt });
+  enhancePrompt(shortPrompt: string, apiKey?: string): Promise<string> {
+    return callServerProvider<string>({ action: 'enhancePrompt', shortPrompt, apiKey });
   },
 
   generateImage(params: {
@@ -74,33 +75,38 @@ export const serverProviderProxy = {
     aspectRatio?: string;
     useGrounding?: boolean;
     preferredModel?: string;
+    apiKey?: string;
   }): Promise<GenerateImageResult> {
     return callServerProvider<GenerateImageResult>({ action: 'generateImage', ...params });
   },
 
-  generate3PromptVariants(prompt: string): Promise<Array<{ variant: string; approach: string; prompt: string }>> {
+  generate3PromptVariants(prompt: string, apiKey?: string): Promise<Array<{ variant: string; approach: string; prompt: string }>> {
     return callServerProvider<Array<{ variant: string; approach: string; prompt: string }>>({
       action: 'generate3PromptVariants',
       prompt,
+      apiKey,
     });
   },
 
-  analyzeImageForJson(imageDataUrl: string): Promise<string> {
+  analyzeImageForJson(imageDataUrl: string, apiKey?: string): Promise<string> {
     return callServerProvider<string>({
       action: 'analyzeImageForJson',
       imageDataUrl,
+      apiKey,
     });
   },
 
   analyzeStyleTransfer(
     referenceDataUrl: string,
     styleDataUrl: string,
-    _options?: { agenticVision?: boolean; mediaResolution?: string }
+    _options?: { agenticVision?: boolean; mediaResolution?: string },
+    apiKey?: string
   ): Promise<{ recommendedStrength: number; styleDescription: string; negativePrompt: string }> {
     return callServerProvider<{ recommendedStrength: number; styleDescription: string; negativePrompt: string }>({
       action: 'analyzeStyleTransfer',
       referenceDataUrl,
       styleDataUrl,
+      apiKey,
     });
   },
 };

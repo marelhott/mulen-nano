@@ -4,7 +4,7 @@ import { OpenRouterProvider } from './openRouterService';
 export async function runReplicatePrediction(params: { token?: string; timeoutMs?: number; input?: Record<string, unknown>; prompt?: string; model?: string }) {
   const input = params.input || {};
   const image = String(input.image || input.input_image || '');
-  const result = await new OpenRouterProvider('google/gemini-3-pro-image-preview').generateImage(
+  const result = await new OpenRouterProvider('google/gemini-3-pro-image').generateImage(
     image ? [{ data: image, mimeType: 'image/png' }] : [],
     String(params.prompt || 'Upscale faithfully. Preserve content; improve only real detail and sharpness.'),
   );
@@ -12,7 +12,7 @@ export async function runReplicatePrediction(params: { token?: string; timeoutMs
 }
 
 export async function runFofrStyleTransfer(params: { token?: string; styleImage: string; structureImage?: string; prompt?: string; negativePrompt?: string; numberOfImages?: number; [key: string]: unknown }) {
-  const provider = new OpenRouterProvider('google/gemini-3-pro-image-preview');
+  const provider = new OpenRouterProvider('google/gemini-3-pro-image');
   const result = await provider.generateImage(
     [params.structureImage || params.styleImage, params.styleImage].filter(Boolean).map((data) => ({ data, mimeType: 'image/png' })),
     params.prompt || 'Transfer the visual style naturally while preserving the content and composition.',
@@ -21,7 +21,7 @@ export async function runFofrStyleTransfer(params: { token?: string; styleImage:
 }
 
 export class ReplicateProvider implements AIProvider {
-  private readonly provider = new OpenRouterProvider('black-forest-labs/flux.2-pro');
+  private readonly provider = new OpenRouterProvider('google/gemini-3-pro-image');
   getName() { return this.provider.getName(); }
   getType() { return AIProviderType.OPENROUTER; }
   enhancePrompt(prompt: string) { return this.provider.enhancePrompt(prompt); }

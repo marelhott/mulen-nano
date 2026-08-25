@@ -7,20 +7,11 @@ import { useCommentNavigation } from "@/hooks/useCommentNavigation";
 import { useWorkflowStore } from "@/store/workflowStore";
 import { LLMGenerateNodeData, LLMProvider, LLMModelType } from "@/types";
 
-const PROVIDERS: { value: LLMProvider; label: string }[] = [
-  { value: "google", label: "Google" },
-  { value: "openai", label: "OpenAI" },
-];
-
 const MODELS: Record<LLMProvider, { value: LLMModelType; label: string }[]> = {
-  google: [
-    { value: "gemini-3-flash-preview", label: "Gemini 3 Flash" },
-    { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-    { value: "gemini-3-pro-preview", label: "Gemini 3.0 Pro" },
-  ],
-  openai: [
-    { value: "gpt-4.1-mini", label: "GPT-4.1 Mini" },
-    { value: "gpt-4.1-nano", label: "GPT-4.1 Nano" },
+  openrouter: [
+    { value: "google/gemini-3-flash-preview", label: "Gemini 3 Flash" },
+    { value: "google/gemini-3-pro-preview", label: "Gemini 3 Pro" },
+    { value: "openai/gpt-4.1-mini", label: "GPT-4.1 Mini" },
   ],
 };
 
@@ -30,18 +21,6 @@ export function LLMGenerateNode({ id, data, selected }: NodeProps<LLMGenerateNod
   const nodeData = data;
   const commentNavigation = useCommentNavigation(id);
   const updateNodeData = useWorkflowStore((state) => state.updateNodeData);
-
-  const handleProviderChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const newProvider = e.target.value as LLMProvider;
-      const firstModelForProvider = MODELS[newProvider][0].value;
-      updateNodeData(id, {
-        provider: newProvider,
-        model: firstModelForProvider
-      });
-    },
-    [id, updateNodeData]
-  );
 
   const handleModelChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -91,8 +70,7 @@ export function LLMGenerateNode({ id, data, selected }: NodeProps<LLMGenerateNod
     }
   }, [nodeData.outputText]);
 
-  const provider = nodeData.provider || "google";
-  const availableModels = MODELS[provider] || MODELS.google;
+  const availableModels = MODELS.openrouter;
   const model = availableModels.some(m => m.value === nodeData.model)
     ? nodeData.model
     : availableModels[0].value;
@@ -212,19 +190,6 @@ export function LLMGenerateNode({ id, data, selected }: NodeProps<LLMGenerateNod
             </div>
           )}
         </div>
-
-        {/* Provider selector */}
-        <select
-          value={provider}
-          onChange={handleProviderChange}
-          className="w-full text-[10px] py-1 px-1.5 border border-neutral-700 rounded bg-neutral-900/50 focus:outline-none focus:ring-1 focus:ring-neutral-600 text-neutral-300 shrink-0"
-        >
-          {PROVIDERS.map((p) => (
-            <option key={p.value} value={p.value}>
-              {p.label}
-            </option>
-          ))}
-        </select>
 
         {/* Model selector */}
         <select

@@ -14,15 +14,15 @@ import { getImageDimensions, calculateNodeSizePreservingHeight } from "@/utils/n
 
 // Provider badge component - shows provider icon for all providers
 function ProviderBadge({ provider }: { provider: ProviderType }) {
-  const providerName = provider === "gemini" ? "Gemini" : provider === "replicate" ? "Replicate" : "OpenRouter";
+  const providerName = provider === "openrouter" ? "Gemini" : provider === "openrouter" ? "Replicate" : "OpenRouter";
 
   return (
     <span className="text-neutral-500 shrink-0" title={providerName}>
-      {provider === "gemini" ? (
+      {provider === "openrouter" ? (
         <svg className="w-4 h-4" viewBox="0 0 65 65" fill="currentColor">
           <path d="M57.8647 29.0098C52.865 26.8576 48.4905 23.905 44.7393 20.1556C40.99 16.4063 38.0373 12.0299 35.8851 7.03022C35.0589 5.11406 34.395 3.14442 33.886 1.12498C33.72 0.464747 33.128 0 32.4475 0C31.7669 0 31.1749 0.464747 31.009 1.12498C30.4999 3.14442 29.836 5.11222 29.0098 7.03022C26.8576 12.0299 23.905 16.4063 20.1556 20.1556C16.4063 23.905 12.0299 26.8576 7.03022 29.0098C5.11406 29.836 3.14442 30.4999 1.12498 31.009C0.464747 31.1749 0 31.7669 0 32.4475C0 33.128 0.464747 33.72 1.12498 33.886C3.14442 34.395 5.11222 35.0589 7.03022 35.8851C12.0299 38.0373 16.4045 40.99 20.1556 44.7393C23.9068 48.4886 26.8576 52.865 29.0098 57.8647C29.836 59.7809 30.4999 61.7505 31.009 63.7699C31.1749 64.4302 31.7669 64.8949 32.4475 64.8949C33.128 64.8949 33.72 64.4302 33.886 63.7699C34.395 61.7505 35.0589 59.7827 35.8851 57.8647C38.0373 52.865 40.99 48.4905 44.7393 44.7393C48.4886 40.99 52.865 38.0373 57.8647 35.8851C59.7809 35.0589 61.7505 34.395 63.7699 33.886C64.4302 33.72 64.8949 33.128 64.8949 32.4475C64.8949 31.7669 64.4302 31.1749 63.7699 31.009C61.7505 30.4999 59.7827 29.836 57.8647 29.0098Z" />
         </svg>
-      ) : provider === "replicate" ? (
+      ) : provider === "openrouter" ? (
         <svg className="w-4 h-4" viewBox="0 0 1000 1000" fill="currentColor">
           <polygon points="1000,427.6 1000,540.6 603.4,540.6 603.4,1000 477,1000 477,427.6" />
           <polygon points="1000,213.8 1000,327 364.8,327 364.8,1000 238.4,1000 238.4,213.8" />
@@ -67,18 +67,18 @@ export function GenerateImageNode({ id, data, selected }: NodeProps<NanoBananaNo
   const [isBrowseDialogOpen, setIsBrowseDialogOpen] = useState(false);
 
   // Get the current selected provider (default to gemini)
-  const currentProvider: ProviderType = nodeData.selectedModel?.provider || "gemini";
+  const currentProvider: ProviderType = nodeData.selectedModel?.provider || "openrouter";
 
   // Get enabled providers
   const enabledProviders = useMemo(() => {
     const providers: { id: ProviderType; name: string }[] = [];
     // Gemini is always available
-    providers.push({ id: "gemini", name: "Gemini" });
+    providers.push({ id: "openrouter", name: "Gemini" });
     // OpenRouter is always available (works without key but rate limited)
-    providers.push({ id: "fal", name: "OpenRouter" });
+    providers.push({ id: "openrouter", name: "OpenRouter" });
     // Add Replicate if configured
-    if (providerSettings.providers.replicate?.enabled && providerSettings.providers.replicate?.apiKey) {
-      providers.push({ id: "replicate", name: "Replicate" });
+    if (providerSettings.providers.openrouter?.enabled && providerSettings.providers.openrouter?.apiKey) {
+      providers.push({ id: "openrouter", name: "Replicate" });
     }
     return providers;
   }, [providerSettings]);
@@ -86,8 +86,8 @@ export function GenerateImageNode({ id, data, selected }: NodeProps<NanoBananaNo
   // Check if external providers (Replicate/Fal) are enabled
   // OpenRouter is always available (works without key but rate limited)
   const hasExternalProviders = useMemo(() => {
-    const hasReplicate = providerSettings.providers.replicate?.enabled &&
-                         providerSettings.providers.replicate?.apiKey;
+    const hasReplicate = providerSettings.providers.openrouter?.enabled &&
+                         providerSettings.providers.openrouter?.apiKey;
     // OpenRouter is always available
     return !!(hasReplicate || true);
   }, [providerSettings]);
@@ -99,7 +99,7 @@ export function GenerateImageNode({ id, data, selected }: NodeProps<NanoBananaNo
     if (nodeData.model && !nodeData.selectedModel) {
       const displayName = nodeData.model === "nano-banana" ? "Nano Banana" : "Nano Banana Pro";
       const newSelectedModel: SelectedModel = {
-        provider: "gemini",
+        provider: "openrouter",
         modelId: nodeData.model,
         displayName,
       };
@@ -109,7 +109,7 @@ export function GenerateImageNode({ id, data, selected }: NodeProps<NanoBananaNo
 
   // Fetch models from external providers when provider changes
   const fetchModels = useCallback(async () => {
-    if (currentProvider === "gemini") {
+    if (currentProvider === "openrouter") {
       setExternalModels([]);
       setModelsFetchError(null);
       return;
@@ -120,11 +120,11 @@ export function GenerateImageNode({ id, data, selected }: NodeProps<NanoBananaNo
     try {
       const capabilities = IMAGE_CAPABILITIES.join(",");
       const headers: HeadersInit = {};
-      if (providerSettings.providers.replicate?.apiKey) {
-        headers["X-Replicate-Key"] = providerSettings.providers.replicate.apiKey;
+      if (providerSettings.providers.openrouter?.apiKey) {
+        headers["X-OpenRouter-API-Key"] = providerSettings.providers.openrouter.apiKey;
       }
-      if (providerSettings.providers.fal?.apiKey) {
-        headers["X-Fal-Key"] = providerSettings.providers.fal.apiKey;
+      if (providerSettings.providers.openrouter?.apiKey) {
+        headers["X-OpenRouter-API-Key"] = providerSettings.providers.openrouter.apiKey;
       }
       const response = await fetch(`/api/models?provider=${currentProvider}&capabilities=${capabilities}`, { headers });
       if (response.ok) {
@@ -136,7 +136,7 @@ export function GenerateImageNode({ id, data, selected }: NodeProps<NanoBananaNo
         const errorMsg = errorData.error || `Failed to load models (${response.status})`;
         setExternalModels([]);
         setModelsFetchError(
-          currentProvider === "replicate" && response.status === 401
+          currentProvider === "openrouter" && response.status === 401
             ? "Invalid Replicate API key. Check your settings."
             : errorMsg
         );
@@ -159,10 +159,10 @@ export function GenerateImageNode({ id, data, selected }: NodeProps<NanoBananaNo
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       const provider = e.target.value as ProviderType;
 
-      if (provider === "gemini") {
+      if (provider === "openrouter") {
         // Reset to Gemini default
         const newSelectedModel: SelectedModel = {
-          provider: "gemini",
+          provider: "openrouter",
           modelId: nodeData.model || "nano-banana-pro",
           displayName: GEMINI_IMAGE_MODELS.find(m => m.value === (nodeData.model || "nano-banana-pro"))?.label || "Nano Banana Pro",
         };
@@ -226,7 +226,7 @@ export function GenerateImageNode({ id, data, selected }: NodeProps<NanoBananaNo
 
       // Also update selectedModel for consistency
       const newSelectedModel: SelectedModel = {
-        provider: "gemini",
+        provider: "openrouter",
         modelId: model,
         displayName: GEMINI_IMAGE_MODELS.find(m => m.value === model)?.label || model,
       };
@@ -370,7 +370,7 @@ export function GenerateImageNode({ id, data, selected }: NodeProps<NanoBananaNo
     setIsBrowseDialogOpen(false);
   }, [id, updateNodeData]);
 
-  const isGeminiProvider = currentProvider === "gemini";
+  const isGeminiProvider = currentProvider === "openrouter";
 
   // Dynamic title based on selected model - just the model name
   const displayTitle = useMemo(() => {
@@ -843,7 +843,7 @@ export function GenerateImageNode({ id, data, selected }: NodeProps<NanoBananaNo
         )}
 
         {/* Aspect ratio and resolution row - only for Gemini models */}
-        {currentProvider === "gemini" && (
+        {currentProvider === "openrouter" && (
           <div className="flex gap-1.5 shrink-0">
             <select
               value={nodeData.aspectRatio}
@@ -873,7 +873,7 @@ export function GenerateImageNode({ id, data, selected }: NodeProps<NanoBananaNo
         )}
 
         {/* Google Search toggle - only for Nano Banana Pro */}
-        {currentProvider === "gemini" && isNanoBananaPro && (
+        {currentProvider === "openrouter" && isNanoBananaPro && (
           <label className="flex items-center gap-1.5 text-[10px] text-neutral-300 shrink-0 cursor-pointer">
             <input
               type="checkbox"

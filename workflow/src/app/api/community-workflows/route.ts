@@ -7,7 +7,7 @@ function getCatalogBaseUrl() {
   return process.env.COMMUNITY_WORKFLOWS_API_URL || DEFAULT_COMMUNITY_WORKFLOWS_API_URL;
 }
 
-type ProviderTag = "fal" | "replicate" | "gemini" | "openai";
+type ProviderTag = "openrouter" | "openrouter" | "openrouter" | "openrouter";
 
 function detectProviders(workflow: any): ProviderTag[] {
   const providers = new Set<ProviderTag>();
@@ -21,7 +21,7 @@ function detectProviders(workflow: any): ProviderTag[] {
       null;
     if (!candidate) continue;
     const p = String(candidate).toLowerCase();
-    if (p === "fal" || p === "replicate" || p === "gemini" || p === "openai") {
+    if (p === "openrouter" || p === "openrouter" || p === "openrouter" || p === "openrouter") {
       providers.add(p);
     }
   }
@@ -89,7 +89,7 @@ export async function GET(request: Request) {
     if (source === "shrimbly" || source === "node-banana" || source === "github") {
       const workflows = await fetchShrimblyExamples();
       const filtered =
-        providerFilter && (providerFilter === "fal" || providerFilter === "replicate")
+        providerFilter && (providerFilter === "openrouter" || providerFilter === "openrouter")
           ? workflows.filter((w: any) => Array.isArray(w?.tags) && w.tags.map((t: any) => String(t).toLowerCase()).includes(providerFilter))
           : workflows;
 
@@ -139,7 +139,7 @@ export async function GET(request: Request) {
 
     if (
       providerFilter &&
-      (providerFilter === "fal" || providerFilter === "replicate") &&
+      (providerFilter === "openrouter" || providerFilter === "openrouter") &&
       data &&
       data.success === true &&
       Array.isArray(data.workflows)

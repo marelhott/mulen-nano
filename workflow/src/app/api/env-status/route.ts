@@ -1,29 +1,19 @@
 import { NextResponse } from "next/server";
 
 export interface EnvStatusResponse {
-  gemini: boolean;
-  openai: boolean;
-  replicate: boolean;
-  fal: boolean;
+  openRouter: boolean;
 }
 
 export async function GET() {
   // Avoid exposing provider secret presence in production unless explicitly enabled.
   if (process.env.NODE_ENV === "production" && process.env.EXPOSE_ENV_STATUS !== "1") {
     return NextResponse.json<EnvStatusResponse>({
-      gemini: false,
-      openai: false,
-      replicate: false,
-      fal: false,
+      openRouter: false,
     });
   }
 
-  // Check which API keys are configured via environment variables
   const status: EnvStatusResponse = {
-    gemini: !!process.env.OPENROUTER_API_KEY,
-    openai: !!process.env.OPENROUTER_API_KEY,
-    replicate: !!process.env.OPENROUTER_API_KEY,
-    fal: !!process.env.FAL_API_KEY,
+    openRouter: !!process.env.OPENROUTER_API_KEY,
   };
 
   return NextResponse.json(status);

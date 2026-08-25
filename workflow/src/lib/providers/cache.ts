@@ -95,8 +95,8 @@ export function invalidateCache(key?: string): void {
  * @returns Cache key string
  *
  * @example
- * getCacheKey("replicate")           // "replicate:models"
- * getCacheKey("fal", "flux")         // "fal:search:flux"
+ * getCacheKey("openrouter")           // "replicate:models"
+ * getCacheKey("openrouter", "flux")         // "fal:search:flux"
  */
 export function getCacheKey(provider: ProviderType, search?: string): string {
   if (search) {

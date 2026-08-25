@@ -8,7 +8,7 @@
  *   import { getProvider, getConfiguredProviders } from "@/lib/providers";
  *
  *   // Get a specific provider
- *   const replicate = getProvider("replicate");
+ *   const replicate = getProvider("openrouter");
  *
  *   // Get all providers with API keys configured
  *   const available = getConfiguredProviders();
@@ -33,8 +33,8 @@ export * from "./cache";
  * Initially empty; providers call registerProvider() to add themselves.
  *
  * Phase 2 will add:
- * - ReplicateProvider (registers as "replicate")
- * - FalProvider (registers as "fal")
+ * - ReplicateProvider (registers as "openrouter")
+ * - FalProvider (registers as "openrouter")
  *
  * Note: Gemini provider is currently implemented directly in /api/generate route.
  * It may be migrated to this abstraction in a future phase.
@@ -61,7 +61,7 @@ export function registerProvider(provider: ProviderInterface): void {
 /**
  * Get a provider by its type identifier.
  *
- * @param id - The provider type (e.g., "replicate", "fal")
+ * @param id - The provider type (e.g., "openrouter", "openrouter")
  * @returns The provider implementation or undefined if not registered
  */
 export function getProvider(id: ProviderType): ProviderInterface | undefined {
@@ -136,7 +136,7 @@ export async function listAllModels(
   // Sort by provider, then by name
   allModels.sort((a, b) => {
     if (a.provider !== b.provider) {
-      return a.provider.localeCompare(b.provider);
+      return String(a.provider).localeCompare(String(b.provider));
     }
     return a.name.localeCompare(b.name);
   });
@@ -178,7 +178,7 @@ export async function searchAllModels(
   // Sort by provider, then by name
   allModels.sort((a, b) => {
     if (a.provider !== b.provider) {
-      return a.provider.localeCompare(b.provider);
+      return String(a.provider).localeCompare(String(b.provider));
     }
     return a.name.localeCompare(b.name);
   });

@@ -16,20 +16,14 @@ interface CostDialogProps {
  */
 function ProviderIcon({ provider }: { provider: ProviderType }) {
   const colors: Record<ProviderType, { bg: string; text: string }> = {
-    gemini: { bg: "bg-green-500/20", text: "text-green-300" },
-    fal: { bg: "bg-purple-500/20", text: "text-purple-300" },
-    replicate: { bg: "bg-blue-500/20", text: "text-blue-300" },
-    openai: { bg: "bg-teal-500/20", text: "text-teal-300" },
+    openrouter: { bg: "bg-green-500/20", text: "text-green-300" },
   };
 
   const labels: Record<ProviderType, string> = {
-    gemini: "G",
-    fal: "f",
-    replicate: "R",
-    openai: "O",
+    openrouter: "O",
   };
 
-  const color = colors[provider] || colors.gemini;
+  const color = colors[provider] || colors.openrouter;
 
   return (
     <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full ${color.bg} ${color.text} text-xs font-medium`}>
@@ -43,10 +37,7 @@ function ProviderIcon({ provider }: { provider: ProviderType }) {
  */
 function getProviderDisplayName(provider: ProviderType): string {
   const names: Record<ProviderType, string> = {
-    gemini: "Gemini",
-    fal: "OpenRouter",
-    replicate: "Replicate",
-    openai: "OpenAI",
+    openrouter: "OpenRouter",
   };
   return names[provider] || provider;
 }
@@ -55,13 +46,7 @@ function getProviderDisplayName(provider: ProviderType): string {
  * Get model page URL for external providers
  */
 function getModelUrl(provider: ProviderType, modelId: string): string | null {
-  if (provider === "replicate") {
-    // modelId format: "owner/model" or "owner/model:version"
-    const baseModelId = modelId.split(":")[0];
-    return `https://replicate.com/${baseModelId}`;
-  }
-  if (provider === "fal") {
-    // modelId format: "fal-ai/flux/dev" or similar
+  if (provider === "openrouter") {
     return `https://openrouter.ai/api/v1/models/${modelId}`;
   }
   return null;
@@ -98,10 +83,8 @@ export function CostDialog({ predictedCost, incurredCost, onClose }: CostDialogP
   };
 
   // Separate Gemini (reliable pricing) from external providers (unreliable pricing)
-  const geminiItems = predictedCost.breakdown.filter((item) => item.provider === "gemini");
-  const externalItems = predictedCost.breakdown.filter(
-    (item) => item.provider === "fal" || item.provider === "replicate"
-  );
+  const geminiItems = predictedCost.breakdown.filter((item) => item.provider === "openrouter");
+  const externalItems: CostBreakdownItem[] = [];
 
   // Group external items by provider
   const externalByProvider = new Map<ProviderType, CostBreakdownItem[]>();
@@ -142,7 +125,7 @@ export function CostDialog({ predictedCost, incurredCost, onClose }: CostDialogP
           {hasGemini && (
             <div className="bg-neutral-900 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
-                <ProviderIcon provider="gemini" />
+                <ProviderIcon provider="openrouter" />
                 <span className="text-sm text-neutral-300">Gemini Cost</span>
                 <span className="ml-auto text-lg font-semibold text-green-400">
                   {formatCost(geminiTotal)}

@@ -10,8 +10,8 @@ import { AtelierEmptyState, AtelierInfoRows, AtelierRightPanel, AtelierSection }
 import { decideAdaptiveConcurrency, estimateDataUrlBytes, runConcurrentTasks } from '../utils/concurrencyRunner';
 import { toUserFacingAiError } from '../utils/aiErrorMessage';
 
-const FLASH_MODEL = 'google/gemini-3.1-flash-image-preview';
-const PRO_MODEL = 'google/gemini-3-pro-image-preview';
+const FLASH_MODEL = 'google/gemini-3.1-flash-image';
+const PRO_MODEL = 'google/gemini-3-pro-image';
 type UpscaleMode = 'detail-enhance' | 'restore' | 'enhance' | 'denoise' | 'upscale-only';
 type UpscaleModelId = typeof FLASH_MODEL | typeof PRO_MODEL;
 
@@ -45,18 +45,18 @@ type OutputItem = {
   resultHeight?: number;
 };
 
-function readGeminiKey(): string {
+function readOpenRouterKey(): string {
   try {
     const raw = localStorage.getItem('providerSettings');
     if (!raw) return '';
     const parsed = JSON.parse(raw);
-    return parsed?.gemini?.apiKey || '';
+    return parsed?.openrouter?.apiKey || '';
   } catch {
     return '';
   }
 }
 
-type ServerProviders = { gemini: boolean };
+type ServerProviders = { openRouter: boolean };
 
 let cachedServerProviders: ServerProviders | null = null;
 
@@ -65,10 +65,10 @@ async function getServerProviders(): Promise<ServerProviders> {
   try {
     const res = await fetch('/api/public-config');
     const data = await res.json();
-    cachedServerProviders = { gemini: Boolean(data?.providers?.gemini) };
+    cachedServerProviders = { openRouter: Boolean(data?.openRouter) };
     return cachedServerProviders;
   } catch {
-    return { gemini: false };
+    return { openRouter: false };
   }
 }
 
@@ -141,13 +141,13 @@ export function AiUpscalerScreen(props: {
   const [phase, setPhase] = React.useState<'' | 'queue' | 'running' | 'finalizing'>('');
   const [batchProgress, setBatchProgress] = React.useState<{ current: number; total: number; fileName: string } | null>(null);
   const [outputs, setOutputs] = React.useState<OutputItem[]>([]);
-  const [serverProviders, setServerProviders] = React.useState<ServerProviders>({ gemini: false });
+  const [serverProviders, setServerProviders] = React.useState<ServerProviders>({ openRouter: false });
   const [selectedImage, setSelectedImage] = React.useState<OutputItem | null>(null);
   const inputFileId = React.useMemo(() => `upscaler-${Math.random().toString(36).slice(2)}`, []);
   const [activeConcurrency, setActiveConcurrency] = React.useState(2);
   const [concurrencyReason, setConcurrencyReason] = React.useState('bezpecny upscale soubeh');
 
-  const geminiKey = React.useMemo(() => readGeminiKey(), []);
+  const openRouterKey = React.useMemo(() => readOpenRouterKey(), []);
 
   React.useEffect(() => {
     getServerProviders().then(setServerProviders);
@@ -195,8 +195,8 @@ export function AiUpscalerScreen(props: {
       onToast({ type: 'error', message: 'Nejdřív nahraj obrázek.' });
       return;
     }
-    if (!geminiKey && !serverProviders.gemini) {
-      onToast({ type: 'error', message: 'Chybí Gemini klíč — nastav ho v Settings.' });
+    if (!openRouterKey && !serverProviders.openRouter) {
+      onToast({ type: 'error', message: 'Chybí OpenRouter klíč — nastav ho v Nastavení.' });
       return;
     }
 
@@ -271,7 +271,7 @@ export function AiUpscalerScreen(props: {
         },
         worker: async (input) => {
           const modelName = model;
-          const provider = new OpenRouterProvider(geminiKey || '', modelName);
+          const provider = new OpenRouterProvider(openRouterKey || '', modelName);
           const result = await provider.generateImage(
             [{ data: input.dataUrl, mimeType: input.file.type }],
             modePrompt(mode),
@@ -355,7 +355,7 @@ export function AiUpscalerScreen(props: {
       setPhase('');
       setBatchProgress(null);
     }
-  }, [inputs, mode, model, onToast, outputs, scale, geminiKey, serverProviders]);
+  }, [inputs, mode, model, onToast, outputs, scale, openRouterKey, serverProviders]);
 
   const findInputForOutput = (output: OutputItem): ImageSlot | undefined => {
     return inputs.find(i => i.id === output.inputId);
@@ -425,12 +425,12 @@ export function AiUpscalerScreen(props: {
             </div>
           </div>
 
-          {!geminiKey && !serverProviders.gemini ? (
+          {!openRouterKey && !serverProviders.openRouter ? (
             <div className="card-surface p-3 border border-amber-500/30 bg-amber-500/5">
               <div className="flex items-start gap-2">
                 <span className="text-amber-400 text-sm mt-0.5">⚠</span>
                 <div>
-                  <div className="text-[10px] font-bold text-amber-300 uppercase tracking-widest">Chybí Gemini klíč</div>
+                  <div className="text-[10px] font-bold text-amber-300 uppercase tracking-widest">Chybí OpenRouter klíč</div>
                   <div className="mt-1 text-[9px] text-amber-200/70">Nastav v Settings nebo doplň OPENROUTER_API_KEY na serveru.</div>
                 </div>
               </div>

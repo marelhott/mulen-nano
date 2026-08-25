@@ -1070,26 +1070,14 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
                 dynamicInputs,  // Pass dynamic inputs for schema-mapped connections
               };
 
-              // Build headers with API keys for providers
+              // OpenRouter je jediná AI brána workflow.
               const headers: Record<string, string> = {
                 "Content-Type": "application/json",
               };
-              const provider = nodeData.selectedModel?.provider || "gemini";
-              if (provider === "gemini") {
-                const geminiConfig = providerSettingsState.providers.gemini;
-                if (geminiConfig?.apiKey) {
-                  headers["X-Gemini-API-Key"] = geminiConfig.apiKey;
-                }
-              } else if (provider === "replicate") {
-                const replicateConfig = providerSettingsState.providers.replicate;
-                if (replicateConfig?.apiKey) {
-                  headers["X-Replicate-API-Key"] = replicateConfig.apiKey;
-                }
-              } else if (provider === "fal") {
-                const falConfig = providerSettingsState.providers.fal;
-                if (falConfig?.apiKey) {
-                  headers["X-Fal-API-Key"] = falConfig.apiKey;
-                }
+              const provider = "openrouter";
+              const openRouterConfig = providerSettingsState.providers.openrouter;
+              if (openRouterConfig?.apiKey) {
+                headers["X-OpenRouter-API-Key"] = openRouterConfig.apiKey;
               }
 
               logger.info('node.execution', `Calling ${provider} API for image generation`, {
@@ -1099,7 +1087,6 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
                 aspectRatio: nodeData.aspectRatio,
                 resolution: nodeData.resolution,
                 imageCount: images.length,
-                prompt: promptText,
               });
 
               const response = await fetch("/api/generate", {
@@ -1170,10 +1157,10 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
 
                 // Track cost
                 // Cost tracking: Gemini (hardcoded), OpenRouter (from API). Replicate excluded (no pricing API).
-                if (nodeData.selectedModel?.provider === "fal" && nodeData.selectedModel?.pricing) {
+                if (nodeData.selectedModel?.provider === "openrouter" && nodeData.selectedModel?.pricing) {
                   // External OpenRouter provider - use pricing from selectedModel
                   get().addIncurredCost(nodeData.selectedModel.pricing.amount);
-                } else if (!nodeData.selectedModel || nodeData.selectedModel.provider === "gemini") {
+                } else if (!nodeData.selectedModel || nodeData.selectedModel.provider === "openrouter") {
                   // Legacy Gemini or Gemini via selectedModel - use hardcoded pricing
                   const generationCost = calculateGenerationCost(nodeData.model, nodeData.resolution);
                   get().addIncurredCost(generationCost);
@@ -1212,7 +1199,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
               }
 
               const nodeData = node.data as NanoBananaNodeData;
-              const errorProvider = nodeData.selectedModel?.provider || "gemini";
+              const errorProvider = nodeData.selectedModel?.provider || "openrouter";
               logger.error('node.error', 'Generate node execution failed', {
                 nodeId: node.id,
                 provider: errorProvider,
@@ -1284,33 +1271,20 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
                 mediaType: "video" as const,  // Signal to API to use queue for long-running video generation
               };
 
-              // Build headers with API keys for providers
+              // OpenRouter je jediná AI brána workflow.
               const headers: Record<string, string> = {
                 "Content-Type": "application/json",
               };
-              const provider = nodeData.selectedModel.provider;
-              if (provider === "gemini") {
-                const geminiConfig = providerSettingsState.providers.gemini;
-                if (geminiConfig?.apiKey) {
-                  headers["X-Gemini-API-Key"] = geminiConfig.apiKey;
-                }
-              } else if (provider === "replicate") {
-                const replicateConfig = providerSettingsState.providers.replicate;
-                if (replicateConfig?.apiKey) {
-                  headers["X-Replicate-API-Key"] = replicateConfig.apiKey;
-                }
-              } else if (provider === "fal") {
-                const falConfig = providerSettingsState.providers.fal;
-                if (falConfig?.apiKey) {
-                  headers["X-Fal-API-Key"] = falConfig.apiKey;
-                }
+              const provider = "openrouter";
+              const openRouterConfig = providerSettingsState.providers.openrouter;
+              if (openRouterConfig?.apiKey) {
+                headers["X-OpenRouter-API-Key"] = openRouterConfig.apiKey;
               }
               logger.info('node.execution', `Calling ${provider} API for video generation`, {
                 nodeId: node.id,
                 provider,
                 model: nodeData.selectedModel.modelId,
                 imageCount: images.length,
-                prompt: text,
               });
 
               const response = await fetch("/api/generate", {
@@ -1373,7 +1347,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
 
                 // Track cost for video generation
                 // Cost tracking: OpenRouter (from API). Replicate excluded (no pricing API).
-                if (nodeData.selectedModel?.provider === "fal" && nodeData.selectedModel?.pricing) {
+                if (nodeData.selectedModel?.provider === "openrouter" && nodeData.selectedModel?.pricing) {
                   get().addIncurredCost(nodeData.selectedModel.pricing.amount);
                 }
                 // Note: Replicate has no pricing API, so video costs are not tracked
@@ -1407,7 +1381,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
 
                 // Track cost for video generation (image fallback case)
                 // Cost tracking: OpenRouter (from API). Replicate excluded (no pricing API).
-                if (nodeData.selectedModel?.provider === "fal" && nodeData.selectedModel?.pricing) {
+                if (nodeData.selectedModel?.provider === "openrouter" && nodeData.selectedModel?.pricing) {
                   get().addIncurredCost(nodeData.selectedModel.pricing.amount);
                 }
 
@@ -1490,16 +1464,9 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
               const headers: Record<string, string> = {
                 "Content-Type": "application/json",
               };
-              if (nodeData.provider === "google") {
-                const geminiConfig = providerSettingsState.providers.gemini;
-                if (geminiConfig?.apiKey) {
-                  headers["X-Gemini-API-Key"] = geminiConfig.apiKey;
-                }
-              } else if (nodeData.provider === "openai") {
-                const openaiConfig = providerSettingsState.providers.openai;
-                if (openaiConfig?.apiKey) {
-                  headers["X-OpenAI-API-Key"] = openaiConfig.apiKey;
-                }
+              const openRouterConfig = providerSettingsState.providers.openrouter;
+              if (openRouterConfig?.apiKey) {
+                headers["X-OpenRouter-API-Key"] = openRouterConfig.apiKey;
               }
 
               logger.info('api.llm', 'Calling LLM API', {
@@ -1509,7 +1476,6 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
                 temperature: nodeData.temperature,
                 maxTokens: nodeData.maxTokens,
                 hasImages: images.length > 0,
-                prompt: text,
               });
 
               const response = await fetch("/api/llm", {
@@ -1518,7 +1484,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
                 body: JSON.stringify({
                   prompt: text,
                   ...(images.length > 0 && { images }),
-                  provider: nodeData.provider,
+                provider: "openrouter",
                   model: nodeData.model,
                   temperature: nodeData.temperature,
                   maxTokens: nodeData.maxTokens,
@@ -1812,7 +1778,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
         const freshNode = get().nodes.find((n) => n.id === nodeId);
         const nodeData = (freshNode?.data || node.data) as NanoBananaNodeData;
         const providerSettingsState = get().providerSettings;
-        const provider = nodeData.selectedModel?.provider || "gemini";
+        const provider = nodeData.selectedModel?.provider || "openrouter";
 
         // Always get fresh connected inputs first, fall back to stored inputs only if not connected
         const { images: connectedImages, text: connectedText, dynamicInputs } = getConnectedInputs(nodeId);
@@ -1838,25 +1804,13 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
           error: null,
         });
 
-        // Build headers with API keys for providers
+        // OpenRouter je jediná AI brána workflow.
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
         };
-        if (provider === "gemini") {
-          const geminiConfig = providerSettingsState.providers.gemini;
-          if (geminiConfig?.apiKey) {
-            headers["X-Gemini-API-Key"] = geminiConfig.apiKey;
-          }
-        } else if (provider === "replicate") {
-          const replicateConfig = providerSettingsState.providers.replicate;
-          if (replicateConfig?.apiKey) {
-            headers["X-Replicate-API-Key"] = replicateConfig.apiKey;
-          }
-        } else if (provider === "fal") {
-          const falConfig = providerSettingsState.providers.fal;
-          if (falConfig?.apiKey) {
-            headers["X-Fal-API-Key"] = falConfig.apiKey;
-          }
+        const openRouterConfig = providerSettingsState.providers.openrouter;
+        if (openRouterConfig?.apiKey) {
+          headers["X-OpenRouter-API-Key"] = openRouterConfig.apiKey;
         }
 
         logger.info('node.execution', `Calling ${provider} API for node regeneration`, {
@@ -1866,7 +1820,6 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
           aspectRatio: nodeData.aspectRatio,
           resolution: nodeData.resolution,
           imageCount: images.length,
-          prompt: text,
         });
 
         const response = await fetch("/api/generate", {
@@ -1940,9 +1893,9 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
 
           // Track cost
           // Cost tracking: Gemini (hardcoded), OpenRouter (from API). Replicate excluded (no pricing API).
-          if (nodeData.selectedModel?.provider === "fal" && nodeData.selectedModel?.pricing) {
+          if (nodeData.selectedModel?.provider === "openrouter" && nodeData.selectedModel?.pricing) {
             get().addIncurredCost(nodeData.selectedModel.pricing.amount);
-          } else if (!nodeData.selectedModel || nodeData.selectedModel.provider === "gemini") {
+          } else if (!nodeData.selectedModel || nodeData.selectedModel.provider === "openrouter") {
             const generationCost = calculateGenerationCost(nodeData.model, nodeData.resolution);
             get().addIncurredCost(generationCost);
           }
@@ -1991,16 +1944,9 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
         };
-        if (nodeData.provider === "google") {
-          const geminiConfig = providerSettingsState.providers.gemini;
-          if (geminiConfig?.apiKey) {
-            headers["X-Gemini-API-Key"] = geminiConfig.apiKey;
-          }
-        } else if (nodeData.provider === "openai") {
-          const openaiConfig = providerSettingsState.providers.openai;
-          if (openaiConfig?.apiKey) {
-            headers["X-OpenAI-API-Key"] = openaiConfig.apiKey;
-          }
+        const openRouterConfig = providerSettingsState.providers.openrouter;
+        if (openRouterConfig?.apiKey) {
+          headers["X-OpenRouter-API-Key"] = openRouterConfig.apiKey;
         }
 
         logger.info('api.llm', 'Calling LLM API for node regeneration', {
@@ -2010,7 +1956,6 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
           temperature: nodeData.temperature,
           maxTokens: nodeData.maxTokens,
           hasImages: images.length > 0,
-          prompt: text,
         });
 
         const response = await fetch("/api/llm", {
@@ -2019,7 +1964,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
           body: JSON.stringify({
             prompt: text,
             ...(images.length > 0 && { images }),
-            provider: nodeData.provider,
+          provider: "openrouter",
             model: nodeData.model,
             temperature: nodeData.temperature,
             maxTokens: nodeData.maxTokens,
@@ -2106,33 +2051,20 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
           error: null,
         });
 
-        // Build headers with API keys for providers
+        // OpenRouter je jediná AI brána workflow.
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
         };
-        const provider = nodeData.selectedModel.provider;
-        if (provider === "gemini") {
-          const geminiConfig = providerSettingsState.providers.gemini;
-          if (geminiConfig?.apiKey) {
-            headers["X-Gemini-API-Key"] = geminiConfig.apiKey;
-          }
-        } else if (provider === "replicate") {
-          const replicateConfig = providerSettingsState.providers.replicate;
-          if (replicateConfig?.apiKey) {
-            headers["X-Replicate-API-Key"] = replicateConfig.apiKey;
-          }
-        } else if (provider === "fal") {
-          const falConfig = providerSettingsState.providers.fal;
-          if (falConfig?.apiKey) {
-            headers["X-Fal-API-Key"] = falConfig.apiKey;
-          }
+        const provider = "openrouter";
+        const openRouterConfig = providerSettingsState.providers.openrouter;
+        if (openRouterConfig?.apiKey) {
+          headers["X-OpenRouter-API-Key"] = openRouterConfig.apiKey;
         }
         logger.info('node.execution', `Calling ${provider} API for video regeneration`, {
           nodeId,
           provider,
           model: nodeData.selectedModel.modelId,
           imageCount: images.length,
-          prompt: text,
         });
 
         const response = await fetch("/api/generate", {
@@ -2194,7 +2126,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
 
           // Track cost for video regeneration
           // Cost tracking: OpenRouter (from API). Replicate excluded (no pricing API).
-          if (nodeData.selectedModel?.provider === "fal" && nodeData.selectedModel?.pricing) {
+          if (nodeData.selectedModel?.provider === "openrouter" && nodeData.selectedModel?.pricing) {
             get().addIncurredCost(nodeData.selectedModel.pricing.amount);
           }
 
@@ -2226,7 +2158,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
 
           // Track cost for video regeneration (image fallback case)
           // Cost tracking: OpenRouter (from API). Replicate excluded (no pricing API).
-          if (nodeData.selectedModel?.provider === "fal" && nodeData.selectedModel?.pricing) {
+          if (nodeData.selectedModel?.provider === "openrouter" && nodeData.selectedModel?.pricing) {
             get().addIncurredCost(nodeData.selectedModel.pricing.amount);
           }
 
@@ -2443,7 +2375,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
             data: {
               ...data,
               selectedModel: {
-                provider: "gemini" as ProviderType,
+                provider: "openrouter" as ProviderType,
                 modelId: data.model,
                 displayName,
               },

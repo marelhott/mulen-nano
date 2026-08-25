@@ -80,7 +80,7 @@ export const createDefaultNodeData = (type: NodeType): WorkflowNodeData => {
       } else {
         const modelDisplayName = legacyDefaults.model === "nano-banana" ? "Nano Banana" : "Nano Banana Pro";
         selectedModel = {
-          provider: "gemini",
+          provider: "openrouter",
           modelId: legacyDefaults.model,
           displayName: modelDisplayName,
         };

@@ -2954,74 +2954,54 @@ Edit the provided image according to the instruction above. Preserve the origina
   const imageModelPresets: Array<{
     id: string;
     provider: AIProviderType;
-    model?: NanoBananaImageModel;
+    model: NanoBananaImageModel;
     title: string;
     subtitle: string;
   }> = [
     {
-      id: 'gemini-flash',
-      provider: AIProviderType.OPENROUTER,
-      model: 'google/gemini-3.1-flash-image-preview',
-      title: 'Nano 2',
-      subtitle: 'Gemini 3.1 Flash',
-    },
-    {
       id: 'gemini-pro',
       provider: AIProviderType.OPENROUTER,
-      model: 'google/gemini-3-pro-image-preview',
+      model: 'google/gemini-3-pro-image',
       title: 'Nano Pro',
-      subtitle: 'Gemini 3 Pro',
+      subtitle: 'google/gemini-3-pro-image',
+    },
+    {
+      id: 'gemini-flash',
+      provider: AIProviderType.OPENROUTER,
+      model: 'google/gemini-3.1-flash-image',
+      title: 'Nano 2',
+      subtitle: 'google/gemini-3.1-flash-image',
     },
     {
       id: 'openai-image',
       provider: AIProviderType.OPENROUTER,
+      model: 'openai/gpt-5.4-image-2',
       title: 'GPT Img 2',
-      subtitle: 'OpenAI',
-    },
-    {
-      id: 'flux-pro',
-      provider: AIProviderType.OPENROUTER,
-      title: 'Flux Pro',
-      subtitle: 'OpenRouter',
+      subtitle: 'openai/gpt-5.4-image-2',
     },
   ];
 
-  const selectedImagePresetId =
-    selectedProvider === AIProviderType.OPENROUTER
-      ? nanoBananaImageModel === 'google/gemini-3-pro-image-preview'
-        ? 'gemini-pro'
-        : 'gemini-flash'
-      : selectedProvider === AIProviderType.OPENROUTER
-        ? 'openai-image'
-        : selectedProvider === AIProviderType.OPENROUTER
-          ? 'flux-pro'
-          : null;
+  const selectedImagePresetId = imageModelPresets.find((preset) => preset.model === nanoBananaImageModel)?.id ?? null;
 
   const handleImageModelPresetSelect = useCallback((presetId: string) => {
     const preset = imageModelPresets.find((item) => item.id === presetId);
     if (!preset) return;
 
     const nextProvider = preset.provider;
-    const nextGeminiModel = preset.model;
-    const providerWillChange = nextProvider !== selectedProvider;
-    const geminiModelWillChange =
-      nextProvider === AIProviderType.OPENROUTER &&
-      !!nextGeminiModel &&
-      nextGeminiModel !== nanoBananaImageModel;
+    const nextModel = preset.model;
+    const modelWillChange = nextModel !== nanoBananaImageModel;
 
-    if (!providerWillChange && !geminiModelWillChange) return;
+    if (!modelWillChange) return;
 
     if (isGenerating || queuedGenerationCount > 0) {
       const confirmed = window.confirm(
-        'Generování právě běží nebo čeká ve frontě. Opravdu chceš změnit provider nebo model? Nové nastavení se projeví až pro další běh.'
+        'Generování právě běží nebo čeká ve frontě. Opravdu chceš změnit model? Nové nastavení se projeví až pro další běh.'
       );
       if (!confirmed) return;
     }
 
     setSelectedProvider(nextProvider);
-    if (nextProvider === AIProviderType.OPENROUTER && nextGeminiModel) {
-      setNanoBananaImageModel(nextGeminiModel);
-    }
+    setNanoBananaImageModel(nextModel);
   }, [imageModelPresets, isGenerating, nanoBananaImageModel, queuedGenerationCount, selectedProvider, setNanoBananaImageModel, setSelectedProvider]);
 
   const simpleLinkModeOptions = [
