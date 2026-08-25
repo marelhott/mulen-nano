@@ -2961,14 +2961,14 @@ Edit the provided image according to the instruction above. Preserve the origina
     {
       id: 'gemini-flash',
       provider: AIProviderType.OPENROUTER,
-      model: 'gemini-3.1-flash-image-preview',
+      model: 'google/gemini-3.1-flash-image-preview',
       title: 'Nano 2',
       subtitle: 'Gemini 3.1 Flash',
     },
     {
       id: 'gemini-pro',
       provider: AIProviderType.OPENROUTER,
-      model: 'gemini-3-pro-image-preview',
+      model: 'google/gemini-3-pro-image-preview',
       title: 'Nano Pro',
       subtitle: 'Gemini 3 Pro',
     },
@@ -2988,7 +2988,7 @@ Edit the provided image according to the instruction above. Preserve the origina
 
   const selectedImagePresetId =
     selectedProvider === AIProviderType.OPENROUTER
-      ? nanoBananaImageModel === 'gemini-3-pro-image-preview'
+      ? nanoBananaImageModel === 'google/gemini-3-pro-image-preview'
         ? 'gemini-pro'
         : 'gemini-flash'
       : selectedProvider === AIProviderType.OPENROUTER

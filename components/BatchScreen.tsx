@@ -13,7 +13,7 @@ import { toUserFacingAiError } from '../utils/aiErrorMessage';
 import { decideAdaptiveConcurrency, estimateDataUrlBytes, runConcurrentTasks } from '../utils/concurrencyRunner';
 import type { ToastType } from './Toast';
 
-type NanoBananaImageModel = 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview';
+type NanoBananaImageModel = 'google/gemini-3.1-flash-image-preview' | 'google/gemini-3-pro-image-preview';
 
 type BatchPresetId = 'general' | 'portrait' | 'interior';
 
@@ -79,14 +79,14 @@ const IMAGE_MODEL_PRESETS: Array<{
     title: 'Nano 2',
     subtitle: 'Gemini 3.1 Flash',
     provider: AIProviderType.OPENROUTER,
-    model: 'gemini-3.1-flash-image-preview',
+    model: 'google/gemini-3.1-flash-image-preview',
   },
   {
     id: 'gemini-pro',
     title: 'Nano Pro',
     subtitle: 'Gemini 3 Pro',
     provider: AIProviderType.OPENROUTER,
-    model: 'gemini-3-pro-image-preview',
+    model: 'google/gemini-3-pro-image-preview',
   },
   {
     id: 'openai-image',
@@ -165,7 +165,7 @@ async function optimizeBatchInputDataUrl(dataUrl: string, mimeType: string): Pro
 
 function modelPresetId(selectedProvider: AIProviderType, nanoBananaImageModel: NanoBananaImageModel): string | null {
   if (selectedProvider === AIProviderType.OPENROUTER) {
-    return nanoBananaImageModel === 'gemini-3-pro-image-preview' ? 'gemini-pro' : 'gemini-flash';
+    return nanoBananaImageModel === 'google/gemini-3-pro-image-preview' ? 'gemini-pro' : 'gemini-flash';
   }
   if (selectedProvider === AIProviderType.OPENROUTER) return 'openai-image';
   if (selectedProvider === AIProviderType.OPENROUTER) return 'flux-pro';

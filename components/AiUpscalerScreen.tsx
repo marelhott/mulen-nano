@@ -10,8 +10,8 @@ import { AtelierEmptyState, AtelierInfoRows, AtelierRightPanel, AtelierSection }
 import { decideAdaptiveConcurrency, estimateDataUrlBytes, runConcurrentTasks } from '../utils/concurrencyRunner';
 import { toUserFacingAiError } from '../utils/aiErrorMessage';
 
-const FLASH_MODEL = 'gemini-3.1-flash-image-preview';
-const PRO_MODEL = 'gemini-3-pro-image-preview';
+const FLASH_MODEL = 'google/gemini-3.1-flash-image-preview';
+const PRO_MODEL = 'google/gemini-3-pro-image-preview';
 type UpscaleMode = 'detail-enhance' | 'restore' | 'enhance' | 'denoise' | 'upscale-only';
 type UpscaleModelId = typeof FLASH_MODEL | typeof PRO_MODEL;
 

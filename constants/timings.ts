@@ -1,6 +1,6 @@
 import { AIProviderType } from '../services/aiProvider';
 
-export type NanoBananaImageModel = 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview';
+export type NanoBananaImageModel = 'google/gemini-3.1-flash-image-preview' | 'google/gemini-3-pro-image-preview';
 
 const GEMINI_FLASH_INTER_REQUEST_DELAY_MS = 250;
 const GEMINI_PRO_INTER_REQUEST_DELAY_MS = 450;
@@ -17,7 +17,7 @@ export function getInterRequestDelayMs(
   if (imageIndex <= 0) return 0;
 
   if (provider === AIProviderType.OPENROUTER) {
-    return imageModel === 'gemini-3-pro-image-preview'
+    return imageModel === 'google/gemini-3-pro-image-preview'
       ? GEMINI_PRO_INTER_REQUEST_DELAY_MS
       : GEMINI_FLASH_INTER_REQUEST_DELAY_MS;
   }
