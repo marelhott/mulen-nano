@@ -1,6 +1,6 @@
 import React from 'react';
 import { Download, ImagePlus, Sparkles, X } from 'lucide-react';
-import { GeminiProvider } from '../services/geminiService';
+import { OpenRouterProvider } from '../services/openRouterService';
 import type { ProviderSettings } from '../services/aiProvider';
 import { AIProviderType, type ImageInput } from '../services/aiProvider';
 import { createThumbnail, saveToGallery } from '../utils/galleryDB';
@@ -286,7 +286,7 @@ export function ReframeScreen(props: {
   const [activeConcurrency, setActiveConcurrency] = React.useState(3);
   const [concurrencyReason, setConcurrencyReason] = React.useState('bezny reframe');
   const inputId = React.useMemo(() => `reframe-input-${Math.random().toString(36).slice(2)}`, []);
-  const geminiKey = React.useMemo(() => providerSettings[AIProviderType.GEMINI]?.apiKey || readGeminiKey(), [providerSettings]);
+  const geminiKey = React.useMemo(() => providerSettings[AIProviderType.OPENROUTER]?.apiKey || readGeminiKey(), [providerSettings]);
 
   React.useEffect(() => {
     getServerGeminiReady().then(setServerGeminiReady);
@@ -358,7 +358,7 @@ export function ReframeScreen(props: {
 
     try {
       const providerInput = await optimizeImageInput(input.dataUrl, input.file.type);
-      const provider = new GeminiProvider(geminiKey || '', GEMINI_PRO_IMAGE_MODEL);
+      const provider = new OpenRouterProvider(geminiKey || '', GEMINI_PRO_IMAGE_MODEL);
       const inputBytes = estimateDataUrlBytes(providerInput.data);
       const decision = decideAdaptiveConcurrency({
         section: 'reframe',
@@ -460,7 +460,7 @@ export function ReframeScreen(props: {
     setOutputs((prev) => prev.map((item) => item.id === output.id ? { ...item, status: 'running', error: undefined } : item));
     try {
       const providerInput = await optimizeImageInput(output.dataUrl, 'image/png');
-      const provider = new GeminiProvider(geminiKey || '', GEMINI_PRO_IMAGE_MODEL);
+      const provider = new OpenRouterProvider(geminiKey || '', GEMINI_PRO_IMAGE_MODEL);
       const result = await provider.generateImage(
         [providerInput],
         buildEditPrompt(prompt, output.perspectiveLabel, originalAspectRatio),

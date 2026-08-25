@@ -75,14 +75,6 @@ function startWorkflowApp(workflowDir) {
   return child
 }
 
-function extractReplicateToken(req, bodyToken) {
-  const headerToken =
-    req.header('x-replicate-token') ||
-    req.header('authorization')?.replace(/^Bearer\s+/i, '')
-
-  return headerToken || bodyToken || process.env.REPLICATE_API_KEY || process.env.REPLICATE_API_TOKEN || null
-}
-
 function listSafetensors(dir) {
   try {
     const entries = fs.readdirSync(dir, { withFileTypes: true })
@@ -136,7 +128,6 @@ async function start() {
   const { default: publicConfigHandler } = await import('./api/public-config.js')
   const { default: libraryListHandler } = await import('./api/library-list.js')
   const { default: r2PresignHandler } = await import('./api/r2-presign.js')
-  const { default: falLoraImg2ImgHandler } = await import('./api/fal/lora-img2img.js')
   const { default: providerGenerateHandler } = await import('./api/provider-generate.js')
   const { default: providerKeyTestHandler } = await import('./api/provider-key-test.js')
 
@@ -155,63 +146,12 @@ async function start() {
     return res.json({ checkpoints, loras, checkpointDir, loraDir })
   })
 
-  app.post('/api/replicate/predictions', async (req, res) => {
-    try {
-      const { token: bodyToken, version, input } = req.body || {}
-      const token = extractReplicateToken(req, bodyToken)
-      if (!token || typeof token !== 'string') {
-        return res.status(400).json({ error: 'Missing Replicate token' })
-      }
-      if (!version || typeof version !== 'string') {
-        return res.status(400).json({ error: 'Missing Replicate model/version' })
-      }
-      const upstream = await fetch('https://api.replicate.com/v1/predictions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ version, input: input || {} }),
-      })
-
-      const text = await upstream.text()
-      res.status(upstream.status)
-      res.setHeader('Content-Type', upstream.headers.get('content-type') || 'application/json')
-      return res.send(text)
-    } catch {
-      return res.status(500).json({ error: 'Replicate proxy failed' })
-    }
-  })
-
   app.post('/api/provider-key-test', providerKeyTestHandler)
   app.post('/api/provider-generate', providerGenerateHandler)
 
   app.get('/api/public-config', publicConfigHandler)
   app.get('/api/library-list', libraryListHandler)
   app.post('/api/r2-presign', r2PresignHandler)
-  app.post('/api/fal/lora-img2img', falLoraImg2ImgHandler)
-
-  app.get('/api/replicate/predictions/:id', async (req, res) => {
-    try {
-      const token = extractReplicateToken(req)
-      if (!token) return res.status(400).json({ error: 'Missing Replicate token' })
-      const id = req.params.id?.trim()
-      if (!id) return res.status(400).json({ error: 'Missing prediction id' })
-      const upstream = await fetch(`https://api.replicate.com/v1/predictions/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      })
-      const text = await upstream.text()
-      res.status(upstream.status)
-      res.setHeader('Content-Type', upstream.headers.get('content-type') || 'application/json')
-      return res.send(text)
-    } catch {
-      return res.status(500).json({ error: 'Replicate proxy failed' })
-    }
-  })
-
   const workflowTarget = `http://localhost:${WORKFLOW_PORT}`
 
   app.use(

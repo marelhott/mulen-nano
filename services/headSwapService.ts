@@ -129,7 +129,7 @@ export async function runHeadSwap(params: {
 
   const jobs = models.flatMap((model) =>
     Array.from({ length: outputCount }, (_, batchIndex) => {
-      const providerType = model === 'gemini' ? AIProviderType.GEMINI : AIProviderType.CHATGPT;
+      const providerType = model === 'gemini' ? AIProviderType.OPENROUTER : AIProviderType.OPENROUTER;
       const activeLabel = `${getHeadSwapModelLabel(model)} • ${batchIndex + 1}/${outputCount}`;
 
       params.onProgress?.({

@@ -1,4 +1,4 @@
-type GenerateProvider = "gemini" | "replicate" | "fal" | "unknown";
+type GenerateProvider = "openrouter" | "unknown";
 
 interface GenerateMetricEvent {
   ts: number;
@@ -25,7 +25,7 @@ const events: GenerateMetricEvent[] = [];
 let lastAlertAt = 0;
 
 function clampProvider(provider: string): GenerateProvider {
-  if (provider === "gemini" || provider === "replicate" || provider === "fal") return provider;
+  if (provider === "openrouter") return provider;
   return "unknown";
 }
 
@@ -131,7 +131,7 @@ export function getGenerateMetricsSnapshot(windowMinutes = 60) {
   const inWindow = events.filter((item) => item.ts >= windowStart);
   const summary = summarizeProvider(inWindow);
 
-  const providers: GenerateProvider[] = ["gemini", "replicate", "fal", "unknown"];
+  const providers: GenerateProvider[] = ["openrouter", "unknown"];
   const providerBreakdown = Object.fromEntries(
     providers.map((provider) => {
       const data = inWindow.filter((item) => item.provider === provider);

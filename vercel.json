@@ -6,9 +6,6 @@
     "api/provider-generate.js": {
       "maxDuration": 300
     },
-    "api/fal/lora-img2img.js": {
-      "maxDuration": 300
-    },
     "api/library-list.js": {
       "maxDuration": 300
     },
@@ -16,12 +13,6 @@
       "maxDuration": 30
     },
     "api/provider-key-test.js": {
-      "maxDuration": 30
-    },
-    "api/replicate/predictions/index.ts": {
-      "maxDuration": 60
-    },
-    "api/replicate/predictions/[id].ts": {
       "maxDuration": 30
     }
   },

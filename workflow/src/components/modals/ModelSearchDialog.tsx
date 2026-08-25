@@ -288,7 +288,7 @@ export function ModelSearchDialog({
       case "replicate":
         return "Replicate";
       case "fal":
-        return "fal.ai";
+        return "OpenRouter";
       default:
         return provider;
     }
@@ -321,7 +321,7 @@ export function ModelSearchDialog({
       .slice(0, 4); // Show max 4
   }, [recentModels, models, capabilityFilter]);
 
-  // Get display name with suffix for fal.ai models to differentiate variants
+  // Get display name with suffix for OpenRouter models to differentiate variants
   const getDisplayName = (model: ProviderModel): string => {
     if (model.provider === "fal") {
       // Extract the last segment of the ID (e.g., "effects" from "kling-video/v1.6/pro/effects")
@@ -341,7 +341,7 @@ export function ModelSearchDialog({
     if (model.provider === "replicate") {
       return `https://replicate.com/${model.id}`;
     } else if (model.provider === "fal") {
-      return `https://fal.ai/models/${model.id}`;
+      return `https://openrouter.ai/api/v1/models/${model.id}`;
     }
     return "#";
   };
@@ -486,7 +486,7 @@ export function ModelSearchDialog({
               </button>
               <button
                 onClick={() => setProviderFilter("fal")}
-                title="fal.ai"
+                title="OpenRouter"
                 className={`p-2 rounded transition-colors ${
                   providerFilter === "fal"
                     ? "bg-yellow-500/20 text-yellow-300"
@@ -697,7 +697,7 @@ export function ModelSearchDialog({
 
                   {/* Model Info */}
                   <div className="flex-1 min-w-0">
-                    {/* Model name with variant suffix for fal.ai */}
+                    {/* Model name with variant suffix for OpenRouter */}
                     <div className="font-medium text-neutral-100 text-sm truncate">
                       {getDisplayName(model)}
                     </div>

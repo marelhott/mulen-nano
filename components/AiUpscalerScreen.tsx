@@ -1,6 +1,6 @@
 import React from 'react';
 import { Download, X } from 'lucide-react';
-import { GeminiProvider } from '../services/geminiService';
+import { OpenRouterProvider } from '../services/openRouterService';
 import { createThumbnail, saveToGallery } from '../utils/galleryDB';
 import { ImageDatabase } from '../utils/imageDatabase';
 import { fileToDataUrl } from './styleTransfer/utils';
@@ -271,7 +271,7 @@ export function AiUpscalerScreen(props: {
         },
         worker: async (input) => {
           const modelName = model;
-          const provider = new GeminiProvider(geminiKey || '', modelName);
+          const provider = new OpenRouterProvider(geminiKey || '', modelName);
           const result = await provider.generateImage(
             [{ data: input.dataUrl, mimeType: input.file.type }],
             modePrompt(mode),
@@ -431,7 +431,7 @@ export function AiUpscalerScreen(props: {
                 <span className="text-amber-400 text-sm mt-0.5">⚠</span>
                 <div>
                   <div className="text-[10px] font-bold text-amber-300 uppercase tracking-widest">Chybí Gemini klíč</div>
-                  <div className="mt-1 text-[9px] text-amber-200/70">Nastav v Settings nebo doplň GEMINI_API_KEY na serveru.</div>
+                  <div className="mt-1 text-[9px] text-amber-200/70">Nastav v Settings nebo doplň OPENROUTER_API_KEY na serveru.</div>
                 </div>
               </div>
             </div>

@@ -294,7 +294,7 @@ Output Node         → [image input]
 | ID | Requirement | Priority |
 |----|-------------|----------|
 | API-01 | Use @google/genai SDK | Must |
-| API-02 | API key provided via environment variable (GEMINI_API_KEY) | Must |
+| API-02 | API key provided via environment variable (OPENROUTER_API_KEY) | Must |
 | API-03 | API route: POST /api/generate | Must |
 | API-04 | Request: { image: base64, prompt: string, aspectRatio?, resolution? } | Must |
 | API-05 | Response: { image: base64 } or { error: string } | Must |
@@ -396,7 +396,7 @@ Users must provide their own Google AI Studio API key:
 
 **.env.local**
 ```
-GEMINI_API_KEY=your_api_key_here
+OPENROUTER_API_KEY=your_api_key_here
 ```
 
 **Setup Instructions (for README):**
@@ -404,7 +404,7 @@ GEMINI_API_KEY=your_api_key_here
 2. Create a new API key
 3. Copy the key
 4. Create `.env.local` in project root
-5. Add `GEMINI_API_KEY=your_key`
+5. Add `OPENROUTER_API_KEY=your_key`
 6. Restart dev server
 
 ---
@@ -413,7 +413,7 @@ GEMINI_API_KEY=your_api_key_here
 
 | Scenario | User Feedback |
 |----------|---------------|
-| No API key configured | Toast: "API key not configured. Add GEMINI_API_KEY to .env.local" |
+| No API key configured | Toast: "API key not configured. Add OPENROUTER_API_KEY to .env.local" |
 | API rate limit | Toast: "Rate limit reached. Please wait and try again." |
 | API error (generic) | Toast: "Generation failed: [error message]" + node shows error state |
 | Invalid workflow (missing connections) | Run button disabled, tooltip: "Connect all required inputs" |

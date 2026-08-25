@@ -42,7 +42,7 @@ function buildBaseRecipe(params: BaseRecipeParams): GenerationRecipe {
 export function buildVariantRecipe(params: Omit<BaseRecipeParams, 'operation' | 'provider' | 'effectivePrompt'>): GenerationRecipe {
   return buildBaseRecipe({
     ...params,
-    provider: AIProviderType.GEMINI,
+    provider: AIProviderType.OPENROUTER,
     operation: 'variant',
     effectivePrompt: params.prompt,
   });
@@ -86,7 +86,7 @@ export function buildBatchRecipe(params: Omit<BaseRecipeParams, 'operation'>): G
 export function buildEditRecipe(params: Omit<BaseRecipeParams, 'operation' | 'provider' | 'effectivePrompt' | 'assetImageCount'>): GenerationRecipe {
   return buildBaseRecipe({
     ...params,
-    provider: AIProviderType.GEMINI,
+    provider: AIProviderType.OPENROUTER,
     operation: 'edit',
     effectivePrompt: params.prompt,
   });

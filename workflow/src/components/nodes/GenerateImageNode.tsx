@@ -14,7 +14,7 @@ import { getImageDimensions, calculateNodeSizePreservingHeight } from "@/utils/n
 
 // Provider badge component - shows provider icon for all providers
 function ProviderBadge({ provider }: { provider: ProviderType }) {
-  const providerName = provider === "gemini" ? "Gemini" : provider === "replicate" ? "Replicate" : "fal.ai";
+  const providerName = provider === "gemini" ? "Gemini" : provider === "replicate" ? "Replicate" : "OpenRouter";
 
   return (
     <span className="text-neutral-500 shrink-0" title={providerName}>
@@ -74,8 +74,8 @@ export function GenerateImageNode({ id, data, selected }: NodeProps<NanoBananaNo
     const providers: { id: ProviderType; name: string }[] = [];
     // Gemini is always available
     providers.push({ id: "gemini", name: "Gemini" });
-    // fal.ai is always available (works without key but rate limited)
-    providers.push({ id: "fal", name: "fal.ai" });
+    // OpenRouter is always available (works without key but rate limited)
+    providers.push({ id: "fal", name: "OpenRouter" });
     // Add Replicate if configured
     if (providerSettings.providers.replicate?.enabled && providerSettings.providers.replicate?.apiKey) {
       providers.push({ id: "replicate", name: "Replicate" });
@@ -84,11 +84,11 @@ export function GenerateImageNode({ id, data, selected }: NodeProps<NanoBananaNo
   }, [providerSettings]);
 
   // Check if external providers (Replicate/Fal) are enabled
-  // fal.ai is always available (works without key but rate limited)
+  // OpenRouter is always available (works without key but rate limited)
   const hasExternalProviders = useMemo(() => {
     const hasReplicate = providerSettings.providers.replicate?.enabled &&
                          providerSettings.providers.replicate?.apiKey;
-    // fal.ai is always available
+    // OpenRouter is always available
     return !!(hasReplicate || true);
   }, [providerSettings]);
 

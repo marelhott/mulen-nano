@@ -14,7 +14,7 @@
  *   const available = getConfiguredProviders();
  *
  * Phase 2 Implementation Notes:
- * - Replicate and fal.ai provider implementations will register themselves here
+ * - Replicate and OpenRouter provider implementations will register themselves here
  * - Gemini remains special-cased in existing generate route for now
  * - Each provider module calls registerProvider() on import
  */
@@ -192,7 +192,7 @@ export async function searchAllModels(
  * Provider modules self-register when imported:
  *
  *   import "@/lib/providers/replicate";  // Registers Replicate provider
- *   import "@/lib/providers/fal";        // Registers fal.ai provider
+ *   import "@/lib/providers/fal";        // Registers OpenRouter provider
  *
  * The unified API route at /api/models handles fetching directly without
  * needing to import provider modules (to avoid client-side localStorage

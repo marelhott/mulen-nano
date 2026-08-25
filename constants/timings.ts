@@ -16,13 +16,13 @@ export function getInterRequestDelayMs(
 ): number {
   if (imageIndex <= 0) return 0;
 
-  if (provider === AIProviderType.GEMINI) {
+  if (provider === AIProviderType.OPENROUTER) {
     return imageModel === 'gemini-3-pro-image-preview'
       ? GEMINI_PRO_INTER_REQUEST_DELAY_MS
       : GEMINI_FLASH_INTER_REQUEST_DELAY_MS;
   }
 
-  if (provider === AIProviderType.CHATGPT || provider === AIProviderType.GROK) {
+  if (provider === AIProviderType.OPENROUTER || provider === AIProviderType.OPENROUTER) {
     return CHAT_PROVIDER_INTER_REQUEST_DELAY_MS;
   }
 
@@ -30,7 +30,7 @@ export function getInterRequestDelayMs(
 }
 
 export function getRetryBackoffMs(provider: AIProviderType, retryCount: number): number {
-  const baseDelay = provider === AIProviderType.GEMINI
+  const baseDelay = provider === AIProviderType.OPENROUTER
     ? GEMINI_RETRY_BASE_BACKOFF_MS
     : DEFAULT_RETRY_BASE_BACKOFF_MS;
 

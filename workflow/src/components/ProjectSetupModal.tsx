@@ -546,10 +546,10 @@ export function ProjectSetupModal({
               </div>
             </div>
 
-            {/* fal.ai Provider */}
+            {/* OpenRouter Provider */}
             <div className="p-3 bg-neutral-900 rounded-lg border border-neutral-700">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-neutral-100">fal.ai</span>
+                <span className="text-sm font-medium text-neutral-100">OpenRouter</span>
                 {envStatus?.fal && !overrideActive.fal ? (
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-green-400">Configured via .env</span>

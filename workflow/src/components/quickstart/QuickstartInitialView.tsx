@@ -139,7 +139,7 @@ export function QuickstartInitialView({
               />
             }
             title="Modely"
-            description="Prohlížet fal.ai a Replicate"
+            description="Prohlížet OpenRouter a Replicate"
           />
 
           <OptionButton

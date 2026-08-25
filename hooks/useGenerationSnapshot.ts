@@ -48,7 +48,6 @@ export function useGenerationSnapshot(params: UseGenerationSnapshotParams) {
     },
     providerSettings: {
       ...params.providerSettings,
-      fal: params.providerSettings.fal ? { ...params.providerSettings.fal } : undefined,
       a1111: params.providerSettings.a1111 ? { ...params.providerSettings.a1111 } : undefined,
     },
     selectedProvider: params.selectedProvider,

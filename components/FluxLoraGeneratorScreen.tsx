@@ -1532,7 +1532,7 @@ export function FluxLoraGeneratorScreen(props: {
             </div>
             {modelFamily === 'sdxl' && (
               <div className="text-[9px] text-white/40">
-                SDXL checkpoint režim používá <span className="text-white/60">fal.ai</span> + interní fit na <span className="text-[#a8bf8f]">1024×1024</span> (bez ořezu).
+                SDXL checkpoint režim používá <span className="text-white/60">OpenRouter</span> + interní fit na <span className="text-[#a8bf8f]">1024×1024</span> (bez ořezu).
               </div>
             )}
 

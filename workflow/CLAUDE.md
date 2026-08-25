@@ -15,8 +15,8 @@ npm run lint     # Run Next.js linting
 
 Create `.env.local` in the root directory:
 ```
-GEMINI_API_KEY=your_gemini_api_key
-OPENAI_API_KEY=your_openai_api_key  # Optional, for OpenAI LLM provider
+OPENROUTER_API_KEY=your_openrouter_api_key
+OPENROUTER_API_KEY=your_openrouter_api_key
 ```
 
 ## Architecture Overview

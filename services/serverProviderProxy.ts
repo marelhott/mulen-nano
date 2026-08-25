@@ -1,4 +1,4 @@
-import { AIProviderType, GenerateImageResult, ImageInput } from './aiProvider';
+import { GenerateImageResult, ImageInput } from './aiProvider';
 import { defaultRetryPolicy } from '../utils/concurrencyRunner';
 
 type ServerProviderAction =
@@ -9,9 +9,7 @@ type ServerProviderAction =
   | 'analyzeStyleTransfer';
 
 type ServerProviderRequest = {
-  provider: AIProviderType;
   action: ServerProviderAction;
-  apiKey?: string;
   preferredModel?: string;
   images?: ImageInput[];
   prompt?: string;
@@ -65,54 +63,44 @@ async function callServerProvider<T>(payload: ServerProviderRequest): Promise<T>
 }
 
 export const serverProviderProxy = {
-  enhancePrompt(provider: AIProviderType, shortPrompt: string, apiKey?: string): Promise<string> {
-    return callServerProvider<string>({ provider, action: 'enhancePrompt', shortPrompt, apiKey });
+  enhancePrompt(shortPrompt: string): Promise<string> {
+    return callServerProvider<string>({ action: 'enhancePrompt', shortPrompt });
   },
 
   generateImage(params: {
-    provider: AIProviderType;
     images: ImageInput[];
     prompt: string;
     resolution?: string;
     aspectRatio?: string;
     useGrounding?: boolean;
-    apiKey?: string;
     preferredModel?: string;
   }): Promise<GenerateImageResult> {
     return callServerProvider<GenerateImageResult>({ action: 'generateImage', ...params });
   },
 
-  generate3PromptVariants(prompt: string, apiKey?: string): Promise<Array<{ variant: string; approach: string; prompt: string }>> {
+  generate3PromptVariants(prompt: string): Promise<Array<{ variant: string; approach: string; prompt: string }>> {
     return callServerProvider<Array<{ variant: string; approach: string; prompt: string }>>({
-      provider: AIProviderType.GEMINI,
       action: 'generate3PromptVariants',
       prompt,
-      apiKey,
     });
   },
 
-  analyzeImageForJson(imageDataUrl: string, apiKey?: string): Promise<string> {
+  analyzeImageForJson(imageDataUrl: string): Promise<string> {
     return callServerProvider<string>({
-      provider: AIProviderType.GEMINI,
       action: 'analyzeImageForJson',
       imageDataUrl,
-      apiKey,
     });
   },
 
   analyzeStyleTransfer(
     referenceDataUrl: string,
     styleDataUrl: string,
-    apiKey?: string,
-    options?: { agenticVision?: boolean; mediaResolution?: string }
+    _options?: { agenticVision?: boolean; mediaResolution?: string }
   ): Promise<{ recommendedStrength: number; styleDescription: string; negativePrompt: string }> {
     return callServerProvider<{ recommendedStrength: number; styleDescription: string; negativePrompt: string }>({
-      provider: AIProviderType.GEMINI,
       action: 'analyzeStyleTransfer',
       referenceDataUrl,
       styleDataUrl,
-      apiKey,
-      options,
     });
   },
 };

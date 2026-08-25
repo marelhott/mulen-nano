@@ -48,7 +48,7 @@ This repository contains the main Mulen Nano SPA and a separate `workflow/` Next
 3. Set environment variables in the Vercel dashboard:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
-   - provider server keys as needed (`GEMINI_API_KEY`, `OPENAI_API_KEY`, `XAI_API_KEY`, `REPLICATE_API_KEY`, `FAL_KEY`)
+   - provider server keys as needed (`OPENROUTER_API_KEY`, `OPENROUTER_API_KEY`, `OPENROUTER_API_KEY`, `OPENROUTER_API_KEY`, `OPENROUTER_API_KEY`)
 4. Deploy!
 
 ### Supabase requirements

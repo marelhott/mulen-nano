@@ -14,7 +14,7 @@ import { getVideoDimensions, calculateNodeSizePreservingHeight } from "@/utils/n
 
 // Provider badge component - shows provider icon for all providers
 function ProviderBadge({ provider }: { provider: ProviderType }) {
-  const providerName = provider === "gemini" ? "Gemini" : provider === "replicate" ? "Replicate" : "fal.ai";
+  const providerName = provider === "gemini" ? "Gemini" : provider === "replicate" ? "Replicate" : "OpenRouter";
 
   return (
     <span className="text-neutral-500 shrink-0" title={providerName}>
@@ -60,8 +60,8 @@ export function GenerateVideoNode({ id, data, selected }: NodeProps<GenerateVide
   // Get enabled providers (exclude Gemini since it doesn't do video)
   const enabledProviders = useMemo(() => {
     const providers: { id: ProviderType; name: string }[] = [];
-    // fal.ai is always available (works without key but rate limited)
-    providers.push({ id: "fal", name: "fal.ai" });
+    // OpenRouter is always available (works without key but rate limited)
+    providers.push({ id: "fal", name: "OpenRouter" });
     // Add Replicate if configured
     if (providerSettings.providers.replicate?.enabled && providerSettings.providers.replicate?.apiKey) {
       providers.push({ id: "replicate", name: "Replicate" });

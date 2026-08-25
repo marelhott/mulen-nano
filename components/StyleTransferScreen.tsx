@@ -199,7 +199,7 @@ export function StyleTransferScreen(props: {
       }
 
       if (engine === 'fofr') {
-        const token = providerSettings?.[AIProviderType.REPLICATE]?.apiKey;
+        const token = providerSettings?.[AIProviderType.OPENROUTER]?.apiKey;
         if (!token) {
           throw new Error('Chybí Replicate API klíč. Otevři Nastavení a vlož klíč pro Replicate.');
         }

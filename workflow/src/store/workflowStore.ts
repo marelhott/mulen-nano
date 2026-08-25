@@ -1169,9 +1169,9 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
                 });
 
                 // Track cost
-                // Cost tracking: Gemini (hardcoded), fal.ai (from API). Replicate excluded (no pricing API).
+                // Cost tracking: Gemini (hardcoded), OpenRouter (from API). Replicate excluded (no pricing API).
                 if (nodeData.selectedModel?.provider === "fal" && nodeData.selectedModel?.pricing) {
-                  // External fal.ai provider - use pricing from selectedModel
+                  // External OpenRouter provider - use pricing from selectedModel
                   get().addIncurredCost(nodeData.selectedModel.pricing.amount);
                 } else if (!nodeData.selectedModel || nodeData.selectedModel.provider === "gemini") {
                   // Legacy Gemini or Gemini via selectedModel - use hardcoded pricing
@@ -1372,7 +1372,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
                 });
 
                 // Track cost for video generation
-                // Cost tracking: fal.ai (from API). Replicate excluded (no pricing API).
+                // Cost tracking: OpenRouter (from API). Replicate excluded (no pricing API).
                 if (nodeData.selectedModel?.provider === "fal" && nodeData.selectedModel?.pricing) {
                   get().addIncurredCost(nodeData.selectedModel.pricing.amount);
                 }
@@ -1406,7 +1406,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
                 });
 
                 // Track cost for video generation (image fallback case)
-                // Cost tracking: fal.ai (from API). Replicate excluded (no pricing API).
+                // Cost tracking: OpenRouter (from API). Replicate excluded (no pricing API).
                 if (nodeData.selectedModel?.provider === "fal" && nodeData.selectedModel?.pricing) {
                   get().addIncurredCost(nodeData.selectedModel.pricing.amount);
                 }
@@ -1699,7 +1699,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
                 content.startsWith("data:video/") ||
                 content.includes(".mp4") ||
                 content.includes(".webm") ||
-                content.includes("fal.media");  // fal.ai video URLs
+                content.includes("fal.media");  // OpenRouter video URLs
 
               if (isVideoContent) {
                 updateNodeData(node.id, {
@@ -1939,7 +1939,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
           });
 
           // Track cost
-          // Cost tracking: Gemini (hardcoded), fal.ai (from API). Replicate excluded (no pricing API).
+          // Cost tracking: Gemini (hardcoded), OpenRouter (from API). Replicate excluded (no pricing API).
           if (nodeData.selectedModel?.provider === "fal" && nodeData.selectedModel?.pricing) {
             get().addIncurredCost(nodeData.selectedModel.pricing.amount);
           } else if (!nodeData.selectedModel || nodeData.selectedModel.provider === "gemini") {
@@ -2193,7 +2193,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
           });
 
           // Track cost for video regeneration
-          // Cost tracking: fal.ai (from API). Replicate excluded (no pricing API).
+          // Cost tracking: OpenRouter (from API). Replicate excluded (no pricing API).
           if (nodeData.selectedModel?.provider === "fal" && nodeData.selectedModel?.pricing) {
             get().addIncurredCost(nodeData.selectedModel.pricing.amount);
           }
@@ -2225,7 +2225,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
           });
 
           // Track cost for video regeneration (image fallback case)
-          // Cost tracking: fal.ai (from API). Replicate excluded (no pricing API).
+          // Cost tracking: OpenRouter (from API). Replicate excluded (no pricing API).
           if (nodeData.selectedModel?.provider === "fal" && nodeData.selectedModel?.pricing) {
             get().addIncurredCost(nodeData.selectedModel.pricing.amount);
           }

@@ -1,7 +1,7 @@
 /**
  * Provider Abstraction Types
  *
- * Defines the interface contract for all AI providers (Gemini, Replicate, fal.ai).
+ * Defines the interface contract for all AI providers (Gemini, Replicate, OpenRouter).
  * Each provider implements ProviderInterface to enable uniform access to different
  * AI services for model discovery and generation.
  */

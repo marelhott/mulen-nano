@@ -44,7 +44,7 @@ function ProviderIcon({ provider }: { provider: ProviderType }) {
 function getProviderDisplayName(provider: ProviderType): string {
   const names: Record<ProviderType, string> = {
     gemini: "Gemini",
-    fal: "fal.ai",
+    fal: "OpenRouter",
     replicate: "Replicate",
     openai: "OpenAI",
   };
@@ -62,7 +62,7 @@ function getModelUrl(provider: ProviderType, modelId: string): string | null {
   }
   if (provider === "fal") {
     // modelId format: "fal-ai/flux/dev" or similar
-    return `https://fal.ai/models/${modelId}`;
+    return `https://openrouter.ai/api/v1/models/${modelId}`;
   }
   return null;
 }

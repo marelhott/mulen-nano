@@ -608,7 +608,7 @@ export function TemplateExplorerView({
                         : "bg-neutral-700/30 border border-transparent text-neutral-400 hover:bg-neutral-700/50 hover:text-neutral-300"
                     }`}
                   >
-                    fal.ai
+                    OpenRouter
                   </button>
                 </div>
               </div>
@@ -643,7 +643,7 @@ export function TemplateExplorerView({
                     {!providerSettings.providers.replicate?.apiKey && (
                       <div>Replicate: chybí API klíč</div>
                     )}
-                    {!providerSettings.providers.fal?.apiKey && <div>fal.ai: chybí API klíč</div>}
+                    {!providerSettings.providers.fal?.apiKey && <div>OpenRouter: chybí API klíč</div>}
                   </div>
                   {onOpenSettings && (
                     <button

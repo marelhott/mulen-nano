@@ -23,7 +23,7 @@ Built mainly with Opus 4.5.
 
 In addition to Google Gemini, Node Banana now supports:
 - **Replicate** - Access thousands of open-source models
-- **fal.ai** - Fast inference for image and video generation
+- **OpenRouter** - Fast inference for image and video generation
 
 Configure API keys in Project Settings to enable these providers.
 
@@ -45,7 +45,7 @@ Configure API keys in Project Settings to enable these providers.
 - **Canvas**: Konva.js / react-konva
 - **State Management**: Zustand
 - **Styling**: Tailwind CSS
-- **AI**: Google Gemini API, OpenAI API, Replicate (Beta), fal.ai (Beta)
+- **AI**: Google Gemini API, OpenAI API, Replicate (Beta), OpenRouter (Beta)
 
 ## Getting Started
 
@@ -59,10 +59,10 @@ Configure API keys in Project Settings to enable these providers.
 Create a `.env.local` file in the root directory:
 
 ```env
-GEMINI_API_KEY=your_gemini_api_key
-OPENAI_API_KEY=your_openai_api_key      # Optional, for OpenAI LLM provider
-REPLICATE_API_KEY=your_replicate_api_key  # Optional, beta
-FAL_API_KEY=your_fal_api_key              # Optional, beta
+OPENROUTER_API_KEY=your_openrouter_api_key
+OPENROUTER_API_KEY=your_openrouter_api_key
+OPENROUTER_API_KEY=your_openrouter_api_key
+FAL_API_KEY=your_fal_api_key
 ALERT_WEBHOOK_URL=https://your-webhook.example.com/generate-alert  # Optional
 ERROR_ALERT_THRESHOLD=0.35                # Optional
 ERROR_ALERT_MIN_REQUESTS=20               # Optional

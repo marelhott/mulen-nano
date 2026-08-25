@@ -78,27 +78,27 @@ const IMAGE_MODEL_PRESETS: Array<{
     id: 'gemini-flash',
     title: 'Nano 2',
     subtitle: 'Gemini 3.1 Flash',
-    provider: AIProviderType.GEMINI,
+    provider: AIProviderType.OPENROUTER,
     model: 'gemini-3.1-flash-image-preview',
   },
   {
     id: 'gemini-pro',
     title: 'Nano Pro',
     subtitle: 'Gemini 3 Pro',
-    provider: AIProviderType.GEMINI,
+    provider: AIProviderType.OPENROUTER,
     model: 'gemini-3-pro-image-preview',
   },
   {
     id: 'openai-image',
     title: 'GPT Img 2',
     subtitle: 'OpenAI',
-    provider: AIProviderType.CHATGPT,
+    provider: AIProviderType.OPENROUTER,
   },
   {
     id: 'flux-pro',
     title: 'Flux Pro',
-    subtitle: 'fal.ai',
-    provider: AIProviderType.FLUX_PRO,
+    subtitle: 'OpenRouter',
+    provider: AIProviderType.OPENROUTER,
   },
 ];
 
@@ -164,11 +164,11 @@ async function optimizeBatchInputDataUrl(dataUrl: string, mimeType: string): Pro
 }
 
 function modelPresetId(selectedProvider: AIProviderType, nanoBananaImageModel: NanoBananaImageModel): string | null {
-  if (selectedProvider === AIProviderType.GEMINI) {
+  if (selectedProvider === AIProviderType.OPENROUTER) {
     return nanoBananaImageModel === 'gemini-3-pro-image-preview' ? 'gemini-pro' : 'gemini-flash';
   }
-  if (selectedProvider === AIProviderType.CHATGPT) return 'openai-image';
-  if (selectedProvider === AIProviderType.FLUX_PRO) return 'flux-pro';
+  if (selectedProvider === AIProviderType.OPENROUTER) return 'openai-image';
+  if (selectedProvider === AIProviderType.OPENROUTER) return 'flux-pro';
   return null;
 }
 
@@ -235,7 +235,7 @@ export function BatchScreen(props: {
     );
 
     try {
-      const provider = ProviderFactory.getProvider(AIProviderType.GEMINI, providerSettings);
+      const provider = ProviderFactory.getProvider(AIProviderType.OPENROUTER, providerSettings);
       const effectivePrompt = `${prompt}
 
 Edit the provided image according to the instruction above. Preserve the original composition, subject identity, materials, lighting logic, and photographic realism unless the instruction explicitly says otherwise. Do not create a new unrelated image.`;
@@ -278,7 +278,7 @@ Edit the provided image according to the instruction above. Preserve the origina
             operation: 'edit',
             prompt,
             effectivePrompt,
-            provider: AIProviderType.GEMINI,
+            provider: AIProviderType.OPENROUTER,
             promptMode: 'simple',
             resolution: '1K',
             aspectRatio: 'Original',
@@ -333,7 +333,7 @@ Edit the provided image according to the instruction above. Preserve the origina
       const preset = IMAGE_MODEL_PRESETS.find((item) => item.id === presetIdToApply);
       if (!preset) return;
       onProviderChange(preset.provider);
-      if (preset.provider === AIProviderType.GEMINI && preset.model) {
+      if (preset.provider === AIProviderType.OPENROUTER && preset.model) {
         onNanoBananaModelChange(preset.model);
       }
     },

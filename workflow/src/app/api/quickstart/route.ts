@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenAI } from "@google/genai";
+import { generateText } from '@/lib/openrouter';
 import { WorkflowFile } from "@/store/workflowStore";
 import { ContentLevel, getPresetTemplate } from "@/lib/quickstart/templates";
 import { buildQuickstartPrompt } from "@/lib/quickstart/prompts";
@@ -125,39 +125,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check API key
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      console.error(`[Quickstart:${requestId}] No GEMINI_API_KEY configured`);
-      return NextResponse.json<QuickstartResponse>(
-        {
-          success: false,
-          error: "API key not configured. Add GEMINI_API_KEY to .env.local",
-        },
-        { status: 500 }
-      );
-    }
-
     // Build the prompt
     const prompt = buildQuickstartPrompt(description.trim(), contentLevel);
     console.log(`[Quickstart:${requestId}] Prompt built, length: ${prompt.length}`);
 
-    // Call Gemini API
-    console.log(`[Quickstart:${requestId}] Calling Gemini API...`);
-    const ai = new GoogleGenAI({ apiKey });
+    // AI je obsloužena výhradně společnou OpenRouter bránou.
+    console.log(`[Quickstart:${requestId}] Calling OpenRouter...`);
     const startTime = Date.now();
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: {
-        temperature: 0.3, // Lower for more consistent JSON output
-        maxOutputTokens: 16384, // Increased for complex workflows with many nodes
-      },
+    const response = await generateText({
+      model: 'google/gemini-3-flash-preview',
+      prompt,
+      temperature: 0.3,
+      maxTokens: 16384,
+      timeoutMs: 60000,
     });
 
     const duration = Date.now() - startTime;
-    console.log(`[Quickstart:${requestId}] Gemini API response in ${duration}ms`);
+    console.log(`[Quickstart:${requestId}] OpenRouter response in ${duration}ms`);
 
     // Extract text from response
     const responseText = response.text;

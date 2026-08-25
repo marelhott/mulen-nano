@@ -153,7 +153,7 @@ function buildModelInfluenceDetailsText(opts: {
   variants: number;
 }) {
   const lines = [
-    `Backend: ${opts.backend === 'fal' ? 'fal.ai' : 'A1111'}`,
+    `Backend: ${opts.backend === 'fal' ? 'OpenRouter' : 'A1111'}`,
     `Model: ${opts.modelName || '-'}`,
     `Váha stylu: ${opts.styleWeight.toFixed(2)}`,
     `CFG: ${opts.cfg.toFixed(2)} • Denoise: ${opts.denoise.toFixed(2)} • Steps: ${opts.steps}`,
@@ -282,7 +282,7 @@ export function ModelInfluenceScreen(props: {
       const b = bucket || 'models';
       if (!key) throw new Error('R2 ref je prázdný.');
 
-      // fal.ai often validates URLs via HEAD before downloading. Presigned URLs are method-specific
+      // OpenRouter often validates URLs via HEAD before downloading. Presigned URLs are method-specific
       // (GET-signed URL fails HEAD), so we strongly prefer a public, stable URL without query params.
       const cfg = await fetchPublicConfig();
       const base =
@@ -571,7 +571,7 @@ export function ModelInfluenceScreen(props: {
                 type="button"
                 onClick={() => setBackend('fal')}
                 className={`mn-option-button flex-1 ${backend === 'fal' ? 'mn-option-button-active' : ''}`}
-                title="fal.ai (výchozí)"
+                title="OpenRouter (výchozí)"
               >
                 FAL
               </button>

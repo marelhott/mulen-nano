@@ -165,11 +165,6 @@ export class SettingsDatabase {
       };
     }
 
-    if (settings.fal) {
-      sanitized.fal = {
-        enabled: Boolean(settings.fal.enabled || settings.fal.apiKey),
-      };
-    }
 
     if (settings.a1111) {
       sanitized.a1111 = {
@@ -204,12 +199,6 @@ export class SettingsDatabase {
       };
     }
 
-    if (data?.fal) {
-      restored.fal = {
-        apiKey: String(data.fal.apiKey || ''),
-        enabled: Boolean(data.fal.enabled),
-      };
-    }
 
     if (data?.a1111) {
       restored.a1111 = {
@@ -221,7 +210,7 @@ export class SettingsDatabase {
 
     if (data?.headSwap && typeof data.headSwap === 'object') {
       restored.headSwap = {
-        preferredPrimary: data.headSwap.preferredPrimary === 'replicate-easel' ? 'replicate-easel' : 'fal-easel',
+        preferredPrimary: 'openrouter',
         hairSource: data.headSwap.hairSource === 'user' ? 'user' : 'target',
         sourceGender: ['default', 'a man', 'a woman', 'nonbinary person'].includes(String(data.headSwap.sourceGender))
           ? data.headSwap.sourceGender

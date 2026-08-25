@@ -2,7 +2,7 @@ import React, { Suspense, lazy, useState, useEffect, useCallback, useRef, useMem
 import './src/index.css'; // ENFORCE NEW STYLES
 import { X, FileJson, ArrowLeftRight, Sparkles } from 'lucide-react'; // Added icons for design
 import { LoadingSpinner } from './components/LoadingSpinner';
-import { analyzeImageForJsonWithAI, enhancePromptWithAI, analyzeStyleTransferWithAI } from './services/geminiService';
+import { analyzeImageForJsonWithAI, enhancePromptWithAI, analyzeStyleTransferWithAI } from './services/openRouterService';
 import { AppState, GeneratedImage, GenerationRecipe, SourceImage } from './types';
 import { ImageDetailModal } from './components/ImageDetailModal';
 import { Header } from './components/Header';
@@ -22,7 +22,7 @@ import { formatJsonPromptForImage } from './utils/jsonPrompting';
 import { ImageGalleryPanel } from './components/ImageGalleryPanel';
 import { SettingsModal } from './components/SettingsModal';
 import { ProviderSelector } from './components/ProviderSelector';
-import { GeminiProvider } from './services/geminiService';
+import { OpenRouterProvider } from './services/openRouterService';
 import { AIProviderType, PROVIDER_METADATA, ProviderSettings, type ImageInput } from './services/aiProvider';
 import { ProviderFactory } from './services/providerFactory';
 import { Toast, ToastType } from './components/Toast';
@@ -1382,7 +1382,7 @@ const App: React.FC = () => {
     const cacheKey = `${refUrl}::${styleUrl}`;
     if (styleAnalysisCacheKey.current === cacheKey) return;
 
-    const geminiKey = providerSettings[AIProviderType.GEMINI]?.apiKey;
+    const geminiKey = providerSettings[AIProviderType.OPENROUTER]?.apiKey;
     let cancelled = false;
     const timer = setTimeout(async () => {
       if (cancelled) return;
@@ -1408,7 +1408,7 @@ const App: React.FC = () => {
 
     setIsEnhancingPrompt(true);
     try {
-      const geminiKey = providerSettings[AIProviderType.GEMINI]?.apiKey;
+      const geminiKey = providerSettings[AIProviderType.OPENROUTER]?.apiKey;
       const enhanced = await enhancePromptWithAI(state.prompt, geminiKey);
 
       if (!enhanced || enhanced === state.prompt) {
@@ -1432,7 +1432,7 @@ const App: React.FC = () => {
 
     try {
       const dataUrl = await urlToDataUrl(img.url);
-      const geminiKey = providerSettings[AIProviderType.GEMINI]?.apiKey;
+      const geminiKey = providerSettings[AIProviderType.OPENROUTER]?.apiKey;
       const json = await analyzeImageForJsonWithAI(dataUrl, geminiKey);
       const formatted = formatJsonPromptForImage(json);
       setPrompt(formatted);
@@ -1534,7 +1534,7 @@ const App: React.FC = () => {
 
     try {
       // 1. Generate 3 prompt variants using AI
-      const provider = ProviderFactory.getProvider(AIProviderType.GEMINI, providerSettings);
+      const provider = ProviderFactory.getProvider(AIProviderType.OPENROUTER, providerSettings);
       setToast({ message: '🎨 Generating 3 sophisticated variants...', type: 'info' });
 
       const variants = await (provider as any).generate3PromptVariants(state.prompt);
@@ -1718,7 +1718,7 @@ const App: React.FC = () => {
       type: preset.provider,
       label: preset.title,
       subtitle: preset.subtitle,
-      geminiModel: preset.provider === AIProviderType.GEMINI ? preset.model : undefined,
+      geminiModel: preset.provider === AIProviderType.OPENROUTER ? preset.model : undefined,
     }));
 
     setGenerationProgress({ current: 0, total: runTargets.length });
@@ -1808,8 +1808,8 @@ const App: React.FC = () => {
       const promises = runTargets.map(async (p, i) => {
         try {
           const provider =
-            p.type === AIProviderType.GEMINI
-              ? new GeminiProvider(providerSettings[AIProviderType.GEMINI]?.apiKey || '', p.geminiModel)
+            p.type === AIProviderType.OPENROUTER
+              ? new OpenRouterProvider(providerSettings[AIProviderType.OPENROUTER]?.apiKey || '', p.geminiModel)
               : ProviderFactory.getProvider(p.type, providerSettings);
           const result = await provider.generateImage(
             providerImages,
@@ -2115,7 +2115,7 @@ const App: React.FC = () => {
             let providerPrompt = enhancedPrompt;
 
             if (
-              selectedProvider === AIProviderType.CHATGPT &&
+              selectedProvider === AIProviderType.OPENROUTER &&
               sourceImagesData.length > 0 &&
               styleImagesData.length > 0
             ) {
@@ -2516,7 +2516,7 @@ const App: React.FC = () => {
     const image = state.generatedImages.find(img => img.id === imageId);
     if (!image?.url) return;
 
-    const replicateKey = providerSettings[AIProviderType.REPLICATE]?.apiKey;
+    const replicateKey = providerSettings[AIProviderType.OPENROUTER]?.apiKey;
     if (!replicateKey) {
       setToast({ message: 'Pro upscaling je potřeba Replicate API klíč (nastavení)', type: 'error' });
       return;
@@ -2643,7 +2643,7 @@ const App: React.FC = () => {
     setToast({ message: mode === 'inpaint' ? 'Zahajuji inpainting…' : 'Zahajuji outpainting…', type: 'info' });
 
     try {
-      const provider = ProviderFactory.getProvider(AIProviderType.GEMINI, providerSettings);
+      const provider = ProviderFactory.getProvider(AIProviderType.OPENROUTER, providerSettings);
       const editPrompt = state.prompt.trim() || (mode === 'inpaint'
         ? 'Domaluj zamaskované oblasti tak, aby přirozeně navazovaly na okolní kontext.'
         : 'Rozšiř obrázek za jeho okraje. Domaluj chybějící oblasti tak, aby přirozeně navazovaly na existující scénu.');
@@ -2656,7 +2656,7 @@ const App: React.FC = () => {
       const maskPrompt = `${editPrompt}\n\n[MASKA: Druhý obrázek je maska. Bílé oblasti = regiony k ${mode === 'inpaint' ? 'přegenerování' : 'dogenerování'}. Černé oblasti = zachovat beze změn.]`;
 
       const recipe: GenerationRecipe = {
-        provider: AIProviderType.GEMINI,
+        provider: AIProviderType.OPENROUTER,
         operation: mode,
         prompt: editPrompt,
         effectivePrompt: maskPrompt,
@@ -2849,7 +2849,7 @@ const App: React.FC = () => {
     }));
 
     try {
-      const provider = ProviderFactory.getProvider(AIProviderType.GEMINI, providerSettings);
+      const provider = ProviderFactory.getProvider(AIProviderType.OPENROUTER, providerSettings);
       const editPrompt = `${prompt}
 
 Edit the provided image according to the instruction above. Preserve the original composition, subject identity, materials, lighting logic, and photographic realism unless the instruction explicitly says otherwise. Do not create a new unrelated image.`;
@@ -2866,7 +2866,7 @@ Edit the provided image according to the instruction above. Preserve the origina
       );
 
       const recipe: GenerationRecipe = {
-        provider: AIProviderType.GEMINI,
+        provider: AIProviderType.OPENROUTER,
         operation: 'edit',
         prompt,
         effectivePrompt: editPrompt,
@@ -2960,40 +2960,40 @@ Edit the provided image according to the instruction above. Preserve the origina
   }> = [
     {
       id: 'gemini-flash',
-      provider: AIProviderType.GEMINI,
+      provider: AIProviderType.OPENROUTER,
       model: 'gemini-3.1-flash-image-preview',
       title: 'Nano 2',
       subtitle: 'Gemini 3.1 Flash',
     },
     {
       id: 'gemini-pro',
-      provider: AIProviderType.GEMINI,
+      provider: AIProviderType.OPENROUTER,
       model: 'gemini-3-pro-image-preview',
       title: 'Nano Pro',
       subtitle: 'Gemini 3 Pro',
     },
     {
       id: 'openai-image',
-      provider: AIProviderType.CHATGPT,
+      provider: AIProviderType.OPENROUTER,
       title: 'GPT Img 2',
       subtitle: 'OpenAI',
     },
     {
       id: 'flux-pro',
-      provider: AIProviderType.FLUX_PRO,
+      provider: AIProviderType.OPENROUTER,
       title: 'Flux Pro',
-      subtitle: 'fal.ai',
+      subtitle: 'OpenRouter',
     },
   ];
 
   const selectedImagePresetId =
-    selectedProvider === AIProviderType.GEMINI
+    selectedProvider === AIProviderType.OPENROUTER
       ? nanoBananaImageModel === 'gemini-3-pro-image-preview'
         ? 'gemini-pro'
         : 'gemini-flash'
-      : selectedProvider === AIProviderType.CHATGPT
+      : selectedProvider === AIProviderType.OPENROUTER
         ? 'openai-image'
-        : selectedProvider === AIProviderType.FLUX_PRO
+        : selectedProvider === AIProviderType.OPENROUTER
           ? 'flux-pro'
           : null;
 
@@ -3005,7 +3005,7 @@ Edit the provided image according to the instruction above. Preserve the origina
     const nextGeminiModel = preset.model;
     const providerWillChange = nextProvider !== selectedProvider;
     const geminiModelWillChange =
-      nextProvider === AIProviderType.GEMINI &&
+      nextProvider === AIProviderType.OPENROUTER &&
       !!nextGeminiModel &&
       nextGeminiModel !== nanoBananaImageModel;
 
@@ -3019,7 +3019,7 @@ Edit the provided image according to the instruction above. Preserve the origina
     }
 
     setSelectedProvider(nextProvider);
-    if (nextProvider === AIProviderType.GEMINI && nextGeminiModel) {
+    if (nextProvider === AIProviderType.OPENROUTER && nextGeminiModel) {
       setNanoBananaImageModel(nextGeminiModel);
     }
   }, [imageModelPresets, isGenerating, nanoBananaImageModel, queuedGenerationCount, selectedProvider, setNanoBananaImageModel, setSelectedProvider]);
@@ -3830,12 +3830,7 @@ Edit the provided image according to the instruction above. Preserve the origina
     const merged: ProviderSettings = {
       ...defaultProviderSettings,
       ...newSettings,
-      [AIProviderType.GEMINI]: newSettings[AIProviderType.GEMINI] || defaultProviderSettings[AIProviderType.GEMINI],
-      [AIProviderType.CHATGPT]: newSettings[AIProviderType.CHATGPT] || defaultProviderSettings[AIProviderType.CHATGPT],
-      [AIProviderType.GROK]: newSettings[AIProviderType.GROK] || defaultProviderSettings[AIProviderType.GROK],
-      [AIProviderType.REPLICATE]: newSettings[AIProviderType.REPLICATE] || defaultProviderSettings[AIProviderType.REPLICATE],
-      [AIProviderType.FLUX_PRO]: newSettings[AIProviderType.FLUX_PRO] || defaultProviderSettings[AIProviderType.FLUX_PRO],
-      fal: newSettings.fal || defaultProviderSettings.fal,
+      [AIProviderType.OPENROUTER]: newSettings[AIProviderType.OPENROUTER] || defaultProviderSettings[AIProviderType.OPENROUTER],
       a1111: newSettings.a1111,
     };
     setProviderSettings(merged);
