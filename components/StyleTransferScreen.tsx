@@ -195,13 +195,13 @@ export function StyleTransferScreen(props: {
           type: 'info',
         });
       } else {
-        onToast({ message: 'FOFR styl transfer běží přes Replicate (cloud).', type: 'info' });
+        onToast({ message: 'FOFR styl transfer běží přes OpenRouter (cloud).', type: 'info' });
       }
 
       if (engine === 'fofr') {
         const token = providerSettings?.[AIProviderType.OPENROUTER]?.apiKey;
         if (!token) {
-          throw new Error('Chybí Replicate API klíč. Otevři Nastavení a vlož klíč pro Replicate.');
+          throw new Error('Chybí OpenRouter API klíč. Otevři Nastavení a vlož klíč pro OpenRouter.');
         }
 
         // Build a single "style image" from up to 3 refs.
