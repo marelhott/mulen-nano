@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 const models = [
   { id: 'google/gemini-3-pro-image', name: 'Nano Pro', description: 'Kvalitní tvorba a úpravy obrázků přes OpenRouter.', provider: 'openrouter', capabilities: ['text-to-image', 'image-to-image'] },
   { id: 'google/gemini-3.1-flash-image', name: 'Nano 2', description: 'Rychlá tvorba a úpravy obrázků přes OpenRouter.', provider: 'openrouter', capabilities: ['text-to-image', 'image-to-image'] },
-  { id: 'openai/gpt-5.4-image-2', name: 'GPT Img 2', description: 'Obrázkový model dostupný přes OpenRouter.', provider: 'openrouter', capabilities: ['text-to-image', 'image-to-image'] },
+  { id: 'openai/gpt-image-2.5-sunburst', name: 'GPT Image 2.5', description: 'Precizní obrazový model dostupný přes OpenRouter.', provider: 'openrouter', capabilities: ['text-to-image', 'image-to-image'] },
 ];
 
 export async function GET(request: NextRequest) {

@@ -32,7 +32,7 @@ function getVariationRule(batchIndex: number): string {
 }
 
 export function getHeadSwapModelLabel(model: HeadSwapPromptModel): string {
-  return model === 'gemini' ? 'Gemini Nano Banana' : 'GPT Image 2';
+  return model === 'gemini' ? 'Gemini Nano Banana' : 'GPT Image 2.5';
 }
 
 export function getHeadSwapProviderId(model: HeadSwapPromptModel): HeadSwapPromptProviderId {

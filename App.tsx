@@ -1518,6 +1518,7 @@ const App: React.FC = () => {
     const {
       state,
       providerSettings,
+      nanoBananaImageModel,
       promptMode,
       advancedVariant,
       faceIdentityMode,
@@ -1534,7 +1535,7 @@ const App: React.FC = () => {
 
     try {
       // 1. Generate 3 prompt variants using AI
-      const provider = ProviderFactory.getProvider(AIProviderType.OPENROUTER, providerSettings);
+      const provider = ProviderFactory.getProvider(AIProviderType.OPENROUTER, providerSettings, nanoBananaImageModel);
       setToast({ message: '🎨 Generating 3 sophisticated variants...', type: 'info' });
 
       const variants = await (provider as any).generate3PromptVariants(state.prompt);
@@ -2105,7 +2106,7 @@ const App: React.FC = () => {
             });
 
             // Get selected AI provider
-            const provider = ProviderFactory.getProvider(selectedProvider, providerSettings);
+            const provider = ProviderFactory.getProvider(selectedProvider, providerSettings, nanoBananaImageModel);
 
             // #2: Použít mapovaný aspect ratio pro provider
             const effectiveAspectRatio = mappedRatio.value;
@@ -2295,7 +2296,7 @@ const App: React.FC = () => {
     });
 
     let processedCount = 0;
-    const provider = ProviderFactory.getProvider(selectedProvider, providerSettings);
+    const provider = ProviderFactory.getProvider(selectedProvider, providerSettings, nanoBananaImageModel);
 
     try {
       const styleImagesData = canRunFixedSimpleBatch
@@ -2643,7 +2644,7 @@ const App: React.FC = () => {
     setToast({ message: mode === 'inpaint' ? 'Zahajuji inpainting…' : 'Zahajuji outpainting…', type: 'info' });
 
     try {
-      const provider = ProviderFactory.getProvider(AIProviderType.OPENROUTER, providerSettings);
+      const provider = ProviderFactory.getProvider(AIProviderType.OPENROUTER, providerSettings, nanoBananaImageModel);
       const editPrompt = state.prompt.trim() || (mode === 'inpaint'
         ? 'Domaluj zamaskované oblasti tak, aby přirozeně navazovaly na okolní kontext.'
         : 'Rozšiř obrázek za jeho okraje. Domaluj chybějící oblasti tak, aby přirozeně navazovaly na existující scénu.');
@@ -2849,7 +2850,7 @@ const App: React.FC = () => {
     }));
 
     try {
-      const provider = ProviderFactory.getProvider(AIProviderType.OPENROUTER, providerSettings);
+      const provider = ProviderFactory.getProvider(AIProviderType.OPENROUTER, providerSettings, nanoBananaImageModel);
       const editPrompt = `${prompt}
 
 Edit the provided image according to the instruction above. Preserve the original composition, subject identity, materials, lighting logic, and photographic realism unless the instruction explicitly says otherwise. Do not create a new unrelated image.`;
@@ -2975,9 +2976,9 @@ Edit the provided image according to the instruction above. Preserve the origina
     {
       id: 'openai-image',
       provider: AIProviderType.OPENROUTER,
-      model: 'openai/gpt-5.4-image-2',
-      title: 'GPT Img 2',
-      subtitle: 'openai/gpt-5.4-image-2',
+      model: 'openai/gpt-image-2.5-sunburst',
+      title: 'GPT Image 2.5',
+      subtitle: 'openai/gpt-image-2.5-sunburst',
     },
   ];
 

@@ -27,10 +27,10 @@ type FaceSwapOutputCard = {
 
 function plannedProviders(choice: HeadSwapModelChoice): Array<{ provider: string; label: string }> {
   if (choice === 'gemini') return [{ provider: 'gemini', label: 'Gemini' }];
-  if (choice === 'openai') return [{ provider: 'openai', label: 'GPT Img 2' }];
+  if (choice === 'openai') return [{ provider: 'openai', label: 'GPT Image 2.5' }];
   return [
     { provider: 'gemini', label: 'Gemini' },
-    { provider: 'openai', label: 'GPT Img 2' },
+    { provider: 'openai', label: 'GPT Image 2.5' },
   ];
 }
 
@@ -60,8 +60,8 @@ export function FaceSwapScreen(props: {
   const targetInputId = React.useMemo(() => `face-swap-target-${Math.random().toString(36).slice(2)}`, []);
 
   const modelSummary = React.useMemo(() => {
-    if (selectedModels === 'both') return 'Gemini + GPT Image 2';
-    if (selectedModels === 'openai') return 'GPT Image 2';
+    if (selectedModels === 'both') return 'Gemini + GPT Image 2.5';
+    if (selectedModels === 'openai') return 'GPT Image 2.5';
     return 'Gemini Nano Banana';
   }, [selectedModels]);
 
@@ -299,7 +299,7 @@ export function FaceSwapScreen(props: {
             <div className="grid grid-cols-3 gap-2">
               {([
                 { id: 'gemini', label: 'Gemini' },
-                { id: 'openai', label: 'GPT Img 2' },
+                { id: 'openai', label: 'GPT Image 2.5' },
                 { id: 'both', label: 'Oba' },
               ] as const).map((item) => (
                 <button

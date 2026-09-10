@@ -89,10 +89,10 @@ const IMAGE_MODEL_PRESETS: Array<{
   },
   {
     id: 'openai-image',
-    title: 'GPT Img 2',
-    subtitle: 'openai/gpt-5.4-image-2',
+    title: 'GPT Image 2.5',
+    subtitle: 'openai/gpt-image-2.5-sunburst',
     provider: AIProviderType.OPENROUTER,
-    model: 'openai/gpt-5.4-image-2',
+    model: 'openai/gpt-image-2.5-sunburst',
   },
 ];
 
@@ -224,7 +224,7 @@ export function BatchScreen(props: {
     );
 
     try {
-      const provider = ProviderFactory.getProvider(AIProviderType.OPENROUTER, providerSettings);
+      const provider = ProviderFactory.getProvider(AIProviderType.OPENROUTER, providerSettings, nanoBananaImageModel);
       const effectivePrompt = `${prompt}
 
 Edit the provided image according to the instruction above. Preserve the original composition, subject identity, materials, lighting logic, and photographic realism unless the instruction explicitly says otherwise. Do not create a new unrelated image.`;
@@ -381,7 +381,7 @@ Edit the provided image according to the instruction above. Preserve the origina
       o.status === 'error' ? { ...o, status: 'pending' as const, error: undefined, attempt: undefined } : o
     ));
 
-    const provider = ProviderFactory.getProvider(selectedProvider, providerSettings);
+    const provider = ProviderFactory.getProvider(selectedProvider, providerSettings, nanoBananaImageModel);
     const retryItems = failedOutputs.map(o => ({ ...o, status: 'pending' as const }));
     const decision = decideAdaptiveConcurrency({ section: 'batch', itemCount: retryItems.length, averageBytes: 300_000, maxBytes: 600_000 });
     setActiveConcurrency(decision.concurrency);
@@ -450,7 +450,7 @@ Edit the provided image according to the instruction above. Preserve the origina
     );
 
     setOutputs((prev) => [...pendingOutputs, ...prev]);
-    const provider = ProviderFactory.getProvider(selectedProvider, providerSettings);
+    const provider = ProviderFactory.getProvider(selectedProvider, providerSettings, nanoBananaImageModel);
 
     const total = pendingOutputs.length;
     const inputByteSizes = inputs.map((input) => estimateDataUrlBytes(input.dataUrl));

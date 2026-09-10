@@ -65,6 +65,7 @@ function resolveModels(choice?: HeadSwapModelChoice): HeadSwapPromptModel[] {
 
 async function runSinglePromptSwap(params: {
   providerType: AIProviderType;
+  settings: ProviderSettings;
   promptModel: HeadSwapPromptModel;
   compositeInput: { data: string; mimeType: string };
   mode: HeadSwapMode;
@@ -72,7 +73,14 @@ async function runSinglePromptSwap(params: {
   batchIndex: number;
   sourceGender?: HeadSwapGender;
 }): Promise<HeadSwapOutput> {
-  const provider = ProviderFactory.createProvider(params.providerType, '');
+  const preferredImageModel = params.promptModel === 'openai'
+    ? 'openai/gpt-image-2.5-sunburst'
+    : 'google/gemini-3-pro-image';
+  const provider = ProviderFactory.createProvider(
+    params.providerType,
+    preferredImageModel,
+    params.settings[AIProviderType.OPENROUTER]?.apiKey,
+  );
   const prompt = buildHeadSwapPrompt({
     model: params.promptModel,
     mode: params.mode,
@@ -142,6 +150,7 @@ export async function runHeadSwap(params: {
 
       return runSinglePromptSwap({
         providerType,
+        settings: params.settings,
         promptModel: model,
         compositeInput,
         mode,

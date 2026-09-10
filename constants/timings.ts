@@ -1,6 +1,6 @@
 import { AIProviderType } from '../services/aiProvider';
 
-export type NanoBananaImageModel = 'google/gemini-3-pro-image' | 'google/gemini-3.1-flash-image' | 'openai/gpt-5.4-image-2';
+export type NanoBananaImageModel = 'google/gemini-3-pro-image' | 'google/gemini-3.1-flash-image' | 'openai/gpt-image-2.5-sunburst';
 
 const GEMINI_FLASH_INTER_REQUEST_DELAY_MS = 250;
 const GEMINI_PRO_INTER_REQUEST_DELAY_MS = 450;
