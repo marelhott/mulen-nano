@@ -4,6 +4,13 @@ import type { NanoBananaImageModel } from '../constants/timings';
 
 const SETTINGS_KEY = 'providerSettings';
 const MODEL_KEY = 'nanoBananaImageModel';
+const LEGACY_GPT_IMAGE_MODEL = 'openai/gpt-5.4-image-2';
+const GPT_IMAGE_2_5_MODEL: NanoBananaImageModel = 'openai/gpt-image-2.5-sunburst';
+const SUPPORTED_IMAGE_MODELS: NanoBananaImageModel[] = [
+  'google/gemini-3-pro-image',
+  'google/gemini-3.1-flash-image',
+  GPT_IMAGE_2_5_MODEL,
+];
 
 const defaults = (): ProviderSettings => ({
   [AIProviderType.OPENROUTER]: { apiKey: '', enabled: true },
@@ -27,7 +34,11 @@ export function useProviderSettings() {
       localStorage.removeItem(SETTINGS_KEY);
     }
     const storedModel = localStorage.getItem(MODEL_KEY);
-    if (storedModel) setNanoBananaImageModel(storedModel as NanoBananaImageModel);
+    if (storedModel === LEGACY_GPT_IMAGE_MODEL) {
+      setNanoBananaImageModel(GPT_IMAGE_2_5_MODEL);
+    } else if (SUPPORTED_IMAGE_MODELS.includes(storedModel as NanoBananaImageModel)) {
+      setNanoBananaImageModel(storedModel as NanoBananaImageModel);
+    }
   }, [defaultProviderSettings]);
 
   useEffect(() => localStorage.setItem(MODEL_KEY, nanoBananaImageModel), [nanoBananaImageModel]);
