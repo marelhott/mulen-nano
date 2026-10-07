@@ -10,10 +10,10 @@ import { AtelierEmptyState, AtelierInfoRows, AtelierRightPanel, AtelierSection }
 import { decideAdaptiveConcurrency, estimateDataUrlBytes, runConcurrentTasks } from '../utils/concurrencyRunner';
 import { toUserFacingAiError } from '../utils/aiErrorMessage';
 
-const FLASH_MODEL = 'google/gemini-3.1-flash-image';
+const NANO_BANANA_2_1_MODEL = 'google/gemini-nano-banana-2.1';
 const PRO_MODEL = 'google/gemini-3-pro-image';
 type UpscaleMode = 'detail-enhance' | 'restore' | 'enhance' | 'denoise' | 'upscale-only';
-type UpscaleModelId = typeof FLASH_MODEL | typeof PRO_MODEL;
+type UpscaleModelId = typeof NANO_BANANA_2_1_MODEL | typeof PRO_MODEL;
 
 const DETAIL_ENHANCE_PROMPT = "Upscale this image and intelligently enhance real visible detail only. Improve sharpness, fine texture clarity, edge definition, material detail, and local contrast while preserving the original image faithfully. Do not redesign, repaint, stylize, beautify, relight creatively, add new objects, alter identity, change composition, change colors, or invent details that are not plausibly supported by the source. The result must look like a high-quality technical restoration and detail enhancement, not an AI reinterpretation.";
 const UPSCALE_PROMPT = "Upscale this image faithfully without any creative intent. Preserve the original photo as much as possible, only compute necessary artifacts.";
@@ -103,11 +103,11 @@ function modeLabel(mode: UpscaleMode): string {
 }
 
 function upscaleModelLabel(model: UpscaleModelId): string {
-  return model === PRO_MODEL ? 'Nano Pro' : 'Nano 2';
+  return model === PRO_MODEL ? 'Nano Pro' : 'Nano Banana 2.1';
 }
 
 function upscaleModelSubtitle(model: UpscaleModelId): string {
-  return model === PRO_MODEL ? 'Gemini 3 Pro' : 'Gemini 3.1 Flash';
+  return model === PRO_MODEL ? 'Gemini 3 Pro' : 'Gemini Nano Banana 2.1';
 }
 
 function modePrompt(mode: UpscaleMode): string {
@@ -400,7 +400,7 @@ export function AiUpscalerScreen(props: {
             <div className="grid grid-cols-2 gap-2">
               {([
                 { id: PRO_MODEL, label: 'Nano Pro', subtitle: 'Gemini 3 Pro' },
-                { id: FLASH_MODEL, label: 'Nano 2', subtitle: 'Gemini 3.1 Flash' },
+                { id: NANO_BANANA_2_1_MODEL, label: 'Nano Banana 2.1', subtitle: 'Gemini Nano Banana 2.1' },
               ] as const).map((item) => (
                 <button
                   key={item.id}

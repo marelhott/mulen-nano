@@ -17,12 +17,14 @@ export async function POST(request: NextRequest) {
     const model = selectedModel === 'nano-banana-pro'
       ? 'google/gemini-3-pro-image'
       : selectedModel === 'nano-banana'
-        ? 'google/gemini-3.1-flash-image'
+        ? 'google/gemini-nano-banana-2.1'
+        : selectedModel === 'google/gemini-3.1-flash-image' || selectedModel === 'google/gemini-3.1-flash-image-preview'
+          ? 'google/gemini-nano-banana-2.1'
         : String(
             selectedModel ||
             (body.model === 'nano-banana-pro'
               ? 'google/gemini-3-pro-image'
-              : 'google/gemini-3.1-flash-image')
+              : 'google/gemini-nano-banana-2.1')
           );
     const images = body.images || [];
     const result = await generateImage({

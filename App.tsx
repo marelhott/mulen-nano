@@ -2969,9 +2969,9 @@ Edit the provided image according to the instruction above. Preserve the origina
     {
       id: 'gemini-flash',
       provider: AIProviderType.OPENROUTER,
-      model: 'google/gemini-3.1-flash-image',
-      title: 'Nano 2',
-      subtitle: 'google/gemini-3.1-flash-image',
+      model: 'google/gemini-nano-banana-2.1',
+      title: 'Nano Banana 2.1',
+      subtitle: 'google/gemini-nano-banana-2.1',
     },
     {
       id: 'openai-image',
