@@ -189,21 +189,24 @@ function ModelGrids(props: { items: VariantOutput[]; onOpen: (output: VariantOut
   })).filter((group) => group.items.length > 0);
 
   return (
-    <div className="space-y-4">
+    <div className="grid grid-cols-6 gap-x-4 gap-y-4" style={{ gridAutoFlow: 'row dense' }}>
       <style>{`@keyframes growWidth { 0% { width: 0%; } 10% { width: 15%; } 40% { width: 50%; } 70% { width: 80%; } 100% { width: 95%; } }`}</style>
-      {groups.map(({ model, items }) => (
-        <div key={model.id} className="space-y-2">
-          <div className="flex items-baseline gap-2">
-            <h3 className="mn-section-label">{model.title}</h3>
-            <span className="text-[8px] text-[var(--text-3)]">{items.filter((item) => item.status === 'done').length}/{items.length}</span>
+      {groups.map(({ model, items }) => {
+        const span = Math.min(items.length, 6);
+        return (
+          <div key={model.id} className="space-y-2 min-w-0" style={{ gridColumn: `span ${span} / span ${span}` }}>
+            <div className="flex items-baseline gap-2">
+              <h3 className="mn-section-label">{model.title}</h3>
+              <span className="text-[8px] text-[var(--text-3)]">{items.filter((item) => item.status === 'done').length}/{items.length}</span>
+            </div>
+            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${span}, minmax(0, 1fr))` }}>
+              {items.map((output) => (
+                <VariantCard key={output.id} output={output} onOpen={props.onOpen} />
+              ))}
+            </div>
           </div>
-          <div className="grid grid-cols-6 gap-2">
-            {items.map((output) => (
-              <VariantCard key={output.id} output={output} onOpen={props.onOpen} />
-            ))}
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
