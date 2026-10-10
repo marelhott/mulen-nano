@@ -930,11 +930,12 @@ export function VariantsScreen(props: {
               {selectedModels.length === VARIANT_MODELS.length ? 'Zrušit vše' : 'Vybrat vše'}
             </button>
           </div>
-          {selectedModels.includes('flux') ? (
-            <div className="rounded-md border border-[rgba(168,191,143,0.12)] bg-[rgba(20,28,15,0.55)] px-3 py-2 text-[8px] leading-relaxed text-[var(--text-3)]">
-              {variantModelById('flux').note}
+          {VARIANT_MODELS.filter((model) => model.note && selectedModels.includes(model.id)).map((model) => (
+            <div key={model.id} className="rounded-md border border-[rgba(168,191,143,0.12)] bg-[rgba(20,28,15,0.55)] px-3 py-2 text-[8px] leading-relaxed text-[var(--text-3)]">
+              <span className="font-black uppercase tracking-wider text-[var(--text-secondary)]">{model.title}: </span>
+              {model.note}
             </div>
-          ) : null}
+          ))}
         </AtelierSection>
 
         <AtelierSection title="Aktivní Prompt">

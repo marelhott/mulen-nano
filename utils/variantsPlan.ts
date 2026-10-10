@@ -112,6 +112,7 @@ export const VARIANT_MODELS: VariantModel[] = [
     subtitle: 'krea/krea-2-large',
     model: 'krea/krea-2-large',
     resolution: undefined,
+    note: 'Krea 2 je podle všeho jen text→obrázek: předlohu ignoruje a kreslí podle samotného promptu, takže to nejsou varianty.',
   },
   {
     id: 'recraft',
