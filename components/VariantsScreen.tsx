@@ -1,7 +1,7 @@
 import React from 'react';
 import { Download, Images, Trash2, X } from 'lucide-react';
 import { ImageComparisonModal } from './ImageComparisonModal';
-import { AtelierEmptyState, AtelierInfoRows, AtelierRightPanel, AtelierSection } from './atelier/AtelierLayout';
+import { AtelierEmptyState, AtelierRightPanel, AtelierSection } from './atelier/AtelierLayout';
 import { AIProviderType, type ProviderSettings } from '../services/aiProvider';
 import { ProviderFactory } from '../services/providerFactory';
 import { fileToDataUrl, resolveDropToFile } from './styleTransfer/utils';
@@ -280,7 +280,6 @@ export function VariantsScreen(props: {
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [dragActive, setDragActive] = React.useState(false);
   const [preview, setPreview] = React.useState<Preview | null>(null);
-  const [activeConcurrency, setActiveConcurrency] = React.useState(4);
   const fileInputId = React.useMemo(() => makeId('variants-upload'), []);
 
   const runMeta = React.useRef(new Map<string, RunMeta>());
@@ -291,11 +290,7 @@ export function VariantsScreen(props: {
 
   const activePrompt = React.useMemo(() => buildVariantsPrompt(customPrompt, distance), [customPrompt, distance]);
   const totalImages = selectedModels.length * count;
-  const completedCount = outputs.filter((item) => item.status === 'done').length;
   const errorCount = outputs.filter((item) => item.status === 'error').length;
-  const runningCount = outputs.filter((item) => item.status === 'running').length;
-  const retryingCount = outputs.filter((item) => item.status === 'retrying').length;
-  const waitingCount = outputs.filter((item) => item.status === 'pending').length;
 
   // --- historie -------------------------------------------------------------------------------
 
@@ -462,7 +457,6 @@ export function VariantsScreen(props: {
       }
       const bytes = estimateDataUrlBytes(prepared.data);
       const decision = decideAdaptiveConcurrency({ section: 'batch', itemCount: targets.length, averageBytes: bytes, maxBytes: bytes });
-      setActiveConcurrency(decision.concurrency);
 
       const results = await runConcurrentTasks({
         items: targets,
@@ -852,47 +846,50 @@ export function VariantsScreen(props: {
 
       <AtelierRightPanel onOpenLibrary={onOpenLibrary}>
         <AtelierSection title="Modely">
-          <div className="grid grid-cols-1 gap-1">
+          <div className="grid grid-cols-2 gap-1.5">
             {VARIANT_MODELS.map((model) => {
               const isActive = selectedModels.includes(model.id);
+              const vendor = model.model.split('/')[0];
               return (
                 <button
                   key={model.id}
                   type="button"
                   onClick={() => toggleModel(model.id)}
-                  className={`mn-option-button ${isActive ? 'mn-option-button-active' : ''}`}
+                  className={`mn-option-button relative text-left ${isActive ? 'mn-option-button-active' : ''}`}
                   aria-pressed={isActive}
+                  title={model.model}
                 >
-                  <div className="text-[8px] font-black uppercase tracking-[0.18em] leading-tight">{model.title}</div>
-                  <div className={`mt-0.5 text-[6px] font-semibold leading-tight ${isActive ? 'text-[var(--accent-contrast)]/80' : 'text-[var(--text-3)]'}`}>
-                    {model.subtitle}
+                  <span
+                    className={`absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full ${isActive ? 'bg-[var(--accent-contrast)]' : 'bg-[var(--text-3)]/40'}`}
+                    aria-hidden
+                  />
+                  <div className="pr-3 text-[8px] font-black uppercase tracking-[0.16em] leading-tight">{model.title}</div>
+                  <div className={`mt-0.5 truncate text-[6px] font-semibold uppercase tracking-wider leading-tight ${isActive ? 'text-[var(--accent-contrast)]/70' : 'text-[var(--text-3)]'}`}>
+                    {vendor}
                   </div>
                 </button>
               );
             })}
+          </div>
+          <div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-wider text-[var(--text-3)]">
+            <span>{selectedModels.length} z {VARIANT_MODELS.length} · {totalImages} obr.</span>
+            <button
+              type="button"
+              onClick={() => {
+                const next = selectedModels.length === VARIANT_MODELS.length ? [] : VARIANT_MODELS.map((m) => m.id);
+                setSelectedModels(next);
+                writeStored('variants.models', next.join(','));
+              }}
+              className="hover:text-[var(--accent)]"
+            >
+              {selectedModels.length === VARIANT_MODELS.length ? 'Zrušit vše' : 'Vybrat vše'}
+            </button>
           </div>
           {selectedModels.includes('flux') ? (
             <div className="rounded-md border border-[rgba(168,191,143,0.12)] bg-[rgba(20,28,15,0.55)] px-3 py-2 text-[8px] leading-relaxed text-[var(--text-3)]">
               {variantModelById('flux').note}
             </div>
           ) : null}
-        </AtelierSection>
-
-        <AtelierSection title="Stav úlohy">
-          <AtelierInfoRows
-            rows={[
-              { label: 'Modelů', value: selectedModels.length },
-              { label: 'Na model', value: count },
-              { label: 'Celkem', value: totalImages },
-              { label: 'Vzdálenost', value: VARIANTS_DISTANCES.find((d) => d.id === distance)?.label ?? 'Střed' },
-              { label: 'Souběh', value: activeConcurrency },
-              { label: 'Čeká', value: waitingCount },
-              { label: 'Běží', value: runningCount },
-              { label: 'Retry', value: retryingCount },
-              { label: 'Hotovo', value: completedCount },
-              { label: 'Chyby', value: errorCount },
-            ]}
-          />
         </AtelierSection>
 
         <AtelierSection title="Aktivní Prompt">
