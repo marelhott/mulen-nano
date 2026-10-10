@@ -12,6 +12,7 @@ import { toUserFacingAiError } from '../utils/aiErrorMessage';
 import { decideAdaptiveConcurrency, estimateDataUrlBytes, runConcurrentTasks } from '../utils/concurrencyRunner';
 import { optimizeVariantsInput } from '../utils/variantsInput';
 import {
+  deleteVariantsImage,
   deleteVariantsRun,
   getVariantsImage,
   getVariantsSource,
@@ -114,8 +115,8 @@ function historyItems(run: VariantsRunRecord, thumbs: Awaited<ReturnType<typeof 
 
 // --- Karta a mřížka (šest náhledů na řádek) ---------------------------------------------------
 
-function VariantCard(props: { output: VariantOutput; onOpen: (output: VariantOutput) => void }) {
-  const { output, onOpen } = props;
+function VariantCard(props: { output: VariantOutput; onOpen: (output: VariantOutput) => void; onDelete: (output: VariantOutput) => void }) {
+  const { output, onOpen, onDelete } = props;
   const model = variantModelById(output.modelId);
   const image = output.thumbUrl || output.dataUrl;
   const isDone = output.status === 'done' && !!image;
@@ -159,30 +160,45 @@ function VariantCard(props: { output: VariantOutput; onOpen: (output: VariantOut
 
       <div className="px-2 py-1.5 flex items-center justify-between gap-1 border-t border-[rgba(168,191,143,0.12)] bg-[linear-gradient(135deg,rgba(28,38,22,0.85)_0%,rgba(16,22,12,0.90)_100%)]">
         <div className="min-w-0 text-[8px] font-black uppercase tracking-[0.14em] text-[var(--text-secondary)] truncate">#{output.variantIndex + 1}</div>
-        {isDone ? (
-          <button
-            type="button"
-            onClick={async (e) => {
-              e.stopPropagation();
-              const href = output.dataUrl || (await getVariantsImage(output.id))?.dataUrl;
-              if (!href) return;
-              const link = document.createElement('a');
-              link.href = href;
-              link.download = `${output.sourceName.replace(/\.[^.]+$/, '')}-${model.id}-${output.variantIndex + 1}.png`;
-              link.click();
-            }}
-            className="p-1 text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[color:var(--selection-surface)] rounded transition-colors"
-            title="Stáhnout"
-          >
-            <Download className="w-3 h-3" strokeWidth={1.6} />
-          </button>
-        ) : null}
+        <div className="flex items-center">
+          {isDone ? (
+            <button
+              type="button"
+              onClick={async (e) => {
+                e.stopPropagation();
+                const href = output.dataUrl || (await getVariantsImage(output.id))?.dataUrl;
+                if (!href) return;
+                const link = document.createElement('a');
+                link.href = href;
+                link.download = `${output.sourceName.replace(/\.[^.]+$/, '')}-${model.id}-${output.variantIndex + 1}.png`;
+                link.click();
+              }}
+              className="p-1 text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[color:var(--selection-surface)] rounded transition-colors"
+              title="Stáhnout"
+            >
+              <Download className="w-3 h-3" strokeWidth={1.6} />
+            </button>
+          ) : null}
+          {output.status === 'done' || output.status === 'error' ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(output);
+              }}
+              className="p-1 text-[var(--text-secondary)] hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+              title="Smazat"
+            >
+              <Trash2 className="w-3 h-3" strokeWidth={1.6} />
+            </button>
+          ) : null}
+        </div>
       </div>
     </article>
   );
 }
 
-function ModelGrids(props: { items: VariantOutput[]; onOpen: (output: VariantOutput) => void }) {
+function ModelGrids(props: { items: VariantOutput[]; onOpen: (output: VariantOutput) => void; onDelete: (output: VariantOutput) => void }) {
   const groups = VARIANT_MODELS.map((model) => ({
     model,
     items: props.items.filter((item) => item.modelId === model.id).sort((a, b) => a.variantIndex - b.variantIndex),
@@ -201,7 +217,7 @@ function ModelGrids(props: { items: VariantOutput[]; onOpen: (output: VariantOut
             </div>
             <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${span}, minmax(0, 1fr))` }}>
               {items.map((output) => (
-                <VariantCard key={output.id} output={output} onOpen={props.onOpen} />
+                <VariantCard key={output.id} output={output} onOpen={props.onOpen} onDelete={props.onDelete} />
               ))}
             </div>
           </div>
@@ -289,7 +305,6 @@ export function VariantsScreen(props: {
   const savedRuns = React.useRef(new Set<string>());
   const currentRunIdRef = React.useRef<string | null>(null);
   const historyWarned = React.useRef(false);
-  const historyLimit = React.useRef(HISTORY_PAGE);
 
   const activePrompt = React.useMemo(() => buildVariantsPrompt(customPrompt, distance), [customPrompt, distance]);
   const totalImages = selectedModels.length * count;
@@ -297,36 +312,71 @@ export function VariantsScreen(props: {
 
   // --- historie -------------------------------------------------------------------------------
 
-  const loadHistory = React.useCallback(async (limit: number) => {
+  const historyLoading = React.useRef(false);
+  const historyEnd = React.useRef<number | undefined>(undefined);
+  const sentinelRef = React.useRef<HTMLDivElement | null>(null);
+
+  const fetchHistoryPage = React.useCallback(async (reset: boolean) => {
+    if (historyLoading.current) return;
+    historyLoading.current = true;
     try {
-      const runs = await listVariantsRuns(limit);
+      const runs = await listVariantsRuns(HISTORY_PAGE, reset ? undefined : historyEnd.current);
       const loaded: HistoryRun[] = [];
       for (const run of runs) {
-        if (run.id === currentRunIdRef.current) continue;
         loaded.push({ run, items: historyItems(run, await listVariantsThumbs(run.id)) });
       }
-      historyLimit.current = limit;
-      setHistory(loaded);
-      setHasMoreHistory(runs.length >= limit);
-    } catch {
-      // historie je doplněk; bez ní se jen nezobrazí
+      if (runs.length > 0) historyEnd.current = runs[runs.length - 1].createdAt;
+      setHistory((prev) => {
+        const base = reset ? [] : prev;
+        const seen = new Set(base.map((entry) => entry.run.id));
+        return [...base, ...loaded.filter((entry) => !seen.has(entry.run.id))];
+      });
+      setHasMoreHistory(runs.length >= HISTORY_PAGE);
+    } catch (error) {
+      console.error('Historie Variant se nenačetla', error);
+    } finally {
+      historyLoading.current = false;
     }
   }, []);
 
-  React.useEffect(() => {
-    void loadHistory(HISTORY_PAGE);
-  }, [loadHistory]);
+  const loadHistory = React.useCallback(() => fetchHistoryPage(true), [fetchHistoryPage]);
 
-  const handleLoadMore = React.useCallback(() => {
-    void loadHistory(historyLimit.current + HISTORY_PAGE);
-  }, [loadHistory]);
+  React.useEffect(() => {
+    void fetchHistoryPage(true);
+  }, [fetchHistoryPage]);
+
+  React.useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node || !hasMoreHistory) return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) void fetchHistoryPage(false);
+      },
+      { rootMargin: '600px' },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [fetchHistoryPage, hasMoreHistory, history.length]);
+
+  const handleDeleteImage = React.useCallback(
+    async (output: VariantOutput) => {
+      setOutputs((prev) => prev.filter((item) => item.id !== output.id));
+      setHistory((prev) => prev.map((entry) => ({ ...entry, items: entry.items.filter((item) => item.id !== output.id) })).filter((entry) => entry.items.length > 0));
+      try {
+        await deleteVariantsImage(output.id);
+      } catch (error) {
+        onToast({ message: toUserFacingAiError(error, 'Smazání obrázku selhalo.'), type: 'error' });
+      }
+    },
+    [onToast],
+  );
 
   const handleDeleteRun = React.useCallback(
     async (runId: string) => {
       if (!window.confirm('Smazat tento běh včetně všech jeho obrázků z historie?')) return;
       try {
         await deleteVariantsRun(runId);
-        await loadHistory(historyLimit.current);
+        await loadHistory();
       } catch (error) {
         onToast({ message: toUserFacingAiError(error, 'Smazání z historie selhalo.'), type: 'error' });
       }
@@ -596,7 +646,7 @@ export function VariantsScreen(props: {
       summary: `${modelsUsed.map((id) => variantModelById(id).title).join(', ')} · ${count}× na model · ${VARIANTS_DISTANCES.find((d) => d.id === distance)?.label}`,
     });
     setOutputs(pending);
-    void loadHistory(historyLimit.current);
+    void loadHistory();
     try {
       const { succeeded, failed } = await runTasks(pending, source.dataUrl, source.mimeType);
       reportResult(succeeded, failed);
@@ -810,11 +860,11 @@ export function VariantsScreen(props: {
                 sourceName={currentRun.sourceName}
                 summary={currentRun.summary}
               />
-              <ModelGrids items={outputs} onOpen={handleOpen} />
+              <ModelGrids items={outputs} onOpen={handleOpen} onDelete={handleDeleteImage} />
             </div>
           ) : null}
 
-          {history.map(({ run, items }) => (
+          {history.filter(({ run }) => run.id !== currentRun?.id).map(({ run, items }) => (
             <div key={run.id} className="space-y-3">
               <RunHeader
                 createdAt={run.createdAt}
@@ -824,19 +874,11 @@ export function VariantsScreen(props: {
                 onReuseSource={() => void handleReuseSource(run)}
                 onDelete={() => void handleDeleteRun(run.id)}
               />
-              <ModelGrids items={items} onOpen={handleOpen} />
+              <ModelGrids items={items} onOpen={handleOpen} onDelete={handleDeleteImage} />
             </div>
           ))}
 
-          {hasMoreHistory ? (
-            <button
-              type="button"
-              onClick={handleLoadMore}
-              className="w-full rounded-lg border border-[rgba(168,191,143,0.18)] bg-[rgba(24,34,18,0.70)] px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-white/70 hover:text-white transition-colors"
-            >
-              Načíst starší
-            </button>
-          ) : null}
+          {hasMoreHistory ? <div ref={sentinelRef} className="h-10 text-center text-[8px] font-bold uppercase tracking-widest text-[var(--text-3)]">Načítám starší…</div> : null}
 
           {outputs.length === 0 && history.length === 0 ? (
             <AtelierEmptyState

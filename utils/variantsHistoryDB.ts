@@ -153,3 +153,18 @@ export async function deleteVariantsRun(runId: string): Promise<void> {
   }
   await done(tx);
 }
+
+/** Smaže jeden obrázek; když v běhu nezůstane žádný, zmizí i celý běh (včetně předlohy). */
+export async function deleteVariantsImage(id: string): Promise<{ runDeleted: boolean }> {
+  const db = await openDb();
+  const thumb = await asPromise<VariantsThumbRecord | undefined>(db.transaction(THUMBS, 'readonly').objectStore(THUMBS).get(id));
+  const tx = db.transaction([IMAGES, THUMBS], 'readwrite');
+  tx.objectStore(IMAGES).delete(id);
+  tx.objectStore(THUMBS).delete(id);
+  await done(tx);
+  if (!thumb) return { runDeleted: false };
+  const left = await asPromise<number>(db.transaction(THUMBS, 'readonly').objectStore(THUMBS).index('runId').count(IDBKeyRange.only(thumb.runId)));
+  if (left > 0) return { runDeleted: false };
+  await deleteVariantsRun(thumb.runId);
+  return { runDeleted: true };
+}
