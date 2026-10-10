@@ -42,7 +42,7 @@ export function buildVariantsPrompt(base: string, distance: VariantsDistance): s
   return suffix ? `${text}\n\n${suffix}` : text;
 }
 
-export type VariantModelId = 'gpt' | 'gemini' | 'flux' | 'seedream';
+export type VariantModelId = 'gpt' | 'gemini' | 'flux' | 'seedream' | 'muse';
 
 export type VariantModel = {
   id: VariantModelId;
@@ -83,6 +83,13 @@ export const VARIANT_MODELS: VariantModel[] = [
     title: 'Seedream',
     subtitle: 'bytedance-seed/seedream-5-0-pro',
     model: 'bytedance-seed/seedream-5-0-pro',
+    resolution: undefined,
+  },
+  {
+    id: 'muse',
+    title: 'Muse',
+    subtitle: 'meta/muse-image',
+    model: 'meta/muse-image',
     resolution: undefined,
   },
 ];

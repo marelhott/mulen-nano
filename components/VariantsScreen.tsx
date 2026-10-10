@@ -72,7 +72,7 @@ type RunMeta = {
   countPerModel: number;
 };
 
-const DEFAULT_MODELS: VariantModelId[] = ['gpt', 'gemini', 'flux', 'seedream'];
+const DEFAULT_MODELS: VariantModelId[] = ['gpt', 'gemini', 'flux', 'seedream', 'muse'];
 const HISTORY_PAGE = 5;
 
 function makeId(prefix: string): string {
