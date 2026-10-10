@@ -42,7 +42,7 @@ export function buildVariantsPrompt(base: string, distance: VariantsDistance): s
   return suffix ? `${text}\n\n${suffix}` : text;
 }
 
-export type VariantModelId = 'gpt' | 'gemini' | 'flux' | 'seedream' | 'muse';
+export type VariantModelId = 'gpt' | 'gemini' | 'flux' | 'seedream' | 'muse' | 'grok' | 'mai' | 'krea' | 'recraft';
 
 export type VariantModel = {
   id: VariantModelId;
@@ -90,6 +90,34 @@ export const VARIANT_MODELS: VariantModel[] = [
     title: 'Muse',
     subtitle: 'meta/muse-image',
     model: 'meta/muse-image',
+    resolution: undefined,
+  },
+  {
+    id: 'grok',
+    title: 'Grok',
+    subtitle: 'x-ai/grok-imagine-image-2.0',
+    model: 'x-ai/grok-imagine-image-2.0',
+    resolution: undefined,
+  },
+  {
+    id: 'mai',
+    title: 'MAI Image',
+    subtitle: 'microsoft/mai-image-2.6',
+    model: 'microsoft/mai-image-2.6',
+    resolution: undefined,
+  },
+  {
+    id: 'krea',
+    title: 'Krea',
+    subtitle: 'krea/krea-2-large',
+    model: 'krea/krea-2-large',
+    resolution: undefined,
+  },
+  {
+    id: 'recraft',
+    title: 'Recraft',
+    subtitle: 'recraft/recraft-v4.1-pro',
+    model: 'recraft/recraft-v4.1-pro',
     resolution: undefined,
   },
 ];

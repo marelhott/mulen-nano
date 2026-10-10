@@ -41,8 +41,8 @@ describe('variantsPlan', () => {
     expect(new Set(tasks.map((t) => t.id)).size).toBe(6);
   });
 
-  it('všechny pět modelů po deseti dá padesát úloh', () => {
-    expect(planVariantTasks(['gpt', 'gemini', 'flux', 'seedream', 'muse'], 99, (m, i) => `${m}-${i}`)).toHaveLength(50);
+  it('všechny devět modelů po deseti dá devadesát úloh', () => {
+    expect(planVariantTasks(['gpt', 'gemini', 'flux', 'seedream', 'muse', 'grok', 'mai', 'krea', 'recraft'], 99, (m, i) => `${m}-${i}`)).toHaveLength(90);
     expect(planVariantTasks([], 5, (m, i) => `${m}-${i}`)).toHaveLength(0);
   });
 
@@ -53,6 +53,10 @@ describe('variantsPlan', () => {
       'black-forest-labs/flux-3-image',
       'bytedance-seed/seedream-5-0-pro',
       'meta/muse-image',
+      'x-ai/grok-imagine-image-2.0',
+      'microsoft/mai-image-2.6',
+      'krea/krea-2-large',
+      'recraft/recraft-v4.1-pro',
     ]);
     expect(variantModelById('flux').resolution).toBeUndefined();
     expect(variantModelById('seedream').resolution).toBeUndefined();
