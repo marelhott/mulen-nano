@@ -42,7 +42,7 @@ export function buildVariantsPrompt(base: string, distance: VariantsDistance): s
   return suffix ? `${text}\n\n${suffix}` : text;
 }
 
-export type VariantModelId = 'gpt' | 'gemini' | 'flux';
+export type VariantModelId = 'gpt' | 'gemini' | 'flux' | 'seedream';
 
 export type VariantModel = {
   id: VariantModelId;
@@ -77,6 +77,13 @@ export const VARIANT_MODELS: VariantModel[] = [
     model: 'black-forest-labs/flux-3-image',
     resolution: undefined,
     note: 'FLUX 3 je na OpenRouteru nový a může být dočasně nedostupný.',
+  },
+  {
+    id: 'seedream',
+    title: 'Seedream',
+    subtitle: 'bytedance-seed/seedream-5-0-pro',
+    model: 'bytedance-seed/seedream-5-0-pro',
+    resolution: undefined,
   },
 ];
 

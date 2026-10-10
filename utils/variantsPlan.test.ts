@@ -41,8 +41,8 @@ describe('variantsPlan', () => {
     expect(new Set(tasks.map((t) => t.id)).size).toBe(6);
   });
 
-  it('všechny tři modely po deseti dají třicet úloh', () => {
-    expect(planVariantTasks(['gpt', 'gemini', 'flux'], 99, (m, i) => `${m}-${i}`)).toHaveLength(30);
+  it('všechny čtyři modely po deseti dají čtyřicet úloh', () => {
+    expect(planVariantTasks(['gpt', 'gemini', 'flux', 'seedream'], 99, (m, i) => `${m}-${i}`)).toHaveLength(40);
     expect(planVariantTasks([], 5, (m, i) => `${m}-${i}`)).toHaveLength(0);
   });
 
@@ -51,8 +51,10 @@ describe('variantsPlan', () => {
       'openai/gpt-image-2.5-sunburst',
       'google/gemini-nano-banana-2.1',
       'black-forest-labs/flux-3-image',
+      'bytedance-seed/seedream-5-0-pro',
     ]);
     expect(variantModelById('flux').resolution).toBeUndefined();
+    expect(variantModelById('seedream').resolution).toBeUndefined();
     expect(variantModelById('gpt').resolution).toBe('1K');
   });
 });
