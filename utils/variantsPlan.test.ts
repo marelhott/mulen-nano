@@ -41,8 +41,8 @@ describe('variantsPlan', () => {
     expect(new Set(tasks.map((t) => t.id)).size).toBe(6);
   });
 
-  it('všechny devět modelů po deseti dá devadesát úloh', () => {
-    expect(planVariantTasks(['gpt', 'gemini', 'flux', 'seedream', 'muse', 'grok', 'mai', 'krea', 'recraft'], 99, (m, i) => `${m}-${i}`)).toHaveLength(90);
+  it('všechny osm modelů po deseti dá osmdesát úloh', () => {
+    expect(planVariantTasks(['gpt', 'gemini', 'flux', 'seedream', 'muse', 'grok', 'mai', 'recraft'], 99, (m, i) => `${m}-${i}`)).toHaveLength(80);
     expect(planVariantTasks([], 5, (m, i) => `${m}-${i}`)).toHaveLength(0);
   });
 
@@ -55,7 +55,6 @@ describe('variantsPlan', () => {
       'meta/muse-image',
       'x-ai/grok-imagine-image-2.0',
       'microsoft/mai-image-2.6',
-      'krea/krea-2-large',
       'recraft/recraft-v4.1-pro',
     ]);
     expect(variantModelById('flux').resolution).toBeUndefined();

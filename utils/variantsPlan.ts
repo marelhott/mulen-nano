@@ -42,7 +42,7 @@ export function buildVariantsPrompt(base: string, distance: VariantsDistance): s
   return suffix ? `${text}\n\n${suffix}` : text;
 }
 
-export type VariantModelId = 'gpt' | 'gemini' | 'flux' | 'seedream' | 'muse' | 'grok' | 'mai' | 'krea' | 'recraft';
+export type VariantModelId = 'gpt' | 'gemini' | 'flux' | 'seedream' | 'muse' | 'grok' | 'mai' | 'recraft';
 
 export type VariantModel = {
   id: VariantModelId;
@@ -105,14 +105,6 @@ export const VARIANT_MODELS: VariantModel[] = [
     subtitle: 'microsoft/mai-image-2.6',
     model: 'microsoft/mai-image-2.6',
     resolution: undefined,
-  },
-  {
-    id: 'krea',
-    title: 'Krea',
-    subtitle: 'krea/krea-2-large',
-    model: 'krea/krea-2-large',
-    resolution: undefined,
-    note: 'Krea 2 je podle všeho jen text→obrázek: předlohu ignoruje a kreslí podle samotného promptu, takže to nejsou varianty.',
   },
   {
     id: 'recraft',
