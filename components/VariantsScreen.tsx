@@ -144,7 +144,7 @@ function VariantCard(props: { output: VariantOutput; onOpen: (output: VariantOut
               <div className="relative h-[2px] bg-gray-800 rounded-full overflow-hidden">
                 <div
                   className="absolute inset-y-0 left-0 bg-[#a8bf8f] rounded-full shadow-[0_0_10px_rgba(126,217,87,0.5)]"
-                  style={{ width: '0%', animation: 'growWidth 10s cubic-bezier(0.4, 0, 0.2, 1) forwards' }}
+                  style={{ width: '0%', animation: 'growWidth 60s cubic-bezier(0.4, 0, 0.2, 1) forwards' }}
                 />
               </div>
               <div className="text-center">
@@ -190,6 +190,7 @@ function ModelGrids(props: { items: VariantOutput[]; onOpen: (output: VariantOut
 
   return (
     <div className="space-y-4">
+      <style>{`@keyframes growWidth { 0% { width: 0%; } 10% { width: 15%; } 40% { width: 50%; } 70% { width: 80%; } 100% { width: 95%; } }`}</style>
       {groups.map(({ model, items }) => (
         <div key={model.id} className="space-y-2">
           <div className="flex items-baseline gap-2">
