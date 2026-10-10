@@ -92,6 +92,11 @@ const LazyBatchScreen = lazy(async () => {
   return { default: module.BatchScreen };
 });
 
+const LazyVariantsScreen = lazy(async () => {
+  const module = await import('./components/VariantsScreen');
+  return { default: module.VariantsScreen };
+});
+
 const MAX_GENERATED_IMAGES = 14; // Fallback; runtime uses PROVIDER_METADATA[provider].maxImages
 const PROVIDER_SETTINGS_STORAGE_KEY = 'providerSettings';
 const THEME_STORAGE_KEY = 'mulen-theme';
@@ -709,6 +714,7 @@ const App: React.FC = () => {
   const isAiUpscalerRoute = routePath === '/ai-upscaler' || routePath.startsWith('/ai-upscaler/');
   const isReframeRoute = routePath === '/reframe' || routePath.startsWith('/reframe/');
   const isBatchRoute = routePath === '/batch' || routePath.startsWith('/batch/');
+  const isVariantsRoute = routePath === '/varianty' || routePath.startsWith('/varianty/');
   // Nové state pro featury
   const [isCollectionsModalOpen, setIsCollectionsModalOpen] = useState(false);
   const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
@@ -3849,6 +3855,8 @@ Edit the provided image according to the instruction above. Preserve the origina
               ? 'reframe'
             : isBatchRoute
               ? 'batch'
+            : isVariantsRoute
+              ? 'varianty'
             : isStyleTransferRoute
               ? 'style-transfer'
               : isModelInfluenceRoute
@@ -3882,6 +3890,10 @@ Edit the provided image according to the instruction above. Preserve the origina
           }
           if (route === 'batch') {
             navigate('/batch');
+            return;
+          }
+          if (route === 'varianty') {
+            navigate('/varianty');
             return;
           }
           if (route === 'ai-upscaler') {
@@ -3951,6 +3963,16 @@ Edit the provided image according to the instruction above. Preserve the origina
           ) : isAiUpscalerRoute ? (
             <Suspense fallback={routeScreenFallback}>
               <LazyAiUpscalerScreen
+                onOpenSettings={() => setIsSettingsModalOpen(true)}
+                onOpenLibrary={() => setIsGalleryExpanded(true)}
+                onToast={(t) => setToastWithLog(t)}
+                theme={theme}
+              />
+            </Suspense>
+          ) : isVariantsRoute ? (
+            <Suspense fallback={routeScreenFallback}>
+              <LazyVariantsScreen
+                providerSettings={providerSettings}
                 onOpenSettings={() => setIsSettingsModalOpen(true)}
                 onOpenLibrary={() => setIsGalleryExpanded(true)}
                 onToast={(t) => setToastWithLog(t)}

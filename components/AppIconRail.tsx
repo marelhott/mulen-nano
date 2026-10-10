@@ -1,7 +1,7 @@
 import React from 'react';
-import { Brush, Camera, Grid3X3, Flame, Images, Layers, Maximize2, User } from 'lucide-react';
+import { Brush, Camera, Grid3X3, Flame, Images, Layers, Maximize2, Shuffle, User } from 'lucide-react';
 
-type RailRoute = 'mulen' | 'face-swap' | 'model-influence' | 'style-transfer' | 'flux-lora' | 'ai-upscaler' | 'reframe' | 'batch';
+type RailRoute = 'mulen' | 'face-swap' | 'model-influence' | 'style-transfer' | 'flux-lora' | 'ai-upscaler' | 'reframe' | 'batch' | 'varianty';
 
 export function AppIconRail(props: {
   active: RailRoute;
@@ -18,6 +18,7 @@ export function AppIconRail(props: {
     { id: 'flux-lora', label: 'Lora Influence', shortLabel: 'Lora', icon: <Flame className="w-[13px] h-[13px]" strokeWidth={1.6} /> },
     { id: 'model-influence', label: 'Model Influence', shortLabel: 'Model', icon: <Layers className="w-[13px] h-[13px]" strokeWidth={1.6} /> },
     { id: 'style-transfer', label: 'Style Transfer — offline neural (přesný)', shortLabel: 'Style', icon: <Brush className="w-[13px] h-[13px]" strokeWidth={1.6} /> },
+    { id: 'varianty', label: 'Varianty', shortLabel: 'Varianty', icon: <Shuffle className="w-[13px] h-[13px]" strokeWidth={1.6} /> },
     { id: 'batch', label: 'Batch', shortLabel: 'Batch', icon: <Images className="w-[13px] h-[13px]" strokeWidth={1.6} />, bottom: true },
   ];
 
