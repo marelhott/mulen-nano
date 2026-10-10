@@ -108,3 +108,8 @@ export function planVariantTasks(
 export function variantModelById(id: VariantModelId): VariantModel {
   return VARIANT_MODELS.find((model) => model.id === id) ?? VARIANT_MODELS[0];
 }
+
+/** Datum a čas běhu v historii, česky (např. „10. 10. 2026 14:05“). */
+export function formatVariantsDate(timestamp: number): string {
+  return new Date(timestamp).toLocaleString('cs-CZ', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
