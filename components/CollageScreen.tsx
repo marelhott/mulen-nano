@@ -735,7 +735,7 @@ export function CollageScreen(props: {
           {outputs.length === 0 && history.length === 0 ? (
             <AtelierEmptyState
               title="Zatím žádné koláže"
-              description="Vlož dva a více obrazů vlevo, vyber modely vpravo a spusť. Z nich vznikne volná, umělecká koláž podle hesla méně je více. Každý běh se ukládá do historie i se vstupy."
+              description="Vlož dva a více obrazů vlevo, vyber modely vpravo a spusť. Z nich vznikne jedno sjednocené umělecké dílo, ve kterém se nápady prolnou (ne doslovná koláž), podle hesla méně je více. Každý běh se ukládá do historie i se vstupy."
             />
           ) : null}
         </div>

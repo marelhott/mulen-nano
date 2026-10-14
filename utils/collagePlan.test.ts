@@ -7,8 +7,9 @@ describe('collagePlan', () => {
     expect(buildCollagePrompt(' moje ')).toBe('moje');
   });
 
-  it('prompt nese heslo méně je více a omezuje se na pět pokusů', () => {
+  it('prompt chce jedno sjednocené dílo, ne doslovnou koláž, a heslo méně je více', () => {
     expect(COLLAGE_GENERAL_PROMPT).toContain('LESS IS MORE');
+    expect(COLLAGE_GENERAL_PROMPT).toContain('IT MUST NOT LOOK LIKE A COLLAGE');
     expect(COLLAGE_MAX_PER_MODEL).toBe(5);
   });
 

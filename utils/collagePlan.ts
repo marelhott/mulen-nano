@@ -1,4 +1,5 @@
-// Koláž: volná, umělecká koláž ze dvou a více obrázků jedním obecným promptem na všech modelech.
+// Koláž (v UI i „fúze“): symbiotické umělecké spojení dvou a více obrázků do jednoho díla jedním obecným
+// promptem na všech modelech. Záměrně NE doslovná koláž z vystřižených kousků.
 // Čistá logika bez UI. Modely a plán úloh sdílí se sekcí Varianty.
 
 import { VARIANTS_MAX_PER_MODEL } from './variantsPlan';
@@ -15,17 +16,22 @@ export function collageInputBudget(sourceCount: number): { targetBytes: number; 
   return { targetBytes: Math.floor(COLLAGE_TOTAL_INPUT_BYTES / n), maxDimension: 1400 };
 }
 
-export const COLLAGE_GENERAL_PROMPT = `Make one collage from the attached images. Work freely and artistically: treat the sources as raw material, not as something to preserve or reproduce.
+export const COLLAGE_GENERAL_PROMPT = `Combine the attached images into ONE new, unified artwork: a symbiosis of the ideas in them, not a collage. Interpret them in an artistic, partly abstract way.
 
-Cut, tear, layer, overlap, rotate, scale and recombine fragments of the images into a single new composition. Use fragments from at least two of the attached images, and let the meeting of them create an unexpected meaning or tension.
+IT MUST NOT LOOK LIKE A COLLAGE:
+- no cut-outs, pasted fragments, torn paper, visible seams, borders or frames
+- do not place the images side by side, do not stack or overlap them as separate pieces
+- do not simply paste the subject of one image onto the background of the other
 
-LESS IS MORE:
-- few, strong elements instead of many; do not use every part of every image
-- generous empty space, a clear focal point and a confident, even asymmetric balance
-- restraint in colour: a limited palette drawn from the sources
-- visible cut edges, paper, halftone or grain are welcome; clutter, decoration and filler are not
+IT MUST FEEL LIKE ONE WORK:
+- one coherent scene with one logic of light, space, surface and medium (for example a single painting or a single photograph)
+- the images grow into one another: the figure, forms or motifs of one live inside the space, light and atmosphere of the other; shapes may dissolve, merge, echo or transform into each other
+- where the two meet, let it become painterly, abstract or ambiguous
+- keep the recognisable essence of each source (its key subject, mood and colours), so that both ideas are still felt
 
-Do not add text, captions, borders, frames, watermarks or logos. Output one image.`;
+LESS IS MORE: restrained, few elements, a calm composition with room to breathe, no clutter, no decoration, no filler.
+
+Do not add text, captions, borders, watermarks or logos. Output one image.`;
 
 /** Prázdný nebo bílý vlastní prompt = výchozí znění. */
 export function buildCollagePrompt(base: string): string {
