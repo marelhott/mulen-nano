@@ -8,6 +8,12 @@ beforeEach(() => {
   vi.clearAllMocks(); mocks.token.mockReturnValue(true); mocks.list.mockResolvedValue([]); mocks.index.mockResolvedValue({ items: [] }); mocks.urls.mockResolvedValue({ 'items/a.png': 'signed-original', 'thumbs/a.jpg': 'signed-thumb' }); mocks.deleteBank.mockResolvedValue(undefined);
 });
 describe('Společný feed', () => {
+  it('zachová dvě různé varianty stejného promptu i setu bez automatického mazání', async () => {
+    mocks.index.mockResolvedValue({ items: ['a', 'b'].map((id) => ({ id: `slot-${id}`, galleryId: id, kind: 'image', itemKey: 'items/a.png', createdAt: 10, generation: { prompt: 'pes', params: { runId: 'same-run' } } })) });
+    expect((await getAllImages()).map((image) => image.id)).toEqual(['a', 'b']);
+    expect(mocks.deleteBank).not.toHaveBeenCalled();
+    expect(mocks.remove).not.toHaveBeenCalled();
+  });
   it('na novém zařízení obnoví originál, náhled, id i runId z R2', async () => {
     mocks.index.mockResolvedValue({ items: [{ id: 'remote-slot', galleryId: 'generated-a', kind: 'image', itemKey: 'items/a.png', thumbKey: 'thumbs/a.jpg', createdAt: 10, generation: { prompt: 'pes', params: { runId: 'run-a' } } }] });
     expect(await getAllImages()).toMatchObject([{ id: 'generated-a', url: 'signed-original', thumbnail: 'signed-thumb', timestamp: 10, params: { runId: 'run-a' } }]);
