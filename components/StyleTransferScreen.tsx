@@ -4,7 +4,6 @@ import { runArbitraryStyleTransferTfjs } from '../services/arbitraryStyleTransfe
 import { runGatysStyleTransfer, runWctStyleTransfer } from '../services/neuralStyleTransferAlgorithms';
 import { runFofrStyleTransfer } from '../services/replicateService';
 import { createThumbnail, saveToGallery } from '../utils/galleryDB';
-import { dataUrlToBlob, getPublicUrl, uploadImage } from '../utils/supabaseStorage';
 import { ImageDatabase } from '../utils/imageDatabase';
 import { StyleTransferSidebar } from './styleTransfer/StyleTransferSidebar';
 import { StyleTransferMobileControls } from './styleTransfer/StyleTransferMobileControls';
@@ -208,13 +207,10 @@ export function StyleTransferScreen(props: {
         const seedBase = (Date.now() ^ Math.floor(Math.random() * 1e9)) | 0;
         const stylePatch = await composeStylePatchwork(activeStyles.map((s) => s.dataUrl), { size: 1024, seed: seedBase });
 
-        // Upload inputs to storage and pass URLs to Replicate (much more robust than base64).
-        // Normalize reference pixels to avoid EXIF orientation issues (Replicate often ignores EXIF).
+        // OpenRouter přijímá normalizované obrázky přímo, bez mezikroku v Supabase.
         const refNormalized = await normalizeDataUrlPixels(reference.dataUrl, { maxDim: 1800, mime: 'image/jpeg', quality: 0.94 });
-        const [refBlob, styleBlob] = await Promise.all([dataUrlToBlob(refNormalized), dataUrlToBlob(stylePatch)]);
-        const [refPath, stylePath] = await Promise.all([uploadImage(refBlob, 'generated'), uploadImage(styleBlob, 'generated')]);
-        const structureUrl = getPublicUrl(refPath);
-        const styleUrl = getPublicUrl(stylePath);
+        const structureUrl = refNormalized;
+        const styleUrl = stylePatch;
         const decision = decideAdaptiveConcurrency({
           section: 'style-transfer-fofr',
           itemCount: count,
@@ -261,11 +257,8 @@ export function StyleTransferScreen(props: {
 
             const dataUrl = data[0];
             const thumb = await createThumbnail(dataUrl, 420);
-            let finalUrl = dataUrl;
+            const finalUrl = dataUrl;
             try {
-              const blob = await dataUrlToBlob(dataUrl);
-              const path = await uploadImage(blob, 'generated');
-              finalUrl = getPublicUrl(path);
               await saveToGallery({
                 url: finalUrl,
                 thumbnail: thumb,
@@ -378,9 +371,7 @@ export function StyleTransferScreen(props: {
 
           const thumb = await createThumbnail(dataUrl, 420);
           try {
-            const blob = await dataUrlToBlob(dataUrl);
-            const path = await uploadImage(blob, 'generated');
-            const publicUrl = getPublicUrl(path);
+            const publicUrl = dataUrl;
 
             setOutputs((prev) =>
               prev.map((p) => (p.id === outputIds[i] ? { id: outputIds[i], status: 'success', url: publicUrl, attempt: 1 } : p)),

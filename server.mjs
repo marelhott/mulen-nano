@@ -275,7 +275,8 @@ async function start() {
     app.use('*', async (req, res, next) => {
       try {
         const url = req.originalUrl
-        const indexHtmlPath = path.resolve(process.cwd(), 'index.html')
+        const template = url.split('?')[0] === '/scripts/media-harness.html' ? 'scripts/media-harness.html' : 'index.html'
+        const indexHtmlPath = path.resolve(process.cwd(), template)
         const raw = fs.readFileSync(indexHtmlPath, 'utf-8')
         const html = await vite.transformIndexHtml(url, raw)
         res.status(200).set({ 'Content-Type': 'text/html' }).end(html)

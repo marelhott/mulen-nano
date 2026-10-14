@@ -6,13 +6,14 @@ type RailRoute = 'mulen' | 'face-swap' | 'model-influence' | 'style-transfer' | 
 export function AppIconRail(props: {
   active: RailRoute;
   onNavigate: (route: RailRoute) => void;
+  onOpenLibrary: () => void;
+  onOpenFeed: () => void;
 }) {
   const { active, onNavigate } = props;
 
   const items: Array<{ id: RailRoute; label: string; shortLabel: string; icon: React.ReactNode; bottom?: boolean }> = [
     // Icons reduced ~30% (18px -> 13px) and kept monochrome/neutral.
     { id: 'mulen', label: 'Mulen Nano', shortLabel: 'Nano', icon: <Grid3X3 className="w-[13px] h-[13px]" strokeWidth={1.6} /> },
-    { id: 'databanka', label: 'Databanka', shortLabel: 'Banka', icon: <Library className="w-[13px] h-[13px]" strokeWidth={1.6} /> },
     { id: 'varianty', label: 'Varianty', shortLabel: 'Varianty', icon: <Shuffle className="w-[13px] h-[13px]" strokeWidth={1.6} /> },
     { id: 'kolaz', label: 'Koláž', shortLabel: 'Koláž', icon: <Combine className="w-[13px] h-[13px]" strokeWidth={1.6} /> },
     { id: 'ai-upscaler', label: 'AI Upscaler', shortLabel: 'Scale', icon: <Maximize2 className="w-[13px] h-[13px]" strokeWidth={1.6} /> },
@@ -28,7 +29,7 @@ export function AppIconRail(props: {
   const bottomItems = items.filter((item) => item.bottom);
 
   return (
-    <nav className="flex w-[72px] shrink-0 border-r border-white/5 bg-[var(--bg-card)] flex-col items-center py-6 gap-2.5 z-30">
+    <nav className="flex w-[72px] shrink-0 overflow-y-auto border-r border-white/5 bg-[var(--bg-card)] flex-col items-center py-6 gap-2.5 z-30">
       {topItems.map((item) => {
         const isActive = item.id === active;
         return (
@@ -53,6 +54,12 @@ export function AppIconRail(props: {
       })}
       {/* Workflow external link */}
       <div className="mt-auto flex w-full flex-col items-center gap-2.5 pt-4">
+        <button type="button" onClick={props.onOpenLibrary} title="Sdílená knihovna zdrojů" aria-label="Sdílená knihovna zdrojů" className="flex min-h-[44px] w-14 flex-col items-center justify-center gap-1 text-[var(--text-secondary)] hover:text-[var(--accent)]">
+          <Library className="h-[13px] w-[13px]" strokeWidth={1.6} /><span className="text-[7px] font-bold uppercase">Knihovna</span>
+        </button>
+        <button type="button" onClick={props.onOpenFeed} title="Výsledky ze všech sekcí" aria-label="Výsledky ze všech sekcí" className="flex min-h-[44px] w-14 flex-col items-center justify-center gap-1 text-[var(--text-secondary)] hover:text-[var(--accent)]">
+          <Images className="h-[13px] w-[13px]" strokeWidth={1.6} /><span className="text-[7px] font-bold uppercase">Výsledky</span>
+        </button>
         <a
           href="/workflow"
           target="_blank"

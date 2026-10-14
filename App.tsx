@@ -11,7 +11,7 @@ import { SavedPromptsDropdown } from './components/SavedPromptsDropdown';
 import { slugify } from './utils/stringUtils.ts';
 import { GalleryImage, saveToGallery, createThumbnail, getAllImages, deleteImage as deleteGalleryImage } from './utils/galleryDB';
 import { ImageDatabase } from './utils/imageDatabase';
-import { backfillLocalLibraryMetadataToCloud, urlToDataUrl } from './utils/supabaseStorage';
+import { urlToDataUrl } from './utils/supabaseStorage';
 import { CollectionsModal } from './components/CollectionsModal';
 import { PromptTemplatesModal } from './components/PromptTemplatesModal';
 import { PromptRemixModal } from './components/PromptRemixModal';
@@ -19,7 +19,7 @@ import { QuickActionsMenu, QuickAction } from './components/QuickActionsMenu';
 import { ApiUsageTracker } from './utils/apiUsageTracking';
 import { PromptHistory, addPromptContextEntry } from './utils/promptHistory';
 import { formatJsonPromptForImage } from './utils/jsonPrompting';
-import { ImageGalleryPanel } from './components/ImageGalleryPanel';
+import { SharedMediaHub, openSharedMedia } from './components/SharedMediaHub';
 import { SettingsModal } from './components/SettingsModal';
 import { ProviderSelector } from './components/ProviderSelector';
 import { OpenRouterProvider } from './services/openRouterService';
@@ -407,7 +407,6 @@ const App: React.FC = () => {
   // Refs
   const galleryPanelRef = useRef<any>(null);
   const [analyzingImageId, setAnalyzingImageId] = useState<string | null>(null);
-  const hasTriggeredCloudMetadataBackfill = useRef(false);
 
   useEffect(() => {
     setIsAppUserBootstrapping(true);
@@ -504,23 +503,6 @@ const App: React.FC = () => {
         setAuthFailureMessage(null);
         setIsSupabaseReady(true);
         void ImageDatabase.getAll();
-        if (!hasTriggeredCloudMetadataBackfill.current) {
-          hasTriggeredCloudMetadataBackfill.current = true;
-          void backfillLocalLibraryMetadataToCloud()
-            .then((result) => {
-              if (cancelled) return;
-              if (result.saved > 0 || result.generated > 0) {
-                setToast({
-                  message: `Obnoveno do cloudu: ${result.saved} ulozenych a ${result.generated} generovanych obrazku.`,
-                  type: 'success',
-                });
-              }
-            })
-            .catch((error) => {
-              hasTriggeredCloudMetadataBackfill.current = false;
-              console.warn('[Cloud Backfill] Metadata sync failed:', error);
-            });
-        }
         void runSmokeIfRequested();
       } catch (error: any) {
         if (cancelled) return;
@@ -3736,12 +3718,6 @@ Edit the provided image according to the instruction above. Preserve the origina
     </label>
   );
 
-  const expandedGalleryViewportStyle = isMobile
-    ? undefined
-    : {
-        left: `${73 + sidebarWidth}px`,
-      };
-
   // Show auth bootstrap screen
   if (isAuthBootstrapping) {
     return (
@@ -3858,6 +3834,8 @@ Edit the provided image according to the instruction above. Preserve the origina
       />
 
       <AppIconRail
+        onOpenLibrary={() => setIsGalleryExpanded(true)}
+        onOpenFeed={() => openSharedMedia('feed')}
         active={
           isFaceSwapRoute
               ? 'face-swap'
@@ -4404,41 +4382,7 @@ Edit the provided image according to the instruction above. Preserve the origina
             </>
           )}
 
-          {isGalleryExpanded && (
-            <div
-              className="absolute inset-y-0 right-0 z-[80] bg-transparent"
-              style={expandedGalleryViewportStyle}
-              onClick={() => setIsGalleryExpanded(false)}
-            >
-              <div
-                className="absolute inset-4 sm:inset-6 rounded-xl overflow-hidden flex flex-col"
-                style={{background:'linear-gradient(160deg,rgba(28,40,20,0.97) 0%,rgba(14,20,10,0.98) 100%)',border:'1px solid rgba(168,191,143,0.22)',boxShadow:'0 0 80px rgba(0,0,0,0.70), inset 0 0 120px rgba(125,154,100,0.06)'}}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="px-6 py-4 border-b border-white/5 bg-transparent flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-4 bg-[#a8bf8f] rounded-full shadow-[0_0_10px_rgba(126,217,87,0.5)]"></div>
-                    <h2 className="text-xs font-semibold uppercase tracking-wider text-white/55">Knihovna obrázků</h2>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsGalleryExpanded(false)}
-                    className="px-3 py-1.5 border border-[rgba(168,191,143,0.16)] bg-[rgba(32,44,24,0.55)] hover:border-[rgba(168,191,143,0.38)] hover:bg-[rgba(45,62,33,0.70)] text-[var(--text-secondary)] hover:text-[var(--accent)] rounded-md transition-all text-[10px] font-bold uppercase tracking-wider"
-                  >
-                    Zpět
-                  </button>
-                </div>
-                <div className="flex-1 min-h-0">
-                  <ImageGalleryPanel
-                    onDragStart={(_imageData, _type) => {
-                    }}
-                    onBatchProcess={handleBatchProcess}
-                    view="expanded"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+          <SharedMediaHub open={isGalleryExpanded} onClose={() => setIsGalleryExpanded(false)} onToast={(t) => setToastWithLog(t)} theme={theme} />
         </div >
         </AtelierRightPanelProvider>
 

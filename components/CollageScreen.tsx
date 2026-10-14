@@ -429,7 +429,7 @@ export function CollageScreen(props: {
               prompt: output.prompt,
               resolution: model.resolution ?? 'Original',
               aspectRatio: 'Original',
-              params: { ...recipe, modelId: result.modelId || model.model, runId: output.runId },
+              params: { ...recipe, section: 'Koláž', modelId: result.modelId || model.model, runId: output.runId },
             });
           } catch {
             // galerie nesmí shodit běh

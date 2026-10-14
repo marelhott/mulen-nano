@@ -1,6 +1,7 @@
 import { clearGeneratedLibraryImages, getGeneratedLibraryImageRecord, listGeneratedLibraryImages, removeGeneratedLibraryImage, resolveBlobFromSource, saveGeneratedLibraryImage, type SingleUserGeneratedImage } from './singleUserMediaStore';
-import { dataUrlToBlob, deleteGeneratedImageMetadataByStoragePath, deleteImage as deleteStorageImage, saveGeneratedImageMetadata, uploadImage } from './supabaseStorage';
 import { dispatchCloudSyncEvent } from './cloudSyncEvents';
+import { deleteBankItems, getBankUrls, hasBankToken, loadBankIndex } from '../services/bankService';
+import { mediaChanged, syncGeneratedRecord, waitForGeneratedSync } from '../services/mediaSync';
 
 export interface GalleryImage extends SingleUserGeneratedImage {}
 
@@ -15,9 +16,7 @@ export const saveToGallery = async (image: SaveToGalleryInput): Promise<void> =>
 
   try {
     if (image.url) {
-      mainBlob = image.url.startsWith('data:')
-        ? await dataUrlToBlob(image.url)
-        : await resolveBlobFromSource(image.url);
+      mainBlob = await resolveBlobFromSource(image.url);
     }
   } catch (error) {
     console.warn('[Gallery] Failed to persist full image blob locally, falling back to URL only:', error);
@@ -25,9 +24,7 @@ export const saveToGallery = async (image: SaveToGalleryInput): Promise<void> =>
 
   try {
     if (image.thumbnail) {
-      thumbBlob = image.thumbnail.startsWith('data:')
-        ? await dataUrlToBlob(image.thumbnail)
-        : await resolveBlobFromSource(image.thumbnail);
+      thumbBlob = await resolveBlobFromSource(image.thumbnail);
     }
   } catch (error) {
     console.warn('[Gallery] Failed to persist thumbnail blob locally, falling back to URL only:', error);
@@ -48,53 +45,37 @@ export const saveToGallery = async (image: SaveToGalleryInput): Promise<void> =>
     lineage: image.lineage,
   });
 
-  void (async () => {
-    if (!mainBlob) return;
-
-    try {
-      const storagePath = await uploadImage(mainBlob, 'generated');
-      let thumbnailPath: string | undefined;
-      if (thumbBlob) {
-        thumbnailPath = await uploadImage(thumbBlob, 'generated');
-      }
-
-      await saveGeneratedImageMetadata({
-        prompt: localRecord.prompt,
-        storagePath,
-        thumbnailPath,
-        resolution: localRecord.resolution,
-        aspectRatio: localRecord.aspectRatio,
-        params: localRecord.params,
-      });
-
-      await saveGeneratedLibraryImage({
-        id: localRecord.id,
-        prompt: localRecord.prompt,
-        timestamp: localRecord.timestamp,
-        resolution: localRecord.resolution,
-        aspectRatio: localRecord.aspectRatio,
-        blob: mainBlob,
-        thumbnailBlob: thumbBlob,
-        params: localRecord.params,
-        versions: localRecord.versions,
-        lineage: localRecord.lineage,
-        remoteStoragePath: storagePath,
-        remoteThumbnailPath: thumbnailPath,
-      });
-    } catch (error) {
-      console.warn('[Gallery] Cloud mirror for generated image failed:', error);
-      dispatchCloudSyncEvent({
-        status: 'failed',
-        resource: 'generated-image',
-        message: 'Cloud sync se nepodařil. Vygenerovaný obrázek zůstal uložený lokálně.',
-      });
-    }
-  })();
+  mediaChanged();
+  void syncGeneratedRecord(localRecord).catch(() => {
+    dispatchCloudSyncEvent({ status: 'failed', resource: 'generated-image', message: 'Výsledek je uložený lokálně. Odemkni knihovnu nebo obnov spojení pro dokončení uložení do R2.' });
+  });
 };
 
 export const getAllImages = async (): Promise<GalleryImage[]> => {
   try {
-    return await listGeneratedLibraryImages();
+    const local = await listGeneratedLibraryImages();
+    if (!hasBankToken()) return local;
+    try {
+      const index = await loadBankIndex('feed');
+      const items = index.items.filter((item) => item.kind === 'image' && item.galleryId && item.itemKey && item.generation);
+      const urls = await getBankUrls(items.flatMap((item) => [item.itemKey!, item.thumbKey!]).filter(Boolean));
+      const remoteIds = new Set(items.map((item) => item.galleryId));
+      const merged = new Map(local.filter((image) => !image.remoteStoragePath?.startsWith('r2:') || remoteIds.has(image.id)).map((image) => [image.id, image]));
+      for (const item of items) {
+        const existing = merged.get(item.galleryId!);
+        if (existing && (!existing.remoteStoragePath?.startsWith('r2:') || existing.remoteStoragePath === `r2:${item.itemKey}`)) continue;
+        merged.set(item.galleryId!, {
+          id: item.galleryId!, url: urls[item.itemKey!], thumbnail: urls[item.thumbKey!],
+          prompt: item.generation!.prompt, timestamp: item.createdAt,
+          resolution: item.generation!.resolution, aspectRatio: item.generation!.aspectRatio,
+          params: item.generation!.params, remoteStoragePath: `r2:${item.itemKey}`, remoteThumbnailPath: `r2:${item.thumbKey}`,
+        });
+      }
+      return [...merged.values()].sort((a, b) => b.timestamp - a.timestamp);
+    } catch {
+      dispatchCloudSyncEvent({ status: 'failed', resource: 'generated-image', message: 'R2 feed není dostupný. Zobrazuji lokální historii.' });
+      return local;
+    }
   } catch (error) {
     console.error('Error loading gallery:', error);
     return [];
@@ -102,44 +83,23 @@ export const getAllImages = async (): Promise<GalleryImage[]> => {
 };
 
 export const deleteImage = async (id: string): Promise<void> => {
+  await waitForGeneratedSync(id);
   const existing = await getGeneratedLibraryImageRecord(id);
+  if (hasBankToken()) {
+    const index = await loadBankIndex('feed');
+    await deleteBankItems(index.items.filter((item) => item.galleryId === id).map((item) => item.id), 'feed');
+  } else if (existing?.remoteStoragePath?.startsWith('r2:')) {
+    throw new Error('Pro smazání z R2 odemkni knihovnu.');
+  }
   await removeGeneratedLibraryImage(id);
-
-  if (existing?.remoteStoragePath) {
-    void deleteStorageImage(existing.remoteStoragePath).catch((error) => {
-      console.warn('[Gallery] Failed to delete cloud generated image:', error);
-    });
-    void deleteGeneratedImageMetadataByStoragePath(existing.remoteStoragePath).catch((error) => {
-      console.warn('[Gallery] Failed to delete generated image metadata:', error);
-    });
-  }
-
-  if (existing?.remoteThumbnailPath) {
-    void deleteStorageImage(existing.remoteThumbnailPath).catch((error) => {
-      console.warn('[Gallery] Failed to delete cloud generated thumbnail:', error);
-    });
-  }
+  mediaChanged();
 };
 
 export const clearGallery = async (): Promise<void> => {
   const all = await getAllImages();
+  for (const image of all) await deleteImage(image.id);
   await clearGeneratedLibraryImages();
-
-  for (const image of all) {
-    if (image.remoteStoragePath) {
-      void deleteStorageImage(image.remoteStoragePath).catch((error) => {
-        console.warn('[Gallery] Failed to delete cloud generated image during clear:', error);
-      });
-      void deleteGeneratedImageMetadataByStoragePath(image.remoteStoragePath).catch((error) => {
-        console.warn('[Gallery] Failed to delete generated image metadata during clear:', error);
-      });
-    }
-    if (image.remoteThumbnailPath) {
-      void deleteStorageImage(image.remoteThumbnailPath).catch((error) => {
-        console.warn('[Gallery] Failed to delete cloud generated thumbnail during clear:', error);
-      });
-    }
-  }
+  mediaChanged();
 };
 
 export const createThumbnail = (dataUrl: string, maxSize: number = 400): Promise<string> => {

@@ -22,7 +22,7 @@ function config() {
     accountId: get('R2_ACCOUNT_ID'),
     accessKeyId: get('R2_ACCESS_KEY_ID'),
     secretAccessKey: get('R2_SECRET_ACCESS_KEY'),
-    bucket: get('BANK_BUCKET') || 'bank',
+    bucket: get('BANK_BUCKET') || 'mulen-nano',
     passphrase: get('BANK_PASSPHRASE'),
     tokenSecret: get('BANK_TOKEN_SECRET'),
   };
@@ -54,18 +54,19 @@ function emptyIndex() {
   return { version: 1, rev: 0, folders: [], items: [] };
 }
 
-async function readIndex(cfg) {
-  const response = await fetch(sign(cfg, 'GET', core.INDEX_KEY, { expires: 60 }));
+async function readIndex(cfg, indexKey) {
+  // Komprese R2 mění ETag na W/…; If-Match vyžaduje silný ETag původního objektu.
+  const response = await fetch(sign(cfg, 'GET', indexKey, { expires: 60 }), { headers: { 'Accept-Encoding': 'identity' } });
   if (response.status === 404) return { index: emptyIndex(), etag: null };
   if (!response.ok) throw new Error(`R2 čtení indexu selhalo (HTTP ${response.status}).`);
   return { index: await response.json(), etag: response.headers.get('etag') };
 }
 
-async function writeIndex(cfg, index, etag) {
+async function writeIndex(cfg, indexKey, index, etag) {
   const headers = { 'Content-Type': 'application/json' };
   if (etag) headers['If-Match'] = etag;
   else headers['If-None-Match'] = '*';
-  const response = await fetch(sign(cfg, 'PUT', core.INDEX_KEY, { expires: 60 }), {
+  const response = await fetch(sign(cfg, 'PUT', indexKey, { expires: 60 }), {
     method: 'PUT',
     headers,
     body: JSON.stringify(index),
@@ -80,9 +81,11 @@ function validKeys(keys) {
 }
 
 async function handleAuthed(op, body, cfg) {
+  if (body.space !== undefined && !['library', 'feed'].includes(body.space)) return json(400, { error: 'Neplatný prostor knihovny.' });
+  const indexKey = body.space === 'feed' ? 'feed.json' : core.INDEX_KEY;
   switch (op) {
     case 'index-get': {
-      const { index, etag } = await readIndex(cfg);
+      const { index, etag } = await readIndex(cfg, indexKey);
       return json(200, { index, etag });
     }
 
@@ -90,12 +93,12 @@ async function handleAuthed(op, body, cfg) {
       const next = body.index;
       const problem = core.validateIndex(next);
       if (problem) return json(400, { error: problem });
-      const current = await readIndex(cfg);
+      const current = await readIndex(cfg, indexKey);
       // Revize hlídá souběžné úpravy (dvě okna, dvě zařízení); klient při konfliktu načte znovu.
       if (current.index.rev !== next.rev - 1) return json(409, { error: 'Index mezitím změnil jiný klient.', index: current.index });
-      const written = await writeIndex(cfg, next, current.etag);
+      const written = await writeIndex(cfg, indexKey, next, current.etag);
       if (written.conflict) {
-        const fresh = await readIndex(cfg);
+        const fresh = await readIndex(cfg, indexKey);
         return json(409, { error: 'Index mezitím změnil jiný klient.', index: fresh.index });
       }
       return json(200, { rev: next.rev });

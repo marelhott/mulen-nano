@@ -8,6 +8,7 @@ import {
   filterItems,
   folderPath,
   moveFolder,
+  moveItems,
   parseTags,
   renameFolder,
   tagCounts,
@@ -19,6 +20,8 @@ import {
 } from '../utils/bankIndex';
 import {
   BankAuthError,
+  BANK_CHANGED_EVENT,
+  BANK_AUTH_EVENT,
   addBankEntry,
   bankLogin,
   bankLogout,
@@ -66,7 +69,7 @@ const SUPPORTED_UPLOAD = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
 // --- přihlášení -----------------------------------------------------------------------------------
 
-function BankGate(props: { status: BankStatus | null; error: string; onLogin: (passphrase: string) => Promise<void> }) {
+export function BankGate(props: { status: BankStatus | null; error: string; onLogin: (passphrase: string) => Promise<void> }) {
   const [passphrase, setPassphrase] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const { status } = props;
@@ -190,7 +193,7 @@ function ItemDetail(props: {
   const label = 'text-[8px] font-bold uppercase tracking-wider text-[var(--text-3)]';
 
   return (
-    <aside className="flex h-full w-[320px] shrink-0 flex-col gap-3 overflow-y-auto border-l border-[var(--border-color)] p-4 custom-scrollbar">
+    <aside className="absolute inset-0 z-10 flex h-full w-full flex-col gap-3 overflow-y-auto border-l border-[var(--border-color)] bg-[var(--bg-panel)] p-4 custom-scrollbar lg:static lg:w-[320px] lg:shrink-0">
       <div className="flex items-center justify-between">
         <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[var(--text-primary)]">{KIND_LABELS[item.kind]}</span>
         <button type="button" onClick={props.onClose} className="p-1 text-[var(--text-secondary)] hover:text-[var(--accent)]" title="Zavřít">
@@ -278,7 +281,7 @@ function ItemDetail(props: {
 
 // --- obrazovka ------------------------------------------------------------------------------------
 
-export function BankScreen(props: { onToast: (toast: { message: string; type: ToastType }) => void; theme?: 'dark' | 'light' }) {
+export function BankScreen(props: { onToast: (toast: { message: string; type: ToastType }) => void; theme?: 'dark' | 'light'; onChoose?: (items: BankItem[]) => void; multiple?: boolean }) {
   const { onToast, theme = 'dark' } = props;
 
   const [status, setStatus] = React.useState<BankStatus | null>(null);
@@ -291,6 +294,8 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
   const [kind, setKind] = React.useState<BankItemKind | null>(null);
   const [query, setQuery] = React.useState('');
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  const [checked, setChecked] = React.useState<string[]>([]);
+  const [moveTarget, setMoveTarget] = React.useState(BANK_INBOX_ID);
   const [visible, setVisible] = React.useState(PAGE_SIZE);
   const [urlVersion, setUrlVersion] = React.useState(0);
   const [uploading, setUploading] = React.useState<{ done: number; total: number } | null>(null);
@@ -338,6 +343,17 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
   React.useEffect(() => {
     if (authed && status?.configured) void reload();
   }, [authed, status?.configured, reload]);
+
+  React.useEffect(() => {
+    const changed = () => { if (hasBankToken()) void reload(); };
+    const auth = () => setAuthed(hasBankToken());
+    window.addEventListener(BANK_CHANGED_EVENT, changed);
+    window.addEventListener(BANK_AUTH_EVENT, auth);
+    return () => {
+      window.removeEventListener(BANK_CHANGED_EVENT, changed);
+      window.removeEventListener(BANK_AUTH_EVENT, auth);
+    };
+  }, [reload]);
 
   const scopeItems = React.useMemo(() => filterItems(index, { folderId, kind, query }), [index, folderId, kind, query]);
   const items = React.useMemo(() => (tag ? scopeItems.filter((item) => item.tags.includes(tag)) : scopeItems), [scopeItems, tag]);
@@ -398,11 +414,13 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
       if (images.length === 0) return;
       const target = folderId ?? BANK_INBOX_ID;
       let ok = 0;
+      let duplicates = 0;
       setUploading({ done: 0, total: images.length });
       for (const file of images) {
         try {
-          await uploadBankImage(file, { folderId: target });
-          ok += 1;
+          const item = await uploadBankImage(file, { folderId: target });
+          if (item.reused) duplicates += 1;
+          else ok += 1;
         } catch (error) {
           handleError(error, `Nahrání ${file.name} selhalo.`);
           if (error instanceof BankAuthError) break;
@@ -410,9 +428,9 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
         setUploading((prev) => (prev ? { ...prev, done: prev.done + 1 } : prev));
       }
       setUploading(null);
-      if (ok > 0) {
+      if (ok > 0 || duplicates > 0) {
         await reload();
-        onToast({ message: `Do Databanky přidáno ${ok} obrázků${folderId ? '' : ' (do Doručených)'}.`, type: 'success' });
+        onToast({ message: `Přidáno ${ok} obrázků, přeskočeno ${duplicates} duplicit.`, type: 'success' });
       }
     },
     [folderId, handleError, onToast, reload],
@@ -501,12 +519,12 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
     `flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left text-[10px] font-semibold ${active ? 'bg-[color:var(--selection-surface)] text-[var(--accent)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`;
 
   return (
-    <div className="relative flex h-full min-w-0 flex-1 overflow-hidden canvas-surface">
-      <aside className="flex h-full w-[280px] shrink-0 flex-col gap-4 overflow-y-auto p-5 custom-scrollbar cairn-panel-left" style={panelStyle}>
+    <div data-bank-ui className="relative flex h-full min-w-0 flex-1 overflow-hidden canvas-surface">
+      <aside className="flex h-full w-[140px] sm:w-[220px] shrink-0 flex-col gap-4 overflow-y-auto p-3 sm:p-5 custom-scrollbar cairn-panel-left" style={panelStyle}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="h-4 w-1.5 rounded-full bg-[#a8bf8f] shadow-[0_0_10px_rgba(168,191,143,0.5)]" />
-            <h2 className="text-[11px] font-[900] uppercase tracking-[0.3em] text-gray-200">Databanka</h2>
+            <h2 className="text-[11px] font-[900] uppercase tracking-[0.3em] text-[var(--text-primary)]">Zdroje</h2>
           </div>
           <button
             type="button"
@@ -674,6 +692,20 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
           </div>
         ) : null}
 
+        <div className="flex flex-wrap items-center gap-3 border-b border-[var(--border-color)] px-5 py-2 text-[11px] text-[var(--text-secondary)]">
+          <button type="button" onClick={() => setChecked(items.filter((item) => !props.onChoose || item.kind === 'image').map((item) => item.id).slice(0, props.onChoose && !props.multiple ? 1 : undefined))}>Vybrat vše</button>
+          <button type="button" onClick={() => setChecked([])}>Zrušit výběr ({checked.length})</button>
+          <select aria-label="Cílová složka" value={moveTarget} onChange={(e) => setMoveTarget(e.target.value)} className="min-w-0 max-w-48 bg-[var(--bg-panel)] p-1">
+            {flattenFolders(index).map(({ folder, depth }) => <option key={folder.id} value={folder.id}>{'– '.repeat(depth)}{folder.name}</option>)}
+          </select>
+          <button type="button" disabled={!checked.length} onClick={() => void applyIndex((current) => moveItems(current, checked, moveTarget), 'Přesun selhal.')}>Přesunout</button>
+          <button type="button" disabled={!checked.length} onClick={() => {
+            if (!window.confirm(`Smazat ${checked.length} vybraných položek z knihovny?`)) return;
+            void deleteBankItems(checked).then(() => { setChecked([]); return reload(); }).catch((error) => handleError(error, 'Smazání selhalo.'));
+          }}><Trash2 className="h-3 w-3" aria-label="Smazat vybrané" /></button>
+          {props.onChoose && <button type="button" disabled={!checked.length} className="ml-auto text-[var(--accent)]" onClick={() => props.onChoose?.(index.items.filter((item) => checked.includes(item.id) && item.kind === 'image'))}>Použít vybrané ({checked.length})</button>}
+        </div>
+
         {draft ? (
           <div className="space-y-2 border-b border-[var(--border-color)] px-5 py-3">
             <div className="flex items-center gap-2">
@@ -720,9 +752,15 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
 
         <div className={`flex-1 overflow-y-auto p-5 custom-scrollbar ${dragActive ? 'bg-[var(--accent)]/5 outline outline-1 outline-dashed outline-[var(--accent)]' : ''}`}>
           {shown.length > 0 ? (
-            <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>
+            <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(150px, 100%), 1fr))' }}>
               {shown.map((item) => (
-                <ItemCard key={item.id} item={item} selected={item.id === selectedId} version={urlVersion} onSelect={() => setSelectedId(item.id)} onImageError={handleImageError} />
+                <div key={item.id} className="relative min-w-0">
+                  <ItemCard item={item} selected={checked.includes(item.id) || item.id === selectedId} version={urlVersion} onSelect={() => {
+                    if (!props.onChoose) setSelectedId(item.id);
+                    else if (item.kind === 'image') setChecked((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : props.multiple ? [...current, item.id] : [item.id]);
+                  }} onImageError={handleImageError} />
+                  {(!props.onChoose || item.kind === 'image') && <input type="checkbox" aria-label={`Vybrat ${item.title}`} checked={checked.includes(item.id)} onChange={(e) => setChecked((current) => e.target.checked ? props.onChoose && !props.multiple ? [item.id] : [...current, item.id] : current.filter((id) => id !== item.id))} className="absolute left-2 top-2 h-4 w-4 accent-[var(--accent)]" />}
+                </div>
               ))}
             </div>
           ) : (

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="cs">
+<meta charset="utf-8">
+<title>Test ukládání médií do R2</title>
+<body>
+<h1>Test ukládání médií do R2</h1>
+<p>Lokální integrační test bez volání AI. Používá přihlášení do knihovny ze stejného prohlížeče.</p>
+<button id="save">Uložit dva testovací výsledky do jednoho setu</button>
+<button id="clean">Smazat pouze výsledky tohoto testu</button>
+<output id="status"></output>
+<script type="module">
+import { saveToGallery, getAllImages, deleteImage } from '/utils/galleryDB.ts';
+import { syncLibraryToR2 } from '/services/mediaSync.ts';
+const output = document.querySelector('#status');
+document.querySelector('#save').onclick = async () => {
+  try {
+    output.textContent = 'Ukládám…';
+    const runId = `r2-browser-test-${crypto.randomUUID()}`;
+    const ids = JSON.parse(sessionStorage.getItem('r2-browser-test-ids') || '[]');
+    for (let i = 0; i < 2; i++) {
+      const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 192;
+      const ctx = canvas.getContext('2d'); ctx.fillStyle = i ? '#256384' : '#46842c'; ctx.fillRect(0, 0, 256, 192);
+      ctx.fillStyle = '#ffffff'; ctx.font = '24px sans-serif'; ctx.fillText(`R2 test ${i + 1}`, 55, 100);
+      const id = `${runId}-${i}`; ids.push(id); sessionStorage.setItem('r2-browser-test-ids', JSON.stringify(ids));
+      await saveToGallery({ id, url: canvas.toDataURL('image/png'), thumbnail: canvas.toDataURL('image/jpeg'), prompt: 'Integrační test R2, nikoli AI výstup', params: { section: 'Test R2', runId } });
+    }
+    await syncLibraryToR2();
+    const images = await getAllImages();
+    if (!ids.every((id) => images.some((image) => image.id === id && image.remoteStoragePath?.startsWith('r2:')))) throw new Error('Chybí potvrzený R2 zápis.');
+    output.textContent = 'OK: dva výsledky uložené do R2, společný runId zachovaný.';
+  } catch (error) { output.textContent = `CHYBA: ${error.message}`; }
+};
+document.querySelector('#clean').onclick = async () => {
+  try {
+    for (const id of JSON.parse(sessionStorage.getItem('r2-browser-test-ids') || '[]')) await deleteImage(id);
+    sessionStorage.removeItem('r2-browser-test-ids');
+    output.textContent = 'OK: výsledky tohoto testu odstraněné z R2 i lokálního úložiště.';
+  } catch (error) { output.textContent = `CHYBA: ${error.message}`; }
+};
+</script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 import { AIProviderType, ProviderSettings } from '../services/aiProvider';
-import { dataUrlToBlob, deleteImage as deleteStorageImage, deleteSavedImageMetadataByStoragePath, saveSavedImageMetadata, uploadImage } from './supabaseStorage';
+import { archiveSourceFile, mediaChanged } from '../services/mediaSync';
+import { deleteBankItems, hasBankToken, loadBankIndex } from '../services/bankService';
 import {
   clearSavedLibraryImages,
   getSavedLibraryImageRecord,
@@ -7,11 +8,9 @@ import {
   getSavedLibraryImageStats,
   listSavedLibraryImages,
   removeSavedLibraryImage,
-  saveSavedLibraryImage,
   type SingleUserSavedImage,
 } from './singleUserMediaStore';
 import { readJsonStorage, writeJsonStorage } from './singleUserStore';
-import { dispatchCloudSyncEvent } from './cloudSyncEvents';
 
 export interface StoredImage extends SingleUserSavedImage {}
 
@@ -38,79 +37,29 @@ export class ImageDatabase {
     return all.filter((img) => img.category === category);
   }
 
-  static async add(file: File, dataUrl: string, category: 'reference' | 'style' | 'asset'): Promise<StoredImage> {
-    const blob = await dataUrlToBlob(dataUrl);
-
-    const localRecord = await saveSavedLibraryImage({
-      fileName: file.name,
-      fileType: file.type || blob.type || 'image/jpeg',
-      fileSize: file.size || blob.size || 0,
-      timestamp: Date.now(),
-      category,
-      blob,
-    });
-
-    void (async () => {
-      try {
-        const storagePath = await uploadImage(blob, 'saved');
-        await saveSavedImageMetadata({
-          fileName: localRecord.fileName,
-          storagePath,
-          category: localRecord.category,
-          fileSize: localRecord.fileSize,
-        });
-        await saveSavedLibraryImage({
-          id: localRecord.id,
-          fileName: localRecord.fileName,
-          fileType: localRecord.fileType,
-          fileSize: localRecord.fileSize,
-          timestamp: localRecord.timestamp,
-          category: localRecord.category,
-          blob,
-          remoteStoragePath: storagePath,
-        });
-      } catch (error) {
-        console.warn('[ImageDatabase] Cloud mirror for saved image failed:', error);
-        dispatchCloudSyncEvent({
-          status: 'failed',
-          resource: 'saved-image',
-          message: 'Cloud sync se nepodařil. Obrázek zůstal uložený lokálně.',
-        });
-      }
-    })();
-
-    return localRecord;
+  static async add(file: File, _dataUrl: string, category: 'reference' | 'style' | 'asset'): Promise<StoredImage> {
+    return archiveSourceFile(file, category);
   }
 
   static async remove(id: string): Promise<void> {
     const existing = await getSavedLibraryImageRecord(id);
+    if (hasBankToken()) {
+      const index = await loadBankIndex();
+      const items = index.items.filter((item) => (Boolean(existing?.contentHash) && item.contentHash === existing?.contentHash) || `r2:${item.itemKey}` === existing?.remoteStoragePath);
+      await deleteBankItems(items.map((item) => item.id));
+    } else if (existing?.remoteStoragePath?.startsWith('r2:')) {
+      throw new Error('Pro smazání z R2 odemkni knihovnu.');
+    }
     await removeSavedLibraryImage(id);
     cachedImages = cachedImages.filter((image) => image.id !== id);
-
-    if (existing?.remoteStoragePath) {
-      void deleteStorageImage(existing.remoteStoragePath).catch((error) => {
-        console.warn('[ImageDatabase] Failed to delete cloud saved image:', error);
-      });
-      void deleteSavedImageMetadataByStoragePath(existing.remoteStoragePath).catch((error) => {
-        console.warn('[ImageDatabase] Failed to delete saved image metadata:', error);
-      });
-    }
+    mediaChanged();
   }
 
   static async clear(): Promise<void> {
     const all = await this.getAll();
+    for (const image of all) await this.remove(image.id);
     await clearSavedLibraryImages();
     cachedImages = [];
-
-    for (const image of all) {
-      if (!image.remoteStoragePath) continue;
-      void deleteStorageImage(image.remoteStoragePath).catch((error) => {
-        console.warn('[ImageDatabase] Failed to delete cloud saved image during clear:', error);
-      });
-      void deleteSavedImageMetadataByStoragePath(image.remoteStoragePath).catch((error) => {
-        console.warn('[ImageDatabase] Failed to delete saved image metadata during clear:', error);
-      });
-    }
   }
 
   static async clearByCategory(category: 'reference' | 'style' | 'asset'): Promise<void> {

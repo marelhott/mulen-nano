@@ -26,6 +26,10 @@ export type BankItem = {
   createdAt: number;
   /** Odkud položka přišla (např. soubor z počítače, název sekce). */
   source?: string;
+  contentHash?: string;
+  fileName?: string;
+  galleryId?: string;
+  generation?: { prompt: string; resolution?: string; aspectRatio?: string; params?: Record<string, unknown> };
 };
 
 export type BankIndex = { version: 1; rev: number; folders: BankFolder[]; items: BankItem[] };
@@ -107,6 +111,13 @@ export function moveFolder(index: BankIndex, id: string, parentId: string | null
 export function addItem(index: BankIndex, item: BankItem): BankIndex {
   const folderId = index.folders.some((f) => f.id === item.folderId) ? item.folderId : BANK_INBOX_ID;
   return { ...index, items: [{ ...item, folderId, tags: Array.from(new Set(item.tags.map(normalizeTag).filter(Boolean))) }, ...index.items] };
+}
+
+/** Opakovaný upload nesmí vytvořit další kopii, ani když se dva klienti potkají při zápisu. */
+export function findDuplicate(index: BankIndex, item: Pick<BankItem, 'contentHash' | 'galleryId'>): BankItem | undefined {
+  return index.items.find((existing) => item.galleryId
+    ? existing.galleryId === item.galleryId && existing.contentHash === item.contentHash
+    : !!item.contentHash && existing.contentHash === item.contentHash);
 }
 
 export function updateItem(index: BankIndex, id: string, patch: Partial<Pick<BankItem, 'title' | 'text' | 'url' | 'folderId' | 'tags'>>): BankIndex {

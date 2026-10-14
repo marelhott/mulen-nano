@@ -1,7 +1,16 @@
 // Klient Databanky (Cloudflare R2). Metadata žijí v jednom indexu, obrázky se nahrávají přímo do R2
 // přes předpodepsané odkazy; server je jen podepisuje a hlídá přístup.
 
-import { addItem, normalizeBankIndex, removeItems, type BankIndex, type BankItem } from '../utils/bankIndex';
+import { addItem, findDuplicate, normalizeBankIndex, removeItems, type BankIndex, type BankItem } from '../utils/bankIndex';
+import { listSavedLibraryImages, removeGeneratedLibraryImage, removeSavedLibraryImage } from '../utils/singleUserMediaStore';
+
+export type BankSpace = 'library' | 'feed';
+export const BANK_CHANGED_EVENT = 'mulen:bank-changed';
+export const BANK_AUTH_EVENT = 'mulen:bank-auth';
+
+function notify(name: string): void {
+  window.dispatchEvent(new Event(name));
+}
 
 const TOKEN_KEY = 'bank.token';
 const URL_TTL_MS = 50 * 60 * 1000;
@@ -45,6 +54,7 @@ export function bankLogout(): void {
     // úložiště může být zakázané
   }
   urlCache.clear();
+  notify(BANK_AUTH_EVENT);
 }
 
 async function call<T>(payload: Record<string, unknown>, opts: { auth?: boolean } = {}): Promise<T> {
@@ -85,10 +95,11 @@ export async function bankLogin(passphrase: string): Promise<void> {
   } catch {
     throw new Error('Prohlížeč nedovolil uložit přihlášení.');
   }
+  notify(BANK_AUTH_EVENT);
 }
 
-export async function loadBankIndex(): Promise<BankIndex> {
-  const { index } = await call<{ index: BankIndex }>({ op: 'index-get' });
+export async function loadBankIndex(space: BankSpace = 'library'): Promise<BankIndex> {
+  const { index } = await call<{ index: BankIndex }>({ op: 'index-get', space });
   return normalizeBankIndex(index);
 }
 
@@ -96,13 +107,14 @@ export async function loadBankIndex(): Promise<BankIndex> {
 let writeChain: Promise<unknown> = Promise.resolve();
 
 /** Načte čerstvý index, aplikuje změnu a uloží; při souběhu s jiným klientem změnu zopakuje nad novějším stavem. */
-export function mutateBank(mutator: (index: BankIndex) => BankIndex): Promise<BankIndex> {
+export function mutateBank(mutator: (index: BankIndex) => BankIndex, space: BankSpace = 'library'): Promise<BankIndex> {
   const run = async (): Promise<BankIndex> => {
-    let current = await loadBankIndex();
+    let current = await loadBankIndex(space);
     for (let attempt = 0; attempt <= MAX_CONFLICT_RETRIES; attempt += 1) {
       const next = normalizeBankIndex({ ...mutator(current), rev: current.rev + 1 });
       try {
-        await call({ op: 'index-put', index: next });
+        await call({ op: 'index-put', index: next, space });
+        notify(BANK_CHANGED_EVENT);
         return next;
       } catch (error: any) {
         if (error?.status !== 409 || !error.data?.index || attempt === MAX_CONFLICT_RETRIES) throw error;
@@ -178,11 +190,26 @@ async function putObject(url: string, body: Blob, contentType: string): Promise<
 export async function deleteBankObjects(keys: string[]): Promise<void> {
   const valid = keys.filter(Boolean);
   for (let i = 0; i < valid.length; i += URL_BATCH) {
-    await call({ op: 'delete-objects', keys: valid.slice(i, i + URL_BATCH) });
+    const result = await call<{ failed: number }>({ op: 'delete-objects', keys: valid.slice(i, i + URL_BATCH) });
+    if (result.failed) throw new Error('Část souborů se nepodařilo odstranit z R2.');
   }
 }
 
-export async function uploadBankImage(file: File, opts: { folderId: string; tags?: string[]; source?: string }): Promise<BankItem> {
+export async function hashBankFile(file: Blob): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+export async function uploadBankImage(file: File, opts: {
+  folderId: string; tags?: string[]; source?: string; space?: BankSpace;
+  galleryId?: string; generation?: BankItem['generation']; createdAt?: number;
+}): Promise<BankItem & { reused?: boolean }> {
+  if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) throw new Error('Podporované obrázky: JPEG, PNG, WebP a GIF.');
+  if (!file.size || file.size > 40 * 1024 * 1024) throw new Error('Obrázek musí být menší než 40 MB.');
+  const contentHash = await hashBankFile(file);
+  const current = await loadBankIndex(opts.space);
+  const duplicate = findDuplicate(current, { contentHash, galleryId: opts.galleryId });
+  if (duplicate) return { ...duplicate, reused: true };
   const { blob: thumb, width, height } = await makeThumbnail(file);
   const slot = await call<{ id: string; itemKey: string; thumbKey: string; itemUrl: string; thumbUrl: string }>({
     op: 'upload-url',
@@ -210,13 +237,37 @@ export async function uploadBankImage(file: File, opts: { folderId: string; tags
     tags: opts.tags ?? [],
     createdAt: Date.now(),
     source: opts.source ?? 'počítač',
+    contentHash,
+    fileName: file.name,
+    galleryId: opts.galleryId,
+    generation: opts.generation,
   };
+  item.createdAt = opts.createdAt ?? item.createdAt;
+  let retained = item;
+  let replaced: BankItem[] = [];
   try {
-    await mutateBank((index) => addItem(index, item));
+    await mutateBank((index) => {
+      const existing = findDuplicate(index, item);
+      if (existing) {
+        retained = existing;
+        return index;
+      }
+      retained = item;
+      // Nová editace stejného výsledku nahradí jeho předchozí verzi ve feedu.
+      replaced = item.galleryId ? index.items.filter((entry) => entry.galleryId === item.galleryId) : [];
+      const base = item.galleryId ? { ...index, items: index.items.filter((entry) => entry.galleryId !== item.galleryId) } : index;
+      return addItem(base, item);
+    }, opts.space);
   } catch (error) {
     void deleteBankObjects([slot.itemKey, slot.thumbKey]).catch(() => undefined);
     throw error;
   }
+  if (retained.id !== item.id) {
+    await deleteBankObjects([slot.itemKey, slot.thumbKey]).catch(() => undefined);
+    return { ...retained, reused: true };
+  }
+  const oldKeys = replaced.flatMap((entry) => [entry.itemKey, entry.thumbKey].filter((key): key is string => Boolean(key)));
+  if (oldKeys.length) await deleteBankObjects(oldKeys).catch(() => undefined);
   return item;
 }
 
@@ -225,13 +276,22 @@ export async function addBankEntry(item: BankItem): Promise<void> {
 }
 
 /** Smaže položky z indexu a až potom jejich soubory z R2 (neúspěšné mazání souborů index nerozbije). */
-export async function deleteBankItems(ids: string[]): Promise<void> {
+export async function deleteBankItems(ids: string[], space: BankSpace = 'library'): Promise<void> {
+  if (!ids.length) return;
   let removed: BankItem[] = [];
   await mutateBank((index) => {
     const result = removeItems(index, ids);
     removed = result.removed;
     return result.index;
-  });
+  }, space);
+  if (space === 'feed') {
+    for (const item of removed) if (item.galleryId) await removeGeneratedLibraryImage(item.galleryId);
+  } else {
+    const saved = await listSavedLibraryImages();
+    for (const image of saved) {
+      if (removed.some((item) => (Boolean(item.contentHash) && item.contentHash === image.contentHash) || (Boolean(item.itemKey) && `r2:${item.itemKey}` === image.remoteStoragePath))) await removeSavedLibraryImage(image.id);
+    }
+  }
   const keys = removed.flatMap((item) => [item.itemKey, item.thumbKey].filter((key): key is string => !!key));
-  if (keys.length > 0) await deleteBankObjects(keys).catch(() => undefined);
+  if (keys.length > 0) await deleteBankObjects(keys);
 }

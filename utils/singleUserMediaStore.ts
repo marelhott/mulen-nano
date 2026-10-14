@@ -8,11 +8,13 @@ export type SingleUserSavedImage = {
   fileSize: number;
   timestamp: number;
   category: 'reference' | 'style' | 'asset';
+  contentHash?: string;
   remoteStoragePath?: string;
 };
 
 export type SingleUserGeneratedImage = {
   id: string;
+  revision?: string;
   url: string;
   prompt: string;
   timestamp: number;
@@ -197,18 +199,6 @@ async function primeFromAutoBackupIfNeeded(): Promise<void> {
   localStorage.setItem(BACKUP_IMPORT_FLAG, '1');
 }
 
-async function getLocalLibraryCounts(): Promise<{ saved: number; generated: number }> {
-  const [saved, generated] = await Promise.all([
-    getAllRecords<SavedRecord>(SAVED_STORE),
-    getAllRecords<GeneratedRecord>(GENERATED_STORE),
-  ]);
-
-  return {
-    saved: saved.length,
-    generated: generated.length,
-  };
-}
-
 async function primeFromRemoteLibraryIfAllowed(options?: { force?: boolean }): Promise<boolean> {
   if (typeof window === 'undefined') return false;
   const force = Boolean(options?.force);
@@ -238,7 +228,7 @@ async function primeFromRemoteLibraryIfAllowed(options?: { force?: boolean }): P
       );
 
       const payload = await response.json() as RemoteLibraryPayload;
-      if (!response.ok || payload?.success === false) return false;
+      if (!response.ok || payload?.success === false) throw new Error('Starou knihovnu se nepodařilo načíst.');
 
       const existingSaved = new Set((await getAllRecords<SavedRecord>(SAVED_STORE)).map((item) => item.id));
       const existingGenerated = new Set((await getAllRecords<GeneratedRecord>(GENERATED_STORE)).map((item) => item.id));
@@ -277,8 +267,8 @@ async function primeFromRemoteLibraryIfAllowed(options?: { force?: boolean }): P
 
       return importedAny;
     } catch (error) {
-      console.warn('[single-user-library] Remote import skipped:', error);
-      return false;
+      console.warn('[single-user-library] Remote import failed:', error);
+      throw error;
     } finally {
       remotePrimePromise = null;
     }
@@ -291,27 +281,16 @@ async function ensurePrimed(): Promise<void> {
   if (primedOnce) return;
   primedOnce = true;
   await primeFromAutoBackupIfNeeded();
-  const counts = await getLocalLibraryCounts();
+}
 
-  if (counts.saved === 0 && counts.generated === 0) {
-    await primeFromRemoteLibraryIfAllowed({ force: true });
-    return;
-  }
-
-  void primeFromRemoteLibraryIfAllowed();
+// Starý cloud se importuje jen výslovně, jinak by vracel už smazané položky do nové knihovny.
+export async function importLegacyCloudLibrary(): Promise<boolean> {
+  return primeFromRemoteLibraryIfAllowed({ force: true });
 }
 
 export async function listSavedLibraryImages(): Promise<SingleUserSavedImage[]> {
   await ensurePrimed();
-  let records = await getAllRecords<SavedRecord>(SAVED_STORE);
-
-  if (records.length === 0) {
-    const counts = await getLocalLibraryCounts();
-    if (counts.saved === 0 && counts.generated === 0) {
-      await primeFromRemoteLibraryIfAllowed({ force: true });
-      records = await getAllRecords<SavedRecord>(SAVED_STORE);
-    }
-  }
+  const records = await getAllRecords<SavedRecord>(SAVED_STORE);
 
   return records
     .map((record) => ({
@@ -322,6 +301,7 @@ export async function listSavedLibraryImages(): Promise<SingleUserSavedImage[]> 
       fileSize: record.fileSize,
       timestamp: record.timestamp,
       category: record.category,
+      contentHash: record.contentHash,
       remoteStoragePath: record.remoteStoragePath,
     }))
     .sort((a, b) => b.timestamp - a.timestamp);
@@ -329,20 +309,13 @@ export async function listSavedLibraryImages(): Promise<SingleUserSavedImage[]> 
 
 export async function listGeneratedLibraryImages(): Promise<SingleUserGeneratedImage[]> {
   await ensurePrimed();
-  let records = await getAllRecords<GeneratedRecord>(GENERATED_STORE);
-
-  if (records.length === 0) {
-    const counts = await getLocalLibraryCounts();
-    if (counts.saved === 0 && counts.generated === 0) {
-      await primeFromRemoteLibraryIfAllowed({ force: true });
-      records = await getAllRecords<GeneratedRecord>(GENERATED_STORE);
-    }
-  }
+  const records = await getAllRecords<GeneratedRecord>(GENERATED_STORE);
 
   return records
     .map((record) => ({
       id: record.id,
       url: getCachedObjectUrl(`${GENERATED_STORE}:${record.id}`, record.blob, record.sourceUrl),
+      revision: record.revision,
       prompt: record.prompt,
       timestamp: record.timestamp,
       resolution: record.resolution,
@@ -364,6 +337,7 @@ export async function saveSavedLibraryImage(input: {
   fileSize: number;
   timestamp?: number;
   category: 'reference' | 'style' | 'asset';
+  contentHash?: string;
   blob?: Blob;
   sourceUrl?: string;
   remoteStoragePath?: string;
@@ -377,6 +351,7 @@ export async function saveSavedLibraryImage(input: {
     fileSize: input.fileSize,
     timestamp: input.timestamp || Date.now(),
     category: input.category,
+    contentHash: input.contentHash,
     blob: input.blob,
     sourceUrl: input.sourceUrl,
     remoteStoragePath: input.remoteStoragePath,
@@ -395,6 +370,7 @@ export async function saveSavedLibraryImage(input: {
     fileSize: record.fileSize,
     timestamp: record.timestamp,
     category: record.category,
+    contentHash: record.contentHash,
     remoteStoragePath: record.remoteStoragePath,
   };
 }
@@ -419,6 +395,7 @@ export async function saveGeneratedLibraryImage(input: {
 
   await putRecord<GeneratedRecord>(GENERATED_STORE, {
     id,
+    revision: crypto.randomUUID(),
     prompt: input.prompt,
     timestamp: input.timestamp || Date.now(),
     resolution: input.resolution,
@@ -439,8 +416,13 @@ export async function saveGeneratedLibraryImage(input: {
     throw new Error('Generated image was not persisted locally');
   }
 
+  // Původní URL může stále používat Undo; nová verze ale musí dostat vlastní URL.
+  objectUrlCache.delete(`${GENERATED_STORE}:${record.id}`);
+  objectUrlCache.delete(`${GENERATED_STORE}:${record.id}:thumb`);
+
   return {
     id: record.id,
+    revision: record.revision,
     url: getCachedObjectUrl(`${GENERATED_STORE}:${record.id}`, record.blob, record.sourceUrl),
     prompt: record.prompt,
     timestamp: record.timestamp,
@@ -458,6 +440,23 @@ export async function saveGeneratedLibraryImage(input: {
 export async function getSavedLibraryImageRecord(id: string): Promise<SavedRecord | undefined> {
   await ensurePrimed();
   return getRecord<SavedRecord>(SAVED_STORE, id);
+}
+
+/** Dokončený upload smí označit jen verzi, ze které vznikl, nikoli mezitím upravený obrázek. */
+export async function markGeneratedImageSynced(image: SingleUserGeneratedImage, itemKey: string, thumbKey: string): Promise<void> {
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(GENERATED_STORE, 'readwrite');
+    const store = tx.objectStore(GENERATED_STORE);
+    const request = store.get(image.id);
+    request.onsuccess = () => {
+      const current = request.result as GeneratedRecord | undefined;
+      if (current && current.revision === image.revision) store.put({ ...current, remoteStoragePath: `r2:${itemKey}`, remoteThumbnailPath: `r2:${thumbKey}` });
+    };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
 }
 
 export async function getGeneratedLibraryImageRecord(id: string): Promise<GeneratedRecord | undefined> {

@@ -93,7 +93,7 @@ function hmacBuf(key, message) {
  * Předpodepsaný odkaz na objekt v R2. Pokud je zadaný `contentType`, je součástí podpisu,
  * takže nahrání jiného typu, než server povolil, R2 odmítne.
  */
-function presignObject({ method, accountId, bucket, key, accessKeyId, secretAccessKey, expires = 3600, contentType, now = new Date() }) {
+function presignObject({ method, accountId, bucket, key, accessKeyId, secretAccessKey, expires = 3600, contentType, query: extraQuery = {}, now = new Date() }) {
   const host = `${accountId}.r2.cloudflarestorage.com`;
   const region = 'auto';
   const amzDate = toAmzDate(now);
@@ -106,6 +106,7 @@ function presignObject({ method, accountId, bucket, key, accessKeyId, secretAcce
   const canonicalHeaders = names.map((name) => `${name}:${headers[name]}\n`).join('');
 
   const query = {
+    ...extraQuery,
     'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
     'X-Amz-Credential': `${accessKeyId}/${scope}`,
     'X-Amz-Date': amzDate,
@@ -126,6 +127,42 @@ function presignObject({ method, accountId, bucket, key, accessKeyId, secretAcce
   const signature = crypto.createHmac('sha256', kSigning).update(stringToSign, 'utf8').digest('hex');
 
   return `https://${host}${canonicalUri}?${canonicalQuery}&X-Amz-Signature=${signature}`;
+}
+
+/**
+ * Podpis v hlavičce (SigV4 `Authorization`). R2 ho vyžaduje u operací na úrovni bucketu
+ * (výpis, CORS, vytvoření), kde předpodepsaný odkaz nefunguje.
+ */
+function signedRequest({ method, accountId, accessKeyId, secretAccessKey, path, query = {}, body = '', contentType, extraHeaders = {}, now = new Date() }) {
+  const host = `${accountId}.r2.cloudflarestorage.com`;
+  const region = 'auto';
+  const amzDate = toAmzDate(now);
+  const dateStamp = amzDate.slice(0, 8);
+  const scope = `${dateStamp}/${region}/s3/aws4_request`;
+  const payloadHash = sha256Hex(body);
+
+  const headers = { host, 'x-amz-content-sha256': payloadHash, 'x-amz-date': amzDate, ...extraHeaders };
+  if (contentType) headers['content-type'] = contentType;
+  const names = Object.keys(headers).map((n) => n.toLowerCase()).sort();
+  const lower = Object.fromEntries(Object.entries(headers).map(([n, v]) => [n.toLowerCase(), String(v).trim()]));
+  const canonicalHeaders = names.map((n) => `${n}:${lower[n]}\n`).join('');
+  const signedHeaders = names.join(';');
+  const canonicalQuery = Object.keys(query)
+    .sort()
+    .map((n) => `${encodeRfc3986(n)}=${encodeRfc3986(String(query[n]))}`)
+    .join('&');
+  const canonicalUri = path.split('/').map((seg, i) => (i === 0 ? seg : encodeRfc3986(seg))).join('/');
+  const canonicalRequest = [method, canonicalUri, canonicalQuery, canonicalHeaders, signedHeaders, payloadHash].join('\n');
+  const stringToSign = ['AWS4-HMAC-SHA256', amzDate, scope, sha256Hex(canonicalRequest)].join('\n');
+  const kDate = hmacBuf(`AWS4${secretAccessKey}`, dateStamp);
+  const kSigning = hmacBuf(hmacBuf(hmacBuf(kDate, region), 's3'), 'aws4_request');
+  const signature = crypto.createHmac('sha256', kSigning).update(stringToSign, 'utf8').digest('hex');
+
+  const outHeaders = {};
+  for (const [name, value] of Object.entries(headers)) if (name.toLowerCase() !== 'host') outHeaders[name] = value;
+  outHeaders.Authorization = `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+  const url = `https://${host}${canonicalUri}${canonicalQuery ? `?${canonicalQuery}` : ''}`;
+  return { url, headers: outHeaders };
 }
 
 const MAX_INDEX_BYTES = 4 * 1024 * 1024;
@@ -158,5 +195,6 @@ module.exports = {
   isBankKey,
   newObjectKeys,
   presignObject,
+  signedRequest,
   validateIndex,
 };

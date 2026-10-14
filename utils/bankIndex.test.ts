@@ -6,6 +6,7 @@ import {
   deleteFolder,
   emptyBankIndex,
   filterItems,
+  findDuplicate,
   folderPath,
   moveFolder,
   moveItems,
@@ -27,6 +28,19 @@ const item = (id: string, patch: Partial<BankItem> = {}): BankItem => ({
 });
 
 describe('bankIndex', () => {
+  it('duplicitní zdroj pozná podle obsahu i pod jiným názvem', () => {
+    const original = item('original', { kind: 'image', title: 'jiný název', contentHash: 'hash-a' });
+    const index = addItem(emptyBankIndex(), original);
+    expect(findDuplicate(index, { contentHash: 'hash-a' })?.id).toBe('original');
+    expect(findDuplicate(index, { contentHash: 'hash-b' })).toBeUndefined();
+    expect(findDuplicate(index, {})).toBeUndefined();
+  });
+  it('retry výsledku nezduplikuje feed, ale nová editace ani jiný výsledek se neztratí', () => {
+    const index = addItem(emptyBankIndex(), item('original', { galleryId: 'result-a', contentHash: 'hash-a' }));
+    expect(findDuplicate(index, { galleryId: 'result-a', contentHash: 'hash-a' })?.id).toBe('original');
+    expect(findDuplicate(index, { galleryId: 'result-a', contentHash: 'new-edit' })).toBeUndefined();
+    expect(findDuplicate(index, { galleryId: 'result-b', contentHash: 'hash-a' })).toBeUndefined();
+  });
   it('prázdný index má složku Doručené', () => {
     expect(emptyBankIndex().folders.map((f) => f.id)).toEqual([BANK_INBOX_ID]);
   });
