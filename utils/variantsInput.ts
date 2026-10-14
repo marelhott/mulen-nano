@@ -15,10 +15,11 @@ async function loadImageElement(dataUrl: string): Promise<HTMLImageElement> {
 export async function optimizeVariantsInput(
   dataUrl: string,
   mimeType: string,
+  budget: { targetBytes?: number; maxDimension?: number } = {},
 ): Promise<{ data: string; mimeType: string }> {
   const originalBytes = Math.ceil((dataUrl.length * 3) / 4);
-  const targetBytes = 1_100_000;
-  const maxDimension = 1400;
+  const targetBytes = budget.targetBytes ?? 1_100_000;
+  const maxDimension = budget.maxDimension ?? 1400;
 
   if (originalBytes <= targetBytes && !mimeType.includes('png')) {
     return { data: dataUrl, mimeType };

@@ -92,6 +92,10 @@ const LazyBatchScreen = lazy(async () => {
   return { default: module.BatchScreen };
 });
 
+const LazyCollageScreen = lazy(async () => {
+  const module = await import('./components/CollageScreen');
+  return { default: module.CollageScreen };
+});
 const LazyVariantsScreen = lazy(async () => {
   const module = await import('./components/VariantsScreen');
   return { default: module.VariantsScreen };
@@ -715,6 +719,7 @@ const App: React.FC = () => {
   const isReframeRoute = routePath === '/reframe' || routePath.startsWith('/reframe/');
   const isBatchRoute = routePath === '/batch' || routePath.startsWith('/batch/');
   const isVariantsRoute = routePath === '/varianty' || routePath.startsWith('/varianty/');
+  const isCollageRoute = routePath === '/kolaz' || routePath.startsWith('/kolaz/');
   // Nové state pro featury
   const [isCollectionsModalOpen, setIsCollectionsModalOpen] = useState(false);
   const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
@@ -3857,6 +3862,8 @@ Edit the provided image according to the instruction above. Preserve the origina
               ? 'batch'
             : isVariantsRoute
               ? 'varianty'
+            : isCollageRoute
+              ? 'kolaz'
             : isStyleTransferRoute
               ? 'style-transfer'
               : isModelInfluenceRoute
@@ -3894,6 +3901,10 @@ Edit the provided image according to the instruction above. Preserve the origina
           }
           if (route === 'varianty') {
             navigate('/varianty');
+            return;
+          }
+          if (route === 'kolaz') {
+            navigate('/kolaz');
             return;
           }
           if (route === 'ai-upscaler') {
@@ -3972,6 +3983,16 @@ Edit the provided image according to the instruction above. Preserve the origina
           ) : isVariantsRoute ? (
             <Suspense fallback={routeScreenFallback}>
               <LazyVariantsScreen
+                providerSettings={providerSettings}
+                onOpenSettings={() => setIsSettingsModalOpen(true)}
+                onOpenLibrary={() => setIsGalleryExpanded(true)}
+                onToast={(t) => setToastWithLog(t)}
+                theme={theme}
+              />
+            </Suspense>
+          ) : isCollageRoute ? (
+            <Suspense fallback={routeScreenFallback}>
+              <LazyCollageScreen
                 providerSettings={providerSettings}
                 onOpenSettings={() => setIsSettingsModalOpen(true)}
                 onOpenLibrary={() => setIsGalleryExpanded(true)}

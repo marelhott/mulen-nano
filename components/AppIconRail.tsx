@@ -1,7 +1,7 @@
 import React from 'react';
-import { Brush, Camera, Grid3X3, Flame, Images, Layers, Maximize2, Shuffle, User } from 'lucide-react';
+import { Brush, Camera, Combine, Grid3X3, Flame, Images, Layers, Maximize2, Shuffle, User } from 'lucide-react';
 
-type RailRoute = 'mulen' | 'face-swap' | 'model-influence' | 'style-transfer' | 'flux-lora' | 'ai-upscaler' | 'reframe' | 'batch' | 'varianty';
+type RailRoute = 'mulen' | 'face-swap' | 'model-influence' | 'style-transfer' | 'flux-lora' | 'ai-upscaler' | 'reframe' | 'batch' | 'varianty' | 'kolaz';
 
 export function AppIconRail(props: {
   active: RailRoute;
@@ -13,6 +13,7 @@ export function AppIconRail(props: {
     // Icons reduced ~30% (18px -> 13px) and kept monochrome/neutral.
     { id: 'mulen', label: 'Mulen Nano', shortLabel: 'Nano', icon: <Grid3X3 className="w-[13px] h-[13px]" strokeWidth={1.6} /> },
     { id: 'varianty', label: 'Varianty', shortLabel: 'Varianty', icon: <Shuffle className="w-[13px] h-[13px]" strokeWidth={1.6} /> },
+    { id: 'kolaz', label: 'Koláž', shortLabel: 'Koláž', icon: <Combine className="w-[13px] h-[13px]" strokeWidth={1.6} /> },
     { id: 'ai-upscaler', label: 'AI Upscaler', shortLabel: 'Scale', icon: <Maximize2 className="w-[13px] h-[13px]" strokeWidth={1.6} /> },
     { id: 'face-swap', label: 'Face Swap', shortLabel: 'Face', icon: <User className="w-[13px] h-[13px]" strokeWidth={1.6} /> },
     { id: 'reframe', label: 'Reframe', shortLabel: 'Frame', icon: <Camera className="w-[13px] h-[13px]" strokeWidth={1.6} /> },

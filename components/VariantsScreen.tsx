@@ -40,7 +40,7 @@ type SourceImage = { name: string; dataUrl: string; mimeType: string };
 
 type OutputStatus = 'pending' | 'running' | 'retrying' | 'done' | 'error';
 
-type VariantOutput = {
+export type VariantOutput = {
   id: string;
   modelId: VariantModelId;
   variantIndex: number;
@@ -115,7 +115,7 @@ function historyItems(run: VariantsRunRecord, thumbs: Awaited<ReturnType<typeof 
 
 // --- Karta a mřížka (šest náhledů na řádek) ---------------------------------------------------
 
-function VariantCard(props: { output: VariantOutput; onOpen: (output: VariantOutput) => void; onDelete: (output: VariantOutput) => void }) {
+export function VariantCard(props: { output: VariantOutput; onOpen: (output: VariantOutput) => void; onDelete: (output: VariantOutput) => void }) {
   const { output, onOpen, onDelete } = props;
   const model = variantModelById(output.modelId);
   const image = output.thumbUrl || output.dataUrl;
@@ -198,7 +198,7 @@ function VariantCard(props: { output: VariantOutput; onOpen: (output: VariantOut
   );
 }
 
-function ModelGrids(props: { items: VariantOutput[]; onOpen: (output: VariantOutput) => void; onDelete: (output: VariantOutput) => void }) {
+export function ModelGrids(props: { items: VariantOutput[]; onOpen: (output: VariantOutput) => void; onDelete: (output: VariantOutput) => void }) {
   const groups = VARIANT_MODELS.map((model) => ({
     model,
     items: props.items.filter((item) => item.modelId === model.id).sort((a, b) => a.variantIndex - b.variantIndex),
@@ -227,7 +227,7 @@ function ModelGrids(props: { items: VariantOutput[]; onOpen: (output: VariantOut
   );
 }
 
-function RunHeader(props: {
+export function RunHeader(props: {
   createdAt: number;
   sourceThumb?: string;
   sourceName: string;
@@ -712,7 +712,7 @@ export function VariantsScreen(props: {
 
           <div className="space-y-1">
             <h3 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Počet na model</h3>
-            <div className="grid grid-cols-5 gap-y-1 pt-1">
+            <div className="mn-count-selector">
               {Array.from({ length: VARIANTS_MAX_PER_MODEL }, (_, i) => i + 1).map((n) => (
                 <button
                   key={n}
@@ -782,7 +782,7 @@ export function VariantsScreen(props: {
 
           <div className="space-y-2">
             <h3 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Vzdálenost od předlohy</h3>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-4 gap-1.5">
               {VARIANTS_DISTANCES.map((item) => (
                 <button
                   key={item.id}

@@ -2,14 +2,15 @@
 // Čistá logika bez UI (prompt, modely, plán úloh), aby šla testovat samostatně.
 // Prompt je doslova znění ověřené v ChatGPT (angličtina je záměr: modely na ni reagují nejlíp).
 
-export const VARIANTS_MAX_PER_MODEL = 10;
+export const VARIANTS_MAX_PER_MODEL = 5;
 
-export type VariantsDistance = 'near' | 'middle' | 'far';
+export type VariantsDistance = 'near' | 'middle' | 'far' | 'weird';
 
 export const VARIANTS_DISTANCES: Array<{ id: VariantsDistance; label: string; hint: string }> = [
   { id: 'near', label: 'Blíž', hint: 'Skoro stejná póza, jen jiný úhel' },
   { id: 'middle', label: 'Střed', hint: 'Výchozí vzdálenost' },
   { id: 'far', label: 'Dál', hint: 'Silně jiná póza a kompozice' },
+  { id: 'weird', label: 'Divně', hint: 'Podivný, snový, neobvyklý posun – stále stejná ruka' },
 ];
 
 export const VARIANTS_GENERAL_PROMPT = `Create a new image from the same series as the attached image — a sibling, not a copy and not a different picture.
@@ -32,6 +33,8 @@ const DISTANCE_SUFFIX: Record<VariantsDistance, string | null> = {
   near: 'Keep the change subtle: same pose family, slightly different angle.',
   middle: null,
   far: 'Change the pose and composition strongly while keeping everything listed under KEEP.',
+  weird:
+    'Make it genuinely weird: push the scene into the strange and uncanny — dream logic, unexpected scale, odd juxtapositions, distorted space, something quietly wrong or impossible — while the identity of the subject and everything listed under KEEP (medium, palette, light, mood) stays recognisably the same hand.',
 };
 
 /** Prázdný nebo bílý vlastní prompt = výchozí; vzdálenost přidá nanejvýš jednu větu. */
