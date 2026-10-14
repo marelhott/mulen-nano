@@ -80,7 +80,7 @@ function Feed(props: { onToast: (toast: Toast) => void; onChoose?: (files: File[
       </section>)}
       {filtered.length > visible && <button type="button" className="mn-action-secondary" onClick={() => setVisible((count) => count + 80)}>Další výsledky</button>}
     </div>
-    {preview && <div className="absolute inset-0 z-10 flex flex-col bg-[var(--bg-panel)] p-4">
+    {preview && <div className="absolute inset-0 z-10 flex flex-col bg-[var(--bg-elevated)] p-4">
       <div className="flex items-center gap-4 pb-3 text-sm text-[var(--text-primary)]"><span className="min-w-0 flex-1 truncate">{preview.prompt}</span>
         {props.onChoose && <button type="button" onClick={() => void fetch(preview.url).then((response) => { if (!response.ok) throw new Error('Stažení originálu selhalo.'); return response.blob(); }).then((blob) => props.onChoose?.([new File([blob], `${preview.id}.${blob.type.split('/')[1] || 'png'}`, { type: blob.type })])).catch((error: Error) => props.onToast({ message: error.message, type: 'error' }))}>Použít jako vstup</button>}
         <button type="button" title="Zavřít detail" onClick={() => setPreview(null)}><X className="h-4 w-4" /></button>
@@ -162,7 +162,7 @@ export function SharedMediaHub(props: { open: boolean; onClose: () => void; onTo
   };
   if (!open) return null;
   return createPortal(<div data-bank-ui className="fixed inset-0 z-[10000] bg-black/60 p-2 sm:p-6" onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
-    <div ref={dialog} role="dialog" aria-modal="true" aria-label="Sdílená knihovna a výsledky" tabIndex={-1} aria-busy={busy} className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] text-[var(--text-primary)] outline-none">
+    <div ref={dialog} role="dialog" aria-modal="true" aria-label="Sdílená knihovna a výsledky" tabIndex={-1} aria-busy={busy} className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--bg-elevated)] text-[var(--text-primary)] outline-none">
       <header className="flex flex-wrap items-center gap-4 border-b border-[var(--border-color)] p-3 sm:p-4 text-xs">
         <button type="button" aria-pressed={tab === 'library'} className={`flex items-center gap-2 ${tab === 'library' ? 'text-[var(--accent)]' : ''}`} onClick={() => setTab('library')}><Library className="h-4 w-4" />Knihovna zdrojů</button>
         <button type="button" aria-pressed={tab === 'feed'} className={`flex items-center gap-2 ${tab === 'feed' ? 'text-[var(--accent)]' : ''}`} onClick={() => setTab('feed')}><Images className="h-4 w-4" />Všechny výsledky</button>
