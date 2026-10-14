@@ -29,6 +29,11 @@ function readToken(): string {
   }
 }
 
+/** Platný přihlašovací token (sdílí ho Databanka i podepisování R2 odkazů), nebo prázdný řetězec. */
+export function getBankToken(): string {
+  return readToken();
+}
+
 export function hasBankToken(): boolean {
   return readToken().length > 0;
 }

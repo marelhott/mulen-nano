@@ -43,6 +43,11 @@ Dokud něco chybí, obrazovka ukáže, které proměnné chybí.
   nad novým stavem.
 - Odkazy na čtení jsou podepsané na 1 hodinu a obnovují se podle potřeby.
 
+## Sdílené přihlášení
+
+Stejné heslo a token (`BANK_PASSPHRASE`, `BANK_TOKEN_SECRET`) chrání i `/api/r2-presign` pro LoRA a modely;
+volitelně `R2_ALLOWED_KEY_PREFIXES` a `R2_PRESIGN_ALLOW_PUT` viz `docs/API.md`.
+
 ## Limity
 
 Index se posílá celý (max 4 MB, 50 000 položek). Při větší knihovně by metadata patřila do databáze

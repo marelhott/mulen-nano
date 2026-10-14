@@ -1,4 +1,6 @@
 const crypto = require('crypto');
+const bankCore = require('../../utils/bankServerCore.cjs');
+const policyCore = require('../../utils/r2PresignPolicy.cjs');
 
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
@@ -13,16 +15,6 @@ function env(name) {
   const v = String(process.env[name] || '').trim();
   if (!v) throw new Error(`Missing env: ${name}`);
   return v;
-}
-
-function parseAllowedBuckets() {
-  const raw = String(process.env.R2_ALLOWED_BUCKETS || 'loras,models').trim();
-  return new Set(
-    raw
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean)
-  );
 }
 
 function toAmzDate(d) {
@@ -104,6 +96,13 @@ exports.handler = async (event) => {
   try {
     if (event.httpMethod !== 'POST') return json(405, { error: 'Method not allowed' });
 
+    // Stejný přihlašovací token jako Databanka (BANK_PASSPHRASE / BANK_TOKEN_SECRET).
+    const tokenSecret = String(process.env.BANK_TOKEN_SECRET || '').trim();
+    if (!tokenSecret) return json(503, { error: 'Přístup k R2 není nakonfigurovaný (chybí BANK_TOKEN_SECRET).' });
+    if (!bankCore.verifyToken(tokenSecret, bankCore.bearerToken(event.headers))) {
+      return json(401, { error: 'Přihlášení vypršelo nebo chybí.' });
+    }
+
     let body = {};
     try {
       body = JSON.parse(event.body || '{}');
@@ -111,25 +110,13 @@ exports.handler = async (event) => {
       return json(400, { error: 'Invalid JSON body' });
     }
 
-    const op = String(body.op || '').toLowerCase();
-    const key = String(body.key || '').replace(/^\/+/, '').trim();
-    const bucketOverride = String(body.bucket || '').trim();
-    const expires = Math.max(60, Math.min(7 * 24 * 3600, Number(body.expires || 3600)));
-    if (!op || (op !== 'get' && op !== 'put')) return json(400, { error: 'Invalid op (get|put)' });
-    if (!key) return json(400, { error: 'Missing key' });
+    const checked = policyCore.validatePresignRequest(body, policyCore.policyFromEnv());
+    if (checked.error) return json(checked.status, { error: checked.error, ...(checked.extra || {}) });
+    const { op, bucket, key, expires } = checked;
 
     const accountId = env('R2_ACCOUNT_ID');
     const accessKeyId = env('R2_ACCESS_KEY_ID');
     const secretAccessKey = env('R2_SECRET_ACCESS_KEY');
-    const allowedBuckets = parseAllowedBuckets();
-    const defaultBucket = String(process.env.R2_BUCKET || 'loras').trim();
-    const bucket = bucketOverride || defaultBucket;
-    if (!allowedBuckets.has(bucket)) {
-      return json(400, {
-        error: 'Bucket not allowed',
-        allowed: Array.from(allowedBuckets),
-      });
-    }
     const region = 'auto';
     const host = `${accountId}.r2.cloudflarestorage.com`;
 

@@ -480,3 +480,18 @@ ApiUsageTracker.track({
 ## Caching
 
 **Not Implemented** - No response caching, every request hits API fresh
+
+## POST /api/r2-presign
+
+Předpodepsané odkazy na LoRA a modely v R2 (`services/r2Service.ts`).
+
+- **Přihlášení:** hlavička `Authorization: Bearer <token>`, stejný token jako u Databanky
+  (`POST /api/bank` `op: login`, hesla `BANK_PASSPHRASE`, tajemství `BANK_TOKEN_SECRET`). Chybí-li
+  `BANK_TOKEN_SECRET`, endpoint vrací 503; bez platného tokenu 401. Klient se při prvním použití
+  zeptá na heslo a token uloží do `localStorage` společně s Databankou.
+- **Tělo:** `{ op: 'get' | 'put', bucket?, key, expires? }`.
+- **Pravidla** (`utils/r2PresignPolicy.cjs`): jen buckety z `R2_ALLOWED_BUCKETS` (bucket Databanky
+  `BANK_BUCKET` nikdy); klíč bez `..`, prázdných segmentů a zvláštních znaků, max 512 znaků, s příponou
+  modelu/obrázku/metadat; předpona klíče podle `R2_ALLOWED_KEY_PREFIXES` (výchozí `loras:loras/`);
+  platnost GET 60 s až 24 h (výchozí 1 h); `put` je vypnutý, dokud není `R2_PRESIGN_ALLOW_PUT=true`,
+  a pak má platnost max 15 min.

@@ -1,3 +1,5 @@
+import { bankLogin, bankLogout, getBankToken } from './bankService';
+
 type R2PresignResponse = {
   signedUrl: string;
   objectUrl: string;
@@ -6,17 +8,45 @@ type R2PresignResponse = {
   expires: number;
 };
 
+// Sdílené přihlášení s Databankou: /api/r2-presign vyžaduje token. Souběžná volání (více LoRA najednou)
+// čekají na jediný dotaz na heslo.
+let loginInFlight: Promise<void> | null = null;
+
+async function ensureLogin(): Promise<void> {
+  if (getBankToken()) return;
+  if (!loginInFlight) {
+    loginInFlight = (async () => {
+      const passphrase = typeof window !== 'undefined' ? window.prompt('Heslo k úložišti LoRA/modelů (stejné jako do Databanky):') : null;
+      if (!passphrase) throw new Error('R2: chybí přihlášení (zadej heslo).');
+      await bankLogin(passphrase);
+    })().finally(() => {
+      loginInFlight = null;
+    });
+  }
+  await loginInFlight;
+}
+
+async function postPresign(params: object): Promise<Response> {
+  await ensureLogin();
+  return fetch('/api/r2-presign', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getBankToken()}` },
+    body: JSON.stringify(params),
+  });
+}
+
 export async function presignR2(params: {
   op: 'get' | 'put';
   bucket?: string;
   key: string;
   expires?: number;
 }): Promise<R2PresignResponse> {
-  const res = await fetch('/api/r2-presign', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
-  });
+  let res = await postPresign(params);
+  if (res.status === 401) {
+    // Token vypršel nebo se změnilo heslo: přihlásit znovu a zkusit ještě jednou.
+    bankLogout();
+    res = await postPresign(params);
+  }
 
   const text = await res.text();
   if (!res.ok) {
