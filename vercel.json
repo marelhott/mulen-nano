@@ -12,6 +12,9 @@
     "api/r2-presign.js": {
       "maxDuration": 30
     },
+    "api/bank.js": {
+      "maxDuration": 30
+    },
     "api/provider-key-test.js": {
       "maxDuration": 30
     }

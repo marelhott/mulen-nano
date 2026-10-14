@@ -92,6 +92,10 @@ const LazyBatchScreen = lazy(async () => {
   return { default: module.BatchScreen };
 });
 
+const LazyBankScreen = lazy(async () => {
+  const module = await import('./components/BankScreen');
+  return { default: module.BankScreen };
+});
 const LazyCollageScreen = lazy(async () => {
   const module = await import('./components/CollageScreen');
   return { default: module.CollageScreen };
@@ -720,6 +724,7 @@ const App: React.FC = () => {
   const isBatchRoute = routePath === '/batch' || routePath.startsWith('/batch/');
   const isVariantsRoute = routePath === '/varianty' || routePath.startsWith('/varianty/');
   const isCollageRoute = routePath === '/kolaz' || routePath.startsWith('/kolaz/');
+  const isBankRoute = routePath === '/databanka' || routePath.startsWith('/databanka/');
   // Nové state pro featury
   const [isCollectionsModalOpen, setIsCollectionsModalOpen] = useState(false);
   const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
@@ -3864,6 +3869,8 @@ Edit the provided image according to the instruction above. Preserve the origina
               ? 'varianty'
             : isCollageRoute
               ? 'kolaz'
+            : isBankRoute
+              ? 'databanka'
             : isStyleTransferRoute
               ? 'style-transfer'
               : isModelInfluenceRoute
@@ -3905,6 +3912,10 @@ Edit the provided image according to the instruction above. Preserve the origina
           }
           if (route === 'kolaz') {
             navigate('/kolaz');
+            return;
+          }
+          if (route === 'databanka') {
+            navigate('/databanka');
             return;
           }
           if (route === 'ai-upscaler') {
@@ -3989,6 +4000,10 @@ Edit the provided image according to the instruction above. Preserve the origina
                 onToast={(t) => setToastWithLog(t)}
                 theme={theme}
               />
+            </Suspense>
+          ) : isBankRoute ? (
+            <Suspense fallback={routeScreenFallback}>
+              <LazyBankScreen onToast={(t) => setToastWithLog(t)} theme={theme} />
             </Suspense>
           ) : isCollageRoute ? (
             <Suspense fallback={routeScreenFallback}>
