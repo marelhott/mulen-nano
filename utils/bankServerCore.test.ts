@@ -4,6 +4,15 @@ import { describe, expect, it } from 'vitest';
 const core = createRequire(import.meta.url)('./bankServerCore.cjs');
 
 describe('bankServerCore', () => {
+  it('zapamatované přihlášení nevyprší, ale zůstává podepsané a odvolatelné změnou tajemství', () => {
+    const first = core.signToken('tajemstvi', 1000);
+    const second = core.signToken('tajemstvi', 1000);
+    expect(first.expiresAt).toBeNull();
+    expect(first.token).not.toBe(second.token);
+    expect(core.verifyToken('tajemstvi', first.token, 9e15)).toBe(true);
+    expect(core.verifyToken('jine', first.token, 2000)).toBe(false);
+    expect(core.verifyToken('tajemstvi', first.token + 'x', 2000)).toBe(false);
+  });
   it('token projde jen s tajemstvím, před vypršením a bez úprav', () => {
     const { token, expiresAt } = core.signToken('tajemstvi', 1000, 5000);
     expect(expiresAt).toBe(6000);

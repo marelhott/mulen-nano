@@ -110,7 +110,13 @@ export function BankGate(props: { status: BankStatus | null; error: string; onLo
         type="password"
         value={passphrase}
         onChange={(e) => setPassphrase(e.target.value)}
-        placeholder="Heslo k Databance"
+        placeholder="PIN k Databance"
+        aria-label="PIN k Databance"
+        inputMode="numeric"
+        pattern="[0-9]{6}"
+        minLength={6}
+        maxLength={6}
+        autoComplete="current-password"
         autoFocus
         className="w-full border-0 border-b border-[var(--border-color)] bg-transparent p-1.5 text-[11px] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
       />
@@ -309,7 +315,7 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
     (error: unknown, fallback: string) => {
       if (error instanceof BankAuthError) {
         setAuthed(false);
-        setLoginError('Přihlášení vypršelo, zadej heslo znovu.');
+        setLoginError('Přihlášení není platné, zadej PIN znovu.');
         return;
       }
       onToast({ message: toUserFacingAiError(error, fallback), type: 'error' });

@@ -4,8 +4,6 @@
 
 const crypto = require('crypto');
 
-const TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 30;
-
 /** Povolené typy nahrávaných obrázků a přípona, pod kterou se uloží. */
 const IMAGE_TYPES = {
   'image/jpeg': 'jpg',
@@ -25,9 +23,11 @@ function hmacHex(secret, message) {
   return crypto.createHmac('sha256', secret).update(message, 'utf8').digest('hex');
 }
 
-function signToken(secret, now = Date.now(), ttlMs = TOKEN_TTL_MS) {
-  const exp = now + ttlMs;
-  const payload = b64url(JSON.stringify({ exp }));
+function signToken(secret, now = Date.now(), ttlMs = null) {
+  const exp = ttlMs === null ? null : now + ttlMs;
+  const payload = b64url(JSON.stringify(exp === null
+    ? { exp, remember: true, nonce: crypto.randomUUID() }
+    : { exp }));
   return { token: `${payload}.${hmacHex(secret, payload)}`, expiresAt: exp };
 }
 
@@ -43,8 +43,9 @@ function verifyToken(secret, token, now = Date.now()) {
   if (!payload || !signature || extra !== undefined) return false;
   if (!safeEqual(signature, hmacHex(secret, payload))) return false;
   try {
-    const { exp } = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    return Number.isFinite(exp) && exp > now;
+    const { exp, remember, nonce } = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    return (exp === null && remember === true && typeof nonce === 'string' && nonce.length > 0)
+      || (Number.isFinite(exp) && exp > now);
   } catch {
     return false;
   }
@@ -185,7 +186,6 @@ function validateIndex(index) {
 }
 
 module.exports = {
-  TOKEN_TTL_MS,
   IMAGE_TYPES,
   INDEX_KEY,
   signToken,

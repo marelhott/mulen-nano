@@ -16,6 +16,19 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe('R2 knihovna a feed API', () => {
+  it('platný starý token převede na trvalé přihlášení, bez ověření ho nevydá', async () => {
+    token = core.signToken(process.env.BANK_TOKEN_SECRET, Date.now(), 60000).token;
+    const result = await request({ op: 'session' });
+    expect(result.status).toBe(200);
+    expect(result.expiresAt).toBeNull();
+    expect(core.verifyToken(process.env.BANK_TOKEN_SECRET, result.token)).toBe(true);
+    expect((await request({ op: 'session' }, false)).status).toBe(401);
+  });
+  it('přihlášení vrátí zapamatovaný token bez časového vypršení', async () => {
+    const result = await request({ op: 'login', passphrase: process.env.BANK_PASSPHRASE }, false);
+    expect(result.status).toBe(200);
+    expect(result.expiresAt).toBeNull();
+  });
   it('nepovolí čtení bez přihlášení ani libovolný název indexu', async () => {
     const fetch = vi.fn(); vi.stubGlobal('fetch', fetch);
     expect((await request({ op: 'index-get' }, false)).status).toBe(401);

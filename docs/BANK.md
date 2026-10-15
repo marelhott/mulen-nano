@@ -32,7 +32,7 @@ Supabase zůstává pouze pro původní neobrazové funkce (např. PIN a kolekce
 
 4. Nastav proměnné prostředí (lokálně `.env.local`, na Vercelu Environment Variables):
    `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `BANK_BUCKET`,
-   `BANK_PASSPHRASE` (dlouhé heslo), `BANK_TOKEN_SECRET` (náhodný řetězec, např. `openssl rand -hex 32`).
+   `BANK_PASSPHRASE` (šestimístný PIN; původní název proměnné zachován), `BANK_TOKEN_SECRET` (náhodný řetězec, např. `openssl rand -hex 32`).
 
 Dokud něco chybí, obrazovka ukáže, které proměnné chybí.
 
@@ -40,7 +40,12 @@ Dokud něco chybí, obrazovka ukáže, které proměnné chybí.
 
 - `POST /api/bank` (`api/_core/bank.cjs`): `status`, `login`, `index-get`, `index-put`,
   `upload-url`, `download-urls`, `delete-objects`. Po přihlášení heslem dostane klient podepsaný
-  token (30 dní), všechny ostatní operace ho vyžadují.
+  trvalý podepsaný token bez časového vypršení, všechny ostatní operace ho vyžadují.
+  PIN se do prohlížeče neukládá. Token zůstává v localStorage i po restartu; tlačítko Zamknout ho odstraní.
+  Platný starší 30denní token se při otevření automaticky převede přes ověřenou operaci `session`.
+  Po smazání dat prohlížeče nebo změně `BANK_TOKEN_SECRET` je nutné nové přihlášení.
+  Změna samotného PINu již vydané tokeny neruší. Pro odvolání všech zařízení změň i `BANK_TOKEN_SECRET`.
+  Šestimístný PIN je slabší než původní heslo; neúspěšné pokusy server zpomaluje, ale nejde o plnohodnotnou ochranu proti distribuovanému hádání.
 - Klíče objektů vytváří server (`items/<uuid>.<přípona>`, `thumbs/<uuid>.jpg`); klient nikdy neposílá
   vlastní klíč. Content-Type je součástí podpisu nahrávacího odkazu.
 - Index drží revizi `rev`; při souběžné úpravě z jiného okna server vrátí 409 a klient změnu zopakuje

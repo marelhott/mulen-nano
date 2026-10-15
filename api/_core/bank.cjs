@@ -164,7 +164,7 @@ exports.handler = async (event) => {
       if (!core.checkPassphrase(body.passphrase, cfg.passphrase)) {
         // Zpomalení brání rychlému hádání (na Vercelu nejede rate limit z dev serveru).
         await new Promise((resolve) => setTimeout(resolve, FAILED_LOGIN_DELAY_MS));
-        return json(401, { error: 'Nesprávné heslo.' });
+        return json(401, { error: 'Nesprávný PIN.' });
       }
       return json(200, core.signToken(cfg.tokenSecret));
     }
@@ -172,6 +172,8 @@ exports.handler = async (event) => {
     if (!core.verifyToken(cfg.tokenSecret, core.bearerToken(event.headers))) {
       return json(401, { error: 'Přihlášení vypršelo nebo chybí.' });
     }
+    // Platné starší přihlášení lze převést bez opětovného zadání PINu.
+    if (op === 'session') return json(200, core.signToken(cfg.tokenSecret));
     return await handleAuthed(op, body, cfg);
   } catch (err) {
     return json(500, { error: 'Databanka selhala.', detail: String(err?.message || err) });

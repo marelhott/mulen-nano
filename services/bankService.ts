@@ -31,8 +31,8 @@ function readToken(): string {
   try {
     const raw = localStorage.getItem(TOKEN_KEY);
     if (!raw) return '';
-    const parsed = JSON.parse(raw) as { token?: string; expiresAt?: number };
-    return parsed.token && parsed.expiresAt && parsed.expiresAt > Date.now() ? parsed.token : '';
+    const parsed = JSON.parse(raw) as { token?: string; expiresAt?: number | null };
+    return typeof parsed.token === 'string' && (parsed.expiresAt === null || (typeof parsed.expiresAt === 'number' && parsed.expiresAt > Date.now())) ? parsed.token : '';
   } catch {
     return '';
   }
@@ -89,13 +89,21 @@ export async function bankStatus(): Promise<BankStatus> {
 }
 
 export async function bankLogin(passphrase: string): Promise<void> {
-  const result = await call<{ token: string; expiresAt: number }>({ op: 'login', passphrase }, { auth: false });
+  const result = await call<{ token: string; expiresAt: number | null }>({ op: 'login', passphrase }, { auth: false });
   try {
     localStorage.setItem(TOKEN_KEY, JSON.stringify(result));
   } catch {
     throw new Error('Prohlížeč nedovolil uložit přihlášení.');
   }
   notify(BANK_AUTH_EVENT);
+}
+
+export async function rememberBankSession(): Promise<void> {
+  if (!readToken()) return;
+  const saved = JSON.parse(localStorage.getItem(TOKEN_KEY) || '{}');
+  if (saved.expiresAt === null) return;
+  const result = await call<{ token: string; expiresAt: null }>({ op: 'session' });
+  localStorage.setItem(TOKEN_KEY, JSON.stringify(result));
 }
 
 export async function loadBankIndex(space: BankSpace = 'library'): Promise<BankIndex> {

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Download, Images, Library, Trash2, Upload, X } from 'lucide-react';
-import { BANK_AUTH_EVENT, BANK_CHANGED_EVENT, bankLogin, bankStatus, getBankUrls, hasBankToken, type BankStatus } from '../services/bankService';
+import { BANK_AUTH_EVENT, BANK_CHANGED_EVENT, bankLogin, bankStatus, getBankUrls, hasBankToken, rememberBankSession, type BankStatus } from '../services/bankService';
 import { archiveSourceFile, MEDIA_CHANGED_EVENT, syncLibraryToR2 } from '../services/mediaSync';
 import { deleteImage, getAllImages, type GalleryImage } from '../utils/galleryDB';
 import type { BankItem } from '../utils/bankIndex';
@@ -122,7 +122,7 @@ export function SharedMediaHub(props: { open: boolean; onClose: () => void; onTo
     const show = (event: Event) => { setTab((event as CustomEvent<Tab>).detail || 'library'); setTarget(null); setInternalOpen(true); };
     document.addEventListener('click', click, true); document.addEventListener('change', change, true); document.addEventListener('drop', drop, true);
     window.addEventListener(OPEN_EVENT, show); window.addEventListener(BANK_AUTH_EVENT, sync); window.addEventListener('online', sync);
-    sync();
+    void rememberBankSession().catch(() => undefined).finally(sync);
     return () => { document.removeEventListener('click', click, true); document.removeEventListener('change', change, true); document.removeEventListener('drop', drop, true); window.removeEventListener(OPEN_EVENT, show); window.removeEventListener(BANK_AUTH_EVENT, sync); window.removeEventListener('online', sync); };
   }, [toast]);
   useEffect(() => { if (props.open) setTab('library'); }, [props.open]);
