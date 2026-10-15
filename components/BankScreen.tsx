@@ -1,5 +1,6 @@
 import React from 'react';
-import { FileText, FolderPlus, Link as LinkIcon, Plus, Search, Trash2, Upload, X } from 'lucide-react';
+import { FileText, FolderPlus, Link as LinkIcon, Maximize2, Plus, Search, Trash2, Upload, X } from 'lucide-react';
+import { BankImagePreview } from './BankImagePreview';
 import {
   BANK_INBOX_ID,
   addFolder,
@@ -137,13 +138,15 @@ function ItemCard(props: { item: BankItem; selected: boolean; version: number; o
     <button
       type="button"
       onClick={props.onSelect}
-      className={`group flex flex-col overflow-hidden card-surface card-surface-hover text-left transition-all ${selected ? 'ring-1 ring-[var(--accent)]' : ''}`}
+      aria-label={item.kind === 'image' ? `Náhled: ${item.title}` : item.title}
+      title={item.title}
+      className={`group relative block aspect-square w-full min-w-0 overflow-hidden rounded-md text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)] ${selected ? 'ring-2 ring-[var(--accent)]' : ''}`}
       data-version={props.version}
     >
-      <div className="relative aspect-square w-full overflow-hidden bg-[var(--bg-panel)]">
+      <div className="absolute inset-0 overflow-hidden">
         {item.kind === 'image' ? (
           thumb ? (
-            <img src={thumb} alt={item.title} loading="lazy" className="h-full w-full object-cover" onError={() => item.thumbKey && props.onImageError(item.thumbKey)} />
+            <img src={thumb} alt={item.title} loading="lazy" className="absolute inset-0 h-full w-full object-contain" onError={() => item.thumbKey && props.onImageError(item.thumbKey)} />
           ) : null
         ) : (
           <div className="flex h-full w-full flex-col gap-1 p-2">
@@ -155,7 +158,7 @@ function ItemCard(props: { item: BankItem; selected: boolean; version: number; o
           </div>
         )}
       </div>
-      <div className="truncate border-t border-[rgba(168,191,143,0.12)] px-2 py-1.5 text-[8px] font-black uppercase tracking-[0.12em] text-[var(--text-secondary)]">{item.title}</div>
+      {item.kind !== 'image' && <div className="absolute inset-x-0 bottom-0 truncate bg-[var(--bg-elevated)] px-2 py-1.5 text-xs text-[var(--text-secondary)]">{item.title}</div>}
     </button>
   );
 }
@@ -300,6 +303,11 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
   const [kind, setKind] = React.useState<BankItemKind | null>(null);
   const [query, setQuery] = React.useState('');
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  const [previewId, setPreviewId] = React.useState<string | null>(null);
+  const [thumbnailSize, setThumbnailSize] = React.useState(() => {
+    try { const value = Number(localStorage.getItem('bank.thumbnail-size')); return value >= 128 && value <= 320 ? value : 192; } catch { return 192; }
+  });
+  React.useEffect(() => { try { localStorage.setItem('bank.thumbnail-size', String(thumbnailSize)); } catch { /* Soukromý režim může úložiště zakázat. */ } }, [thumbnailSize]);
   const [checked, setChecked] = React.useState<string[]>([]);
   const [moveTarget, setMoveTarget] = React.useState(BANK_INBOX_ID);
   const [visible, setVisible] = React.useState(PAGE_SIZE);
@@ -366,6 +374,9 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
   const tags = React.useMemo(() => tagCounts(scopeItems), [scopeItems]);
   const shown = items.slice(0, visible);
   const selected = selectedId ? index.items.find((item) => item.id === selectedId) ?? null : null;
+  const previewImages = items.filter((item) => item.kind === 'image');
+  const previewPosition = previewImages.findIndex((item) => item.id === previewId);
+  const preview = previewImages[previewPosition];
   const folderCounts = React.useMemo(() => {
     const counts = new Map<string, number>();
     for (const item of index.items) counts.set(item.folderId, (counts.get(item.folderId) ?? 0) + 1);
@@ -699,6 +710,10 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
         ) : null}
 
         <div className="flex flex-wrap items-center gap-3 border-b border-[var(--border-color)] px-5 py-2 text-[11px] text-[var(--text-secondary)]">
+          <label className="flex items-center gap-2">
+            <Maximize2 size={14} aria-hidden="true" />
+            <input type="range" min={128} max={320} step={16} value={thumbnailSize} aria-label="Velikost náhledů" onChange={(event) => setThumbnailSize(Number(event.target.value))} className="w-28 accent-[var(--accent)]" />
+          </label>
           <button type="button" onClick={() => setChecked(items.filter((item) => !props.onChoose || item.kind === 'image').map((item) => item.id).slice(0, props.onChoose && !props.multiple ? 1 : undefined))}>Vybrat vše</button>
           <button type="button" onClick={() => setChecked([])}>Zrušit výběr ({checked.length})</button>
           <select aria-label="Cílová složka" value={moveTarget} onChange={(e) => setMoveTarget(e.target.value)} className="min-w-0 max-w-48 bg-[var(--bg-panel)] p-1">
@@ -756,15 +771,16 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
           </div>
         ) : null}
 
-        <div className={`flex-1 overflow-y-auto p-5 custom-scrollbar ${dragActive ? 'bg-[var(--accent)]/5 outline outline-1 outline-dashed outline-[var(--accent)]' : ''}`}>
+        <div className={`min-h-0 flex-1 overflow-y-auto p-5 custom-scrollbar ${dragActive ? 'bg-[var(--accent)]/5 outline outline-1 outline-dashed outline-[var(--accent)]' : ''}`}>
           {shown.length > 0 ? (
-            <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(150px, 100%), 1fr))' }}>
+            <div data-bank-thumbnail-grid className="grid items-start gap-3" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(0, min(${thumbnailSize}px, 100%)))` }}>
               {shown.map((item) => (
-                <div key={item.id} className="relative min-w-0">
+                <div key={item.id} className="group relative min-w-0">
                   <ItemCard item={item} selected={checked.includes(item.id) || item.id === selectedId} version={urlVersion} onSelect={() => {
-                    if (!props.onChoose) setSelectedId(item.id);
+                    if (!props.onChoose) { if (item.kind === 'image') setPreviewId(item.id); else setSelectedId(item.id); }
                     else if (item.kind === 'image') setChecked((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : props.multiple ? [...current, item.id] : [item.id]);
                   }} onImageError={handleImageError} />
+                  {item.kind === 'image' && props.onChoose && <button type="button" aria-label={`Zvětšit: ${item.title}`} title="Zvětšit obrázek" onClick={() => setPreviewId(item.id)} className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded bg-[var(--bg-elevated)] opacity-0 focus-visible:opacity-100 group-hover:opacity-100"><Maximize2 size={14} /></button>}
                   {(!props.onChoose || item.kind === 'image') && <input type="checkbox" aria-label={`Vybrat ${item.title}`} checked={checked.includes(item.id)} onChange={(e) => setChecked((current) => e.target.checked ? props.onChoose && !props.multiple ? [item.id] : [...current, item.id] : current.filter((id) => id !== item.id))} className="absolute left-2 top-2 h-4 w-4 accent-[var(--accent)]" />}
                 </div>
               ))}
@@ -787,6 +803,9 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
       </section>
 
       {selected ? <ItemDetail key={selected.id} item={selected} index={index} onSave={handleSaveItem} onDelete={handleDeleteItem} onClose={() => setSelectedId(null)} /> : null}
+      {preview && <BankImagePreview item={preview} position={previewPosition} total={previewImages.length} onClose={() => setPreviewId(null)} onStep={(step) => {
+        const next = previewImages[previewPosition + step]; if (next) setPreviewId(next.id);
+      }} onDetails={() => { setSelectedId(preview.id); setPreviewId(null); }} />}
     </div>
   );
 }

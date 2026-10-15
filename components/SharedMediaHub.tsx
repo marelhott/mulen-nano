@@ -134,6 +134,7 @@ export function SharedMediaHub(props: { open: boolean; onClose: () => void; onTo
     document.body.style.overflow = 'hidden';
     dialog.current?.focus();
     const key = (event: KeyboardEvent) => {
+      if (event.target instanceof Element && event.target.closest('[data-bank-preview]')) return;
       if (event.key === 'Escape') { event.stopImmediatePropagation(); close(); }
       if (event.key !== 'Tab') return;
       const elements = Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]') || []).filter((element) => element.getClientRects().length);
