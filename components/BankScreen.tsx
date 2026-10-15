@@ -37,6 +37,7 @@ import {
   type BankStatus,
 } from '../services/bankService';
 import { toUserFacingAiError } from '../utils/aiErrorMessage';
+import { runConcurrentTasks } from '../utils/concurrencyRunner';
 import type { ToastType } from './Toast';
 
 const PAGE_SIZE = 120;
@@ -313,6 +314,16 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
   const [visible, setVisible] = React.useState(PAGE_SIZE);
   const [urlVersion, setUrlVersion] = React.useState(0);
   const [uploading, setUploading] = React.useState<{ done: number; total: number } | null>(null);
+  const [pendingUploads, setPendingUploads] = React.useState<Array<{ id: string; url: string; name: string; folderId: string; running: boolean }>>([]);
+  const uploadBusy = React.useRef(false);
+  const localPreviews = React.useRef(new Set<string>());
+  React.useEffect(() => () => { for (const url of localPreviews.current) URL.revokeObjectURL(url); }, []);
+  React.useEffect(() => {
+    if (!uploading) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [uploading]);
   const [dragActive, setDragActive] = React.useState(false);
   const [newFolderName, setNewFolderName] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState<{ kind: BankItemKind; title: string; text: string; url: string } | null>(null);
@@ -347,7 +358,8 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
 
   const reload = React.useCallback(async () => {
     try {
-      setIndex(await loadBankIndex());
+      const fresh = await loadBankIndex();
+      setIndex((current) => fresh.rev >= current.rev ? fresh : current);
       setLoaded(true);
     } catch (error) {
       handleError(error, 'Databanku se nepodařilo načíst.');
@@ -359,11 +371,13 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
   }, [authed, status?.configured, reload]);
 
   React.useEffect(() => {
-    const changed = () => { if (hasBankToken()) void reload(); };
+    let timer: ReturnType<typeof setTimeout>;
+    const changed = () => { clearTimeout(timer); timer = setTimeout(() => { if (hasBankToken()) void reload(); }, 200); };
     const auth = () => setAuthed(hasBankToken());
     window.addEventListener(BANK_CHANGED_EVENT, changed);
     window.addEventListener(BANK_AUTH_EVENT, auth);
     return () => {
+      clearTimeout(timer);
       window.removeEventListener(BANK_CHANGED_EVENT, changed);
       window.removeEventListener(BANK_AUTH_EVENT, auth);
     };
@@ -426,25 +440,42 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
 
   const handleUploadFiles = React.useCallback(
     async (files: File[]) => {
+      if (uploadBusy.current) { onToast({ message: 'Probíhá nahrávání předchozí dávky.', type: 'warning' }); return; }
       const images = files.filter((file) => SUPPORTED_UPLOAD.includes(file.type));
       if (images.length < files.length) onToast({ message: 'Některé soubory nejsou JPEG, PNG, WebP ani GIF, přeskočeno.', type: 'warning' });
       if (images.length === 0) return;
+      uploadBusy.current = true;
       const target = folderId ?? BANK_INBOX_ID;
       let ok = 0;
       let duplicates = 0;
       setUploading({ done: 0, total: images.length });
-      for (const file of images) {
-        try {
-          const item = await uploadBankImage(file, { folderId: target });
-          if (item.reused) duplicates += 1;
-          else ok += 1;
-        } catch (error) {
-          handleError(error, `Nahrání ${file.name} selhalo.`);
-          if (error instanceof BankAuthError) break;
-        }
-        setUploading((prev) => (prev ? { ...prev, done: prev.done + 1 } : prev));
+      const pending = images.map((file) => {
+        const url = URL.createObjectURL(file); localPreviews.current.add(url);
+        return { id: makeId(), url, name: file.name, folderId: target, running: false, file };
+      });
+      setPendingUploads(pending);
+      try {
+        await runConcurrentTasks({ items: pending, concurrency: 3, retry: { maxAttempts: 1 }, worker: async (entry) => {
+          setPendingUploads((current) => current.map((item) => item.id === entry.id ? { ...item, running: true } : item));
+          const file = entry.file;
+          try {
+            const item = await uploadBankImage(file, { folderId: target });
+            if (item.reused) duplicates += 1;
+            else ok += 1;
+            setIndex((current) => current.items.some((existing) => existing.id === item.id) ? current : { ...current, items: [...current.items, item] });
+          } catch (error) {
+            handleError(error, `Nahrání ${file.name} selhalo.`);
+          } finally {
+            setPendingUploads((current) => current.filter((item) => item.id !== entry.id));
+            localPreviews.current.delete(entry.url); URL.revokeObjectURL(entry.url);
+            setUploading((prev) => (prev ? { ...prev, done: prev.done + 1 } : prev));
+          }
+        } });
+      } finally {
+        uploadBusy.current = false;
+        setPendingUploads([]);
+        setUploading(null);
       }
-      setUploading(null);
       if (ok > 0 || duplicates > 0) {
         await reload();
         onToast({ message: `Přidáno ${ok} obrázků, přeskočeno ${duplicates} duplicit.`, type: 'success' });
@@ -705,7 +736,7 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
 
         {uploading ? (
           <div className="border-b border-[var(--border-color)] px-5 py-1.5 text-[9px] font-bold uppercase tracking-widest text-[var(--accent)]">
-            Nahrávám {Math.min(uploading.done + 1, uploading.total)}/{uploading.total}…
+            Dokončeno {uploading.done}/{uploading.total} · až 3 současně
           </div>
         ) : null}
 
@@ -772,8 +803,12 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
         ) : null}
 
         <div className={`min-h-0 flex-1 overflow-y-auto p-5 custom-scrollbar ${dragActive ? 'bg-[var(--accent)]/5 outline outline-1 outline-dashed outline-[var(--accent)]' : ''}`}>
-          {shown.length > 0 ? (
+          {shown.length > 0 || pendingUploads.length > 0 ? (
             <div data-bank-thumbnail-grid className="grid items-start gap-3" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(0, min(${thumbnailSize}px, 100%)))` }}>
+              {pendingUploads.filter((item) => (!folderId || item.folderId === folderId) && (!kind || kind === 'image') && !tag).map((item) => <div key={item.id} className="relative aspect-square min-w-0 overflow-hidden rounded-md" aria-label={`Nahrávání: ${item.name}`}>
+                <img src={item.url} alt={item.name} decoding="async" loading="lazy" className="absolute inset-0 h-full w-full object-contain" />
+                <span role="status" className="absolute inset-x-0 bottom-0 bg-[var(--bg-elevated)] px-2 py-1 text-xs text-[var(--text-secondary)]">{item.running ? 'Nahrávám…' : 'Čeká…'}</span>
+              </div>)}
               {shown.map((item) => (
                 <div key={item.id} className="group relative min-w-0">
                   <ItemCard item={item} selected={checked.includes(item.id) || item.id === selectedId} version={urlVersion} onSelect={() => {

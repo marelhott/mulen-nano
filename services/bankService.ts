@@ -214,19 +214,19 @@ export async function uploadBankImage(file: File, opts: {
 }): Promise<BankItem & { reused?: boolean }> {
   if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) throw new Error('Podporované obrázky: JPEG, PNG, WebP a GIF.');
   if (!file.size || file.size > 40 * 1024 * 1024) throw new Error('Obrázek musí být menší než 40 MB.');
-  const contentHash = await hashBankFile(file);
-  const current = await loadBankIndex(opts.space);
+  const [contentHash, current] = await Promise.all([hashBankFile(file), loadBankIndex(opts.space)]);
   const duplicate = findDuplicate(current, { contentHash, galleryId: opts.galleryId });
   if (duplicate) return { ...duplicate, reused: true };
-  const { blob: thumb, width, height } = await makeThumbnail(file);
-  const slot = await call<{ id: string; itemKey: string; thumbKey: string; itemUrl: string; thumbUrl: string }>({
+  const [{ blob: thumb, width, height }, slot] = await Promise.all([makeThumbnail(file), call<{ id: string; itemKey: string; thumbKey: string; itemUrl: string; thumbUrl: string }>({
     op: 'upload-url',
     contentType: file.type,
     size: file.size,
-  });
+  })]);
   try {
-    await putObject(slot.itemUrl, file, file.type);
-    await putObject(slot.thumbUrl, thumb, 'image/jpeg');
+    // Oba přenosy musí skončit před případným úklidem, jinak by pozdní PUT obnovil smazaný objekt.
+    const results = await Promise.allSettled([putObject(slot.itemUrl, file, file.type), putObject(slot.thumbUrl, thumb, 'image/jpeg')]);
+    const failed = results.find((result) => result.status === 'rejected');
+    if (failed?.status === 'rejected') throw failed.reason;
   } catch (error) {
     void deleteBankObjects([slot.itemKey, slot.thumbKey]).catch(() => undefined);
     throw error;
