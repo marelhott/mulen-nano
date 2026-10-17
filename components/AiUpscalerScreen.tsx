@@ -45,33 +45,6 @@ type OutputItem = {
   resultHeight?: number;
 };
 
-function readOpenRouterKey(): string {
-  try {
-    const raw = localStorage.getItem('providerSettings');
-    if (!raw) return '';
-    const parsed = JSON.parse(raw);
-    return parsed?.openrouter?.apiKey || '';
-  } catch {
-    return '';
-  }
-}
-
-type ServerProviders = { openRouter: boolean };
-
-let cachedServerProviders: ServerProviders | null = null;
-
-async function getServerProviders(): Promise<ServerProviders> {
-  if (cachedServerProviders) return cachedServerProviders;
-  try {
-    const res = await fetch('/api/public-config');
-    const data = await res.json();
-    cachedServerProviders = { openRouter: Boolean(data?.openRouter) };
-    return cachedServerProviders;
-  } catch {
-    return { openRouter: false };
-  }
-}
-
 function downloadDataUrl(dataUrl: string, fileName: string): void {
   const link = document.createElement('a');
   link.href = dataUrl;
@@ -141,17 +114,10 @@ export function AiUpscalerScreen(props: {
   const [phase, setPhase] = React.useState<'' | 'queue' | 'running' | 'finalizing'>('');
   const [batchProgress, setBatchProgress] = React.useState<{ current: number; total: number; fileName: string } | null>(null);
   const [outputs, setOutputs] = React.useState<OutputItem[]>([]);
-  const [serverProviders, setServerProviders] = React.useState<ServerProviders>({ openRouter: false });
   const [selectedImage, setSelectedImage] = React.useState<OutputItem | null>(null);
   const inputFileId = React.useMemo(() => `upscaler-${Math.random().toString(36).slice(2)}`, []);
   const [activeConcurrency, setActiveConcurrency] = React.useState(2);
   const [concurrencyReason, setConcurrencyReason] = React.useState('bezpecny upscale soubeh');
-
-  const openRouterKey = React.useMemo(() => readOpenRouterKey(), []);
-
-  React.useEffect(() => {
-    getServerProviders().then(setServerProviders);
-  }, []);
 
   const phaseLabel =
     phase === 'queue' ? 'Ve frontě' : phase === 'running' ? 'Zpracovávám' : phase === 'finalizing' ? 'Dokončuji' : '';
@@ -351,7 +317,7 @@ export function AiUpscalerScreen(props: {
       setPhase('');
       setBatchProgress(null);
     }
-  }, [inputs, mode, model, onToast, outputs, scale, openRouterKey, serverProviders, settings]);
+  }, [inputs, mode, model, onToast, outputs, scale, settings]);
 
   const findInputForOutput = (output: OutputItem): ImageSlot | undefined => {
     return inputs.find(i => i.id === output.inputId);
@@ -400,18 +366,6 @@ export function AiUpscalerScreen(props: {
               ))}
             </div>
           </div>
-
-          {!openRouterKey && !serverProviders.openRouter ? (
-            <div className="card-surface p-3 border border-amber-500/30 bg-amber-500/5">
-              <div className="flex items-start gap-2">
-                <span className="text-amber-400 text-sm mt-0.5">⚠</span>
-                <div>
-                  <div className="text-[10px] font-bold text-amber-300 uppercase tracking-widest">Chybí OpenRouter klíč</div>
-                  <div className="mt-1 text-[9px] text-amber-200/70">Nastav v Settings nebo doplň OPENROUTER_API_KEY na serveru.</div>
-                </div>
-              </div>
-            </div>
-          ) : null}
 
           <div className="space-y-1">
             <h3 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)] flex items-center justify-between">
