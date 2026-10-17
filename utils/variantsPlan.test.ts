@@ -3,7 +3,11 @@ import {
   VARIANTS_GENERAL_PROMPT,
   VARIANTS_MAX_PER_MODEL,
   VARIANT_MODELS,
+  buildEditInstruction,
+  buildPromptForModel,
   buildVariantsPrompt,
+  isInstructionEditModel,
+  SEED_IMAGE_STRENGTH,
   clampVariantCount,
   planVariantTasks,
   variantModelById,
@@ -59,5 +63,32 @@ describe('variantsPlan', () => {
     expect(variantModelById('seedream').resolution).toBe('1K');
     expect(variantModelById('gpt').resolution).toBeUndefined();
     expect(variantModelById('qwen-pro').model).toBe('venice/qwen-image-2-1-pro-edit');
+  });
+
+  it('editační modely dostanou krátkou instrukci, každá varianta jinou', () => {
+    expect(isInstructionEditModel('venice/qwen-edit-uncensored')).toBe(true);
+    expect(isInstructionEditModel('openai/gpt-image-2.5-sunburst')).toBe(false);
+    const prompts = [0, 1, 2, 3, 4].map((i) => buildEditInstruction('', 'far', i));
+    expect(new Set(prompts).size).toBe(5);
+    expect(buildEditInstruction('', 'far', 5)).toBe(prompts[0]);
+    for (const distance of ['near', 'middle', 'far', 'weird'] as const) {
+      for (let i = 0; i < 5; i += 1) {
+        const text = buildEditInstruction('', distance, i);
+        expect(text.length).toBeLessThan(400);
+        expect(text).not.toContain('KEEP');
+        expect(text).not.toContain('sibling');
+      }
+    }
+    expect(buildEditInstruction('Zachovej tvář.', 'near', 0).startsWith('Zachovej tvář.')).toBe(true);
+  });
+
+  it('prompt podle modelu: Qwen instrukce, Runware síla změny, ostatní obecný prompt', () => {
+    expect(buildPromptForModel('venice/qwen-image-2-1-pro-edit', '', 'middle', 1).prompt).toBe(buildEditInstruction('', 'middle', 1));
+    const runware = buildPromptForModel('runware/sdxl', '', 'weird', 0);
+    expect(runware.strength).toBe(SEED_IMAGE_STRENGTH.weird);
+    expect(SEED_IMAGE_STRENGTH.near).toBeLessThan(SEED_IMAGE_STRENGTH.far);
+    const generic = buildPromptForModel('google/gemini-nano-banana-2.1', '', 'far', 0);
+    expect(generic.prompt).toBe(buildVariantsPrompt('', 'far'));
+    expect(generic.strength).toBeUndefined();
   });
 });

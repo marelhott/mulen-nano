@@ -47,6 +47,78 @@ export function buildVariantsPrompt(base: string, distance: VariantsDistance): s
   return suffix ? `${text}\n\n${suffix}` : text;
 }
 
+// --- editační modely -----------------------------------------------------------------------------
+// Qwen Edit (Venice) je editor s instrukcemi: bere vstup jako základ a dělá změnu, kterou prompt přikáže.
+// Generační prompt „vytvoř sourozence, vše zachovej“ proto vrací téměř stejný obrázek. Pro tyto modely
+// se skládá krátká konkrétní instrukce a každá varianta dostane jiný pokyn, aby výsledky nebyly stejné.
+
+export function isInstructionEditModel(model: string): boolean {
+  return model.startsWith('venice/qwen-');
+}
+
+/** Runware SDXL je img2img: prompt popisuje cíl, míru změny určuje síla (strength). */
+export function isSeedImageModel(model: string): boolean {
+  return model === 'runware/sdxl';
+}
+
+const EDIT_DIRECTIVES: Record<VariantsDistance, string[]> = {
+  near: [
+    'Change the camera angle slightly, a few degrees to the left. Keep the same pose.',
+    'Reframe slightly: crop a little tighter and move the subjects a little off-center.',
+    'Change the direction of the gaze and the tilt of the head slightly. Keep the body pose.',
+    'Change the camera angle slightly to the right and raise the viewpoint a little.',
+    'Relax the pose a little: adjust the arms and hands slightly.',
+  ],
+  middle: [
+    'Change the camera to a different viewpoint: show the same scene from the left side at eye level.',
+    'Reframe as a closer shot of the main subjects from a slightly lower angle.',
+    'Change the pose and the gaze: the subjects turn toward the camera.',
+    'Show the same scene from the right side with a wider framing.',
+    'Change the viewpoint to a higher angle looking slightly down and change the pose a little.',
+  ],
+  far: [
+    'Show the same people from a completely different camera position: a low angle from the side, with clearly different poses.',
+    'Shoot the scene from behind and above, with the people in different poses.',
+    'Change to a wide shot from far away, with the people in clearly different positions and poses.',
+    'Change to a tight close-up of one subject with a different head and body pose.',
+    'Rotate the viewpoint about 90 degrees around the subjects and change everyone\'s pose.',
+  ],
+  weird: [
+    'Make the scene surreal: distort the proportions and scale of the subjects so that the space feels dreamlike.',
+    'Make it uncanny: stretch the perspective and add one impossible, quietly wrong detail to the surroundings.',
+    'Warp the space so the subjects seem to float and lean at impossible angles, in a dream-like way.',
+    'Repeat and echo one of the subjects as a faint ghost-like double in the background.',
+    'Change the scale of the room around the subjects so that it feels vast and unreal.',
+  ],
+};
+
+const EDIT_KEEP_SUFFIX = 'Keep the same people and the same photographic style and lighting.';
+
+/** Síla změny pro img2img modely podle zvolené vzdálenosti. */
+export const SEED_IMAGE_STRENGTH: Record<VariantsDistance, number> = { near: 0.35, middle: 0.5, far: 0.65, weird: 0.8 };
+
+/** Pokyn pro `variantIndex`-tou variantu; pokyny se opakují po pěti. Vlastní prompt jde před pokyn. */
+export function buildEditInstruction(base: string, distance: VariantsDistance, variantIndex: number): string {
+  const list = EDIT_DIRECTIVES[distance];
+  const directive = list[((variantIndex % list.length) + list.length) % list.length];
+  const custom = (base ?? '').trim();
+  return [custom, directive, EDIT_KEEP_SUFFIX].filter(Boolean).join(' ');
+}
+
+const SEED_IMAGE_PROMPT = 'same subjects and scene, photograph, natural light, different camera angle and different pose, high detail';
+
+export type ModelPrompt = { prompt: string; strength?: number };
+
+/** Prompt (a případně síla změny) pro konkrétní model a pořadí varianty; ostatní modely dostanou obecný prompt. */
+export function buildPromptForModel(model: string, base: string, distance: VariantsDistance, variantIndex: number): ModelPrompt {
+  if (isInstructionEditModel(model)) return { prompt: buildEditInstruction(base, distance, variantIndex) };
+  if (isSeedImageModel(model)) {
+    const custom = (base ?? '').trim();
+    return { prompt: custom || SEED_IMAGE_PROMPT, strength: SEED_IMAGE_STRENGTH[distance] };
+  }
+  return { prompt: buildVariantsPrompt(base, distance) };
+}
+
 export type VariantModelId = ImageModelChoice;
 
 export type VariantModel = {

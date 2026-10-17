@@ -19,8 +19,10 @@ import {
   COLLAGE_MAX_PER_MODEL,
   COLLAGE_MAX_SOURCES,
   COLLAGE_MIN_SOURCES,
+  buildCollageEditInstruction,
   buildCollagePrompt,
   collageInputBudget,
+  rotateInputs,
 } from '../utils/collagePlan';
 import {
   deleteCollageImage,
@@ -33,7 +35,7 @@ import {
   saveCollageRun,
   type CollageRunRecord,
 } from '../utils/collageHistoryDB';
-import { VARIANT_MODELS, formatVariantsDate, planVariantTasks, variantModelById, type VariantModelId } from '../utils/variantsPlan';
+import { VARIANT_MODELS, formatVariantsDate, isInstructionEditModel, planVariantTasks, variantModelById, type VariantModelId } from '../utils/variantsPlan';
 import type { ToastType } from './Toast';
 
 type SourceImage = { id: string; name: string; dataUrl: string; mimeType: string };
@@ -406,7 +408,9 @@ export function CollageScreen(props: {
         worker: async (output) => {
           const model = variantModelById(output.modelId);
           const provider = ProviderFactory.getProvider(AIProviderType.OPENROUTER, providerSettings, model.model);
-          const result = await provider.generateImage(inputs, output.prompt, model.resolution, 'Original', false);
+          // Qwen Edit bere první vstup jako základ, proto se základní obrázek střídá podle varianty.
+          const ordered = isInstructionEditModel(model.model) ? rotateInputs(inputs, output.variantIndex) : inputs;
+          const result = await provider.generateImage(ordered, output.prompt, model.resolution, 'Original', false);
 
           setOutputs((prev) => prev.map((item) => (item.id === output.id ? { ...item, status: 'done' as const, dataUrl: result.imageBase64 } : item)));
           await persistCollage(output, result.imageBase64);
@@ -483,21 +487,25 @@ export function CollageScreen(props: {
       onToast({ message: 'Vyber aspoň jeden model.', type: 'error' });
       return;
     }
+    const incompatible = selectedModels.map((id) => imageModelInputError(variantModelById(id).model, sources.length)).find(Boolean);
+    if (incompatible) {
+      onToast({ type: 'error', message: incompatible });
+      return;
+    }
     setIsGenerating(true);
     historyWarned.current = false;
     const runId = makeId('collage-run');
     const runCreatedAt = Date.now();
     const runSources = sources.map(({ name, dataUrl, mimeType }) => ({ name, dataUrl, mimeType }));
     runSourcesRef.current = runSources;
-    const incompatible = selectedModels.map((id) => imageModelInputError(variantModelById(id).model, sources.length)).find(Boolean);
-    if (incompatible) { onToast({ type: 'error', message: incompatible }); return; }
     const tasks = planVariantTasks(selectedModels, count, (modelId, index) => makeId(`collage-${modelId}-${index}`));
     const pending: VariantOutput[] = tasks.map((task, i) => ({
       id: task.id,
       modelId: task.modelId,
       variantIndex: task.variantIndex,
       runId,
-      prompt: activePrompt,
+      // Vlastní prompt platí pro všechny modely; výchozí Qwen nahradí instrukcí „uprav obrázek 1…“.
+      prompt: customPrompt.trim().length === 0 && isInstructionEditModel(variantModelById(task.modelId).model) ? buildCollageEditInstruction(runSources.length) : activePrompt,
       status: 'pending' as const,
       createdAt: runCreatedAt + i,
       sourceDataUrl: runSources[0].dataUrl,
@@ -523,7 +531,7 @@ export function CollageScreen(props: {
     } finally {
       setIsGenerating(false);
     }
-  }, [activePrompt, count, loadHistory, onToast, reportResult, runTasks, selectedModels, sources]);
+  }, [activePrompt, count, customPrompt, loadHistory, onToast, reportResult, runTasks, selectedModels, sources]);
 
   const handleRetryFailed = React.useCallback(async () => {
     const failedOutputs = outputs.filter((item) => item.status === 'error');

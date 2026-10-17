@@ -38,3 +38,19 @@ export function buildCollagePrompt(base: string): string {
   const trimmed = (base ?? '').trim();
   return trimmed.length > 0 ? trimmed : COLLAGE_GENERAL_PROMPT;
 }
+
+/**
+ * Qwen Edit upravuje první obrázek a ostatní bere jako vrstvy, proto dostane instrukci ve tvaru
+ * „uprav obrázek 1 tak, aby splynul s obrázkem 2“. Obecný popis „koláž z obrázků“ nechápe jako úpravu.
+ */
+export function buildCollageEditInstruction(imageCount: number): string {
+  const others = imageCount <= 2 ? 'image 2' : `images ${Array.from({ length: imageCount - 1 }, (_, i) => i + 2).join(' and ')}`;
+  return `Edit image 1 so that it merges with ${others}: let the main figures, shapes and motifs of ${imageCount <= 2 ? 'image 2' : 'the other images'} grow into the scene, light and atmosphere of image 1, so that they become one single, partly abstract, painterly picture. No cut-outs, no borders, no side-by-side placement. Keep it restrained: few elements, a calm composition, one logic of light.`;
+}
+
+/** Posune pořadí vstupů, aby byl základem u každé varianty jiný obrázek (Qwen bere první jako základ). */
+export function rotateInputs<T>(items: T[], index: number): T[] {
+  if (items.length === 0) return items;
+  const shift = ((index % items.length) + items.length) % items.length;
+  return [...items.slice(shift), ...items.slice(0, shift)];
+}

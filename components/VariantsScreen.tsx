@@ -29,8 +29,12 @@ import {
   VARIANTS_GENERAL_PROMPT,
   VARIANTS_MAX_PER_MODEL,
   VARIANT_MODELS,
+  buildEditInstruction,
+  buildPromptForModel,
   buildVariantsPrompt,
   formatVariantsDate,
+  isInstructionEditModel,
+  isSeedImageModel,
   planVariantTasks,
   variantModelById,
   type VariantModelId,
@@ -43,6 +47,8 @@ type SourceImage = { name: string; dataUrl: string; mimeType: string };
 type OutputStatus = 'pending' | 'running' | 'retrying' | 'done' | 'error';
 
 export type VariantOutput = {
+  /** Síla změny pro img2img modely (Runware); ostatní modely ji nemají. */
+  strength?: number;
   id: string;
   modelId: VariantModelId;
   variantIndex: number;
@@ -529,7 +535,11 @@ export function VariantsScreen(props: {
         },
         worker: async (output) => {
           const model = variantModelById(output.modelId);
-          const provider = ProviderFactory.getProvider(AIProviderType.OPENROUTER, providerSettings, model.model);
+          const settings =
+            output.strength === undefined
+              ? providerSettings
+              : { ...providerSettings, runware: { apiKey: '', enabled: true, ...providerSettings.runware, strength: output.strength } };
+          const provider = ProviderFactory.getProvider(AIProviderType.OPENROUTER, settings, model.model);
           const result = await provider.generateImage(
             [{ data: prepared.data, mimeType: prepared.mimeType }],
             output.prompt,
@@ -611,24 +621,32 @@ export function VariantsScreen(props: {
       onToast({ message: 'Vyber aspoň jeden model.', type: 'error' });
       return;
     }
+    const incompatible = selectedModels.map((id) => imageModelInputError(variantModelById(id).model, 1)).find(Boolean);
+    if (incompatible) {
+      onToast({ type: 'error', message: incompatible });
+      return;
+    }
     setIsGenerating(true);
     historyWarned.current = false;
     const runId = makeId('variants-run');
     const runCreatedAt = Date.now();
-    const incompatible = selectedModels.map((id) => imageModelInputError(variantModelById(id).model, 1)).find(Boolean);
-    if (incompatible) { onToast({ type: 'error', message: incompatible }); return; }
     const tasks = planVariantTasks(selectedModels, count, (modelId, index) => makeId(`variant-${modelId}-${index}`));
-    const pending: VariantOutput[] = tasks.map((task, i) => ({
-      id: task.id,
-      modelId: task.modelId,
-      variantIndex: task.variantIndex,
-      runId,
-      prompt: activePrompt,
-      status: 'pending' as const,
-      createdAt: runCreatedAt + i,
-      sourceDataUrl: source.dataUrl,
-      sourceName: source.name,
-    }));
+    const pending: VariantOutput[] = tasks.map((task, i) => {
+      // Editační modely (Qwen) a img2img (Runware) nedostanou obecný prompt, ale vlastní instrukci.
+      const built = buildPromptForModel(variantModelById(task.modelId).model, customPrompt, distance, task.variantIndex);
+      return {
+        id: task.id,
+        modelId: task.modelId,
+        variantIndex: task.variantIndex,
+        runId,
+        prompt: built.prompt,
+        strength: built.strength,
+        status: 'pending' as const,
+        createdAt: runCreatedAt + i,
+        sourceDataUrl: source.dataUrl,
+        sourceName: source.name,
+      };
+    });
     const modelsUsed = VARIANT_MODELS.filter((m) => selectedModels.includes(m.id)).map((m) => m.id);
     runMeta.current.set(runId, {
       createdAt: runCreatedAt,
@@ -659,7 +677,7 @@ export function VariantsScreen(props: {
     } finally {
       setIsGenerating(false);
     }
-  }, [activePrompt, count, distance, loadHistory, onToast, reportResult, runTasks, selectedModels, source]);
+  }, [activePrompt, count, customPrompt, distance, loadHistory, onToast, reportResult, runTasks, selectedModels, source]);
 
   const handleRetryFailed = React.useCallback(async () => {
     const failedOutputs = outputs.filter((item) => item.status === 'error');
@@ -904,6 +922,11 @@ export function VariantsScreen(props: {
             </div>
             <p className="mt-2 max-h-[260px] overflow-y-auto custom-scrollbar whitespace-pre-wrap text-[8px] leading-relaxed text-[var(--text-secondary)]">{activePrompt}</p>
           </div>
+          {selectedModels.some((id) => isInstructionEditModel(variantModelById(id).model) || isSeedImageModel(variantModelById(id).model)) ? (
+            <p className="text-[8px] leading-relaxed text-[var(--text-3)]">
+              Qwen dostane místo toho krátkou instrukci (jinou pro každou variantu), např. „{buildEditInstruction(customPrompt, distance, 0)}“. Runware SDXL dostane popis scény a sílu změny podle vzdálenosti.
+            </p>
+          ) : null}
         </AtelierSection>
       </AtelierRightPanel>
 
