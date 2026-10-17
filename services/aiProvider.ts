@@ -25,7 +25,6 @@ export interface HeadSwapSettings {
 export interface ProviderSettings {
   [AIProviderType.OPENROUTER]?: ProviderConfig;
   venice?: ProviderConfig;
-  runware?: ProviderConfig & { model?: string; strength?: number };
   a1111?: { baseUrl: string; sdxlVae?: string; enabled: boolean };
   headSwap?: HeadSwapSettings;
 }

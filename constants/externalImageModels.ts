@@ -6,18 +6,15 @@ export const QWEN_EDIT_MODELS = [
 
 export type ExternalImageModel =
   | (typeof QWEN_EDIT_MODELS)[number]['model']
-  | 'runware/sdxl'
   | 'venice/lustify-v8';
 export function isExternalImageModel(model = ''): model is ExternalImageModel {
   return (
     QWEN_EDIT_MODELS.some((item) => item.model === model) ||
-    model === 'runware/sdxl' ||
     model === 'venice/lustify-v8'
   );
 }
 export function externalModelLabel(model: string): string | undefined {
   const qwen = QWEN_EDIT_MODELS.find((item) => item.model === model);
   if (qwen) return `Qwen ${qwen.title}`;
-  if (model === 'runware/sdxl') return 'Runware SDXL';
   if (model === 'venice/lustify-v8') return 'Lustify v8';
 }

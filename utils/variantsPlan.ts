@@ -56,11 +56,6 @@ export function isInstructionEditModel(model: string): boolean {
   return model.startsWith('venice/qwen-');
 }
 
-/** Runware SDXL je img2img: prompt popisuje cíl, míru změny určuje síla (strength). */
-export function isSeedImageModel(model: string): boolean {
-  return model === 'runware/sdxl';
-}
-
 const EDIT_DIRECTIVES: Record<VariantsDistance, string[]> = {
   near: [
     'Change the camera angle slightly, a few degrees to the left. Keep the same pose.',
@@ -94,9 +89,6 @@ const EDIT_DIRECTIVES: Record<VariantsDistance, string[]> = {
 
 const EDIT_KEEP_SUFFIX = 'Keep the same people and the same photographic style and lighting.';
 
-/** Síla změny pro img2img modely podle zvolené vzdálenosti. */
-export const SEED_IMAGE_STRENGTH: Record<VariantsDistance, number> = { near: 0.35, middle: 0.5, far: 0.65, weird: 0.8 };
-
 /** Pokyn pro `variantIndex`-tou variantu; pokyny se opakují po pěti. Vlastní prompt jde před pokyn. */
 export function buildEditInstruction(base: string, distance: VariantsDistance, variantIndex: number): string {
   const list = EDIT_DIRECTIVES[distance];
@@ -105,18 +97,10 @@ export function buildEditInstruction(base: string, distance: VariantsDistance, v
   return [custom, directive, EDIT_KEEP_SUFFIX].filter(Boolean).join(' ');
 }
 
-const SEED_IMAGE_PROMPT = 'same subjects and scene, photograph, natural light, different camera angle and different pose, high detail';
-
-export type ModelPrompt = { prompt: string; strength?: number };
-
-/** Prompt (a případně síla změny) pro konkrétní model a pořadí varianty; ostatní modely dostanou obecný prompt. */
-export function buildPromptForModel(model: string, base: string, distance: VariantsDistance, variantIndex: number): ModelPrompt {
-  if (isInstructionEditModel(model)) return { prompt: buildEditInstruction(base, distance, variantIndex) };
-  if (isSeedImageModel(model)) {
-    const custom = (base ?? '').trim();
-    return { prompt: custom || SEED_IMAGE_PROMPT, strength: SEED_IMAGE_STRENGTH[distance] };
-  }
-  return { prompt: buildVariantsPrompt(base, distance) };
+/** Prompt pro konkrétní model a pořadí varianty; ostatní modely dostanou obecný prompt. */
+export function buildPromptForModel(model: string, base: string, distance: VariantsDistance, variantIndex: number): string {
+  if (isInstructionEditModel(model)) return buildEditInstruction(base, distance, variantIndex);
+  return buildVariantsPrompt(base, distance);
 }
 
 export type VariantModelId = ImageModelChoice;

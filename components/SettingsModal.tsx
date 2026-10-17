@@ -8,9 +8,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   const [available, setAvailable] = useState<boolean | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [veniceKey, setVeniceKey] = useState('');
-  const [runwareKey, setRunwareKey] = useState('');
-  const [runwareModel, setRunwareModel] = useState('');
-  const [externalAvailable, setExternalAvailable] = useState({ venice: false, runware: false });
+  const [externalAvailable, setExternalAvailable] = useState({ venice: false });
   const [showKey, setShowKey] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testMessage, setTestMessage] = useState<string | null>(null);
@@ -19,12 +17,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
     if (!isOpen) return;
     setApiKey(settings[AIProviderType.OPENROUTER]?.apiKey || '');
     setVeniceKey(settings.venice?.apiKey || '');
-    setRunwareKey(settings.runware?.apiKey || '');
-    setRunwareModel(settings.runware?.model || '');
     setTestMessage(null);
     fetch('/api/public-config').then((r) => r.json()).then((data) => {
       setAvailable(Boolean(data?.openRouter));
-      setExternalAvailable({ venice: Boolean(data?.venice), runware: Boolean(data?.runware) });
+      setExternalAvailable({ venice: Boolean(data?.venice) });
     }).catch(() => setAvailable(false));
   }, [isOpen, settings]);
 
@@ -33,7 +29,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   const save = () => {
     onSave({ ...settings, [AIProviderType.OPENROUTER]: { apiKey: apiKey.trim(), enabled: true },
       venice: { apiKey: veniceKey.trim(), enabled: true },
-      runware: { ...settings.runware, apiKey: runwareKey.trim(), enabled: true, model: runwareModel.trim() },
     });
     onClose();
   };
@@ -49,7 +44,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
       if (response.ok && data?.success) {
         const nextSettings = { ...settings, [AIProviderType.OPENROUTER]: { apiKey: key, enabled: true },
           venice: { apiKey: veniceKey.trim(), enabled: true },
-          runware: { ...settings.runware, apiKey: runwareKey.trim(), enabled: true, model: runwareModel.trim() },
         };
         onSave(nextSettings);
         localStorage.setItem('providerSettings', JSON.stringify(nextSettings));
@@ -74,17 +68,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
         <p className={`mt-3 text-xs ${available ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}>{available === null ? 'Ověřuji server…' : available ? 'Serverový klíč je připraven.' : 'Serverový klíč není nasazený; použij vlastní klíč.'}</p>
         {testMessage && <p className="mt-2 text-xs text-[var(--text-secondary)]">{testMessage}</p>}
         <div className="mt-5 space-y-4 border-t border-[var(--border-color)] pt-5">
-          {([{ id: 'venice', title: 'Venice · Qwen / Lustify', value: veniceKey, set: setVeniceKey },
-            { id: 'runware', title: 'Runware', value: runwareKey, set: setRunwareKey }] as const).map((service) => <div key={service.id}>
+          {([{ id: 'venice', title: 'Venice · Qwen / Lustify', value: veniceKey, set: setVeniceKey }] as const).map((service) => <div key={service.id}>
             <label htmlFor={`${service.id}-key`} className="block text-xs font-semibold">{service.title}</label>
             <input id={`${service.id}-key`} type={showKey ? 'text' : 'password'} autoComplete="off" value={service.value} onChange={(event) => service.set(event.target.value)} placeholder="API klíč"
               className="mt-2 w-full rounded-lg border border-[var(--border-color)] bg-transparent px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-[var(--accent)]" />
             <p className="mt-1 text-xs text-[var(--text-secondary)]">{externalAvailable[service.id] ? 'Serverový klíč je připraven.' : 'Serverový klíč není nastavený.'}</p>
           </div>)}
-          <div><label htmlFor="runware-model" className="block text-xs font-semibold">Runware · AIR modelu SDXL</label>
-            <input id="runware-model" value={runwareModel} onChange={(event) => setRunwareModel(event.target.value)} placeholder="civitai:…@…"
-              className="mt-2 w-full rounded-lg border border-[var(--border-color)] bg-transparent px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-[var(--accent)]" />
-          </div>
           <p className="text-xs text-[var(--text-secondary)]">Vlastní klíče se ukládají v tomto prohlížeči. Pro ostatní uživatele musí být nastavené na serveru.</p>
         </div>
         <div className="mt-6 flex justify-end gap-2">

@@ -14,10 +14,6 @@ type ServerProviderRequest = {
   apiKey?: string;
   preferredModel?: string;
   externalApiKey?: string;
-  runwareModel?: string;
-  strength?: number;
-  width?: number;
-  height?: number;
   images?: ImageInput[];
   prompt?: string;
   shortPrompt?: string;
@@ -98,10 +94,6 @@ export const serverProviderProxy = {
     useGrounding?: boolean;
     preferredModel?: string;
     externalApiKey?: string;
-    runwareModel?: string;
-    strength?: number;
-    width?: number;
-    height?: number;
     apiKey?: string;
   }): Promise<GenerateImageResult> {
     return callServerProvider<GenerateImageResult>({ action: 'generateImage', ...params });

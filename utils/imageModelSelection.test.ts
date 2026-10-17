@@ -7,9 +7,9 @@ import { IMAGE_MODELS, type ImageModelId } from '../constants/imageModels';
 
 afterEach(() => vi.unstubAllGlobals());
 
-it('společný selector skutečně přepíná všech 14 modelů přesným ID', async () => {
+it('společný selector skutečně přepíná všech 13 modelů přesným ID', async () => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-  vi.stubGlobal('fetch', vi.fn(async () => Response.json({ openRouter: true, venice: true, runware: true })));
+  vi.stubGlobal('fetch', vi.fn(async () => Response.json({ openRouter: true, venice: true })));
   const selected = vi.fn();
   function Harness() {
     const [model, setModel] = useState<ImageModelId>('google/gemini-3-pro-image');
@@ -23,7 +23,7 @@ it('společný selector skutečně přepíná všech 14 modelů přesným ID', a
   try {
     await act(async () => root.render(React.createElement(Harness)));
     const buttons = [...host.querySelectorAll<HTMLButtonElement>('button')];
-    expect(buttons).toHaveLength(14);
+    expect(buttons).toHaveLength(13);
     for (const [index, model] of IMAGE_MODELS.entries()) {
       await act(async () => buttons[index].click());
       expect(selected).toHaveBeenLastCalledWith(model.model);

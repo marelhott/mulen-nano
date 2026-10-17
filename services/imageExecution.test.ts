@@ -9,7 +9,7 @@ import { runHeadSwap } from './headSwapService';
 
 vi.mock('../utils/imagePanelComposite', () => ({ createReferenceStyleComposite: vi.fn(async () => ({ data: 'data:image/png;base64,YQ==', mimeType: 'image/png' })) }));
 const source = { data: 'data:image/png;base64,YQ==', mimeType: 'image/png' };
-const settings = { openrouter: { apiKey: 'test-router', enabled: true }, venice: { apiKey: 'test-venice', enabled: true }, runware: { apiKey: 'test-runware', enabled: true, model: 'test:1@1', strength: 0.35 } };
+const settings = { openrouter: { apiKey: 'test-router', enabled: true }, venice: { apiKey: 'test-venice', enabled: true } };
 
 beforeEach(() => {
   vi.stubGlobal('Image', class { src = ''; naturalWidth = 1024; naturalHeight = 768; async decode() {} });
@@ -24,7 +24,7 @@ describe('jednotné skutečné směrování obrazových modelů', () => {
     await provider.generateImage(images, 'Test', '1K', 'Original');
     expect(serverProviderProxy.generateImage).toHaveBeenCalledWith(expect.objectContaining({ preferredModel: entry.model }));
     const request = vi.mocked(serverProviderProxy.generateImage).mock.calls[0][0];
-    expect(request.externalApiKey ?? request.apiKey).toBe(entry.model.startsWith('venice/') ? 'test-venice' : entry.model.startsWith('runware/') ? 'test-runware' : 'test-router');
+    expect(request.externalApiKey ?? request.apiKey).toBe(entry.model.startsWith('venice/') ? 'test-venice' : 'test-router');
     expect(request.resolution).toBe(entry.resolution);
   });
 

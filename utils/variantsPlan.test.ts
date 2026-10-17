@@ -7,7 +7,6 @@ import {
   buildPromptForModel,
   buildVariantsPrompt,
   isInstructionEditModel,
-  SEED_IMAGE_STRENGTH,
   clampVariantCount,
   planVariantTasks,
   variantModelById,
@@ -57,8 +56,8 @@ describe('variantsPlan', () => {
   });
 
   it('modely sdílejí katalog a posílají jen podporované rozlišení', () => {
-    expect(VARIANT_MODELS).toHaveLength(14);
-    expect(new Set(VARIANT_MODELS.map((item) => item.model)).size).toBe(14);
+    expect(VARIANT_MODELS).toHaveLength(13);
+    expect(new Set(VARIANT_MODELS.map((item) => item.model)).size).toBe(13);
     expect(variantModelById('flux').resolution).toBe('1K');
     expect(variantModelById('seedream').resolution).toBe('1K');
     expect(variantModelById('gpt').resolution).toBeUndefined();
@@ -82,13 +81,8 @@ describe('variantsPlan', () => {
     expect(buildEditInstruction('Zachovej tvář.', 'near', 0).startsWith('Zachovej tvář.')).toBe(true);
   });
 
-  it('prompt podle modelu: Qwen instrukce, Runware síla změny, ostatní obecný prompt', () => {
-    expect(buildPromptForModel('venice/qwen-image-2-1-pro-edit', '', 'middle', 1).prompt).toBe(buildEditInstruction('', 'middle', 1));
-    const runware = buildPromptForModel('runware/sdxl', '', 'weird', 0);
-    expect(runware.strength).toBe(SEED_IMAGE_STRENGTH.weird);
-    expect(SEED_IMAGE_STRENGTH.near).toBeLessThan(SEED_IMAGE_STRENGTH.far);
-    const generic = buildPromptForModel('google/gemini-nano-banana-2.1', '', 'far', 0);
-    expect(generic.prompt).toBe(buildVariantsPrompt('', 'far'));
-    expect(generic.strength).toBeUndefined();
+  it('prompt podle modelu: Qwen instrukce, ostatní obecný prompt', () => {
+    expect(buildPromptForModel('venice/qwen-image-2-1-pro-edit', '', 'middle', 1)).toBe(buildEditInstruction('', 'middle', 1));
+    expect(buildPromptForModel('google/gemini-nano-banana-2.1', '', 'far', 0)).toBe(buildVariantsPrompt('', 'far'));
   });
 });

@@ -34,7 +34,6 @@ import {
   buildVariantsPrompt,
   formatVariantsDate,
   isInstructionEditModel,
-  isSeedImageModel,
   planVariantTasks,
   variantModelById,
   type VariantModelId,
@@ -47,8 +46,6 @@ type SourceImage = { name: string; dataUrl: string; mimeType: string };
 type OutputStatus = 'pending' | 'running' | 'retrying' | 'done' | 'error';
 
 export type VariantOutput = {
-  /** Síla změny pro img2img modely (Runware); ostatní modely ji nemají. */
-  strength?: number;
   id: string;
   modelId: VariantModelId;
   variantIndex: number;
@@ -535,11 +532,7 @@ export function VariantsScreen(props: {
         },
         worker: async (output) => {
           const model = variantModelById(output.modelId);
-          const settings =
-            output.strength === undefined
-              ? providerSettings
-              : { ...providerSettings, runware: { apiKey: '', enabled: true, ...providerSettings.runware, strength: output.strength } };
-          const provider = ProviderFactory.getProvider(AIProviderType.OPENROUTER, settings, model.model);
+          const provider = ProviderFactory.getProvider(AIProviderType.OPENROUTER, providerSettings, model.model);
           const result = await provider.generateImage(
             [{ data: prepared.data, mimeType: prepared.mimeType }],
             output.prompt,
@@ -632,15 +625,14 @@ export function VariantsScreen(props: {
     const runCreatedAt = Date.now();
     const tasks = planVariantTasks(selectedModels, count, (modelId, index) => makeId(`variant-${modelId}-${index}`));
     const pending: VariantOutput[] = tasks.map((task, i) => {
-      // Editační modely (Qwen) a img2img (Runware) nedostanou obecný prompt, ale vlastní instrukci.
-      const built = buildPromptForModel(variantModelById(task.modelId).model, customPrompt, distance, task.variantIndex);
+      // Editační modely (Qwen) nedostanou obecný prompt, ale vlastní instrukci.
+      const prompt = buildPromptForModel(variantModelById(task.modelId).model, customPrompt, distance, task.variantIndex);
       return {
         id: task.id,
         modelId: task.modelId,
         variantIndex: task.variantIndex,
         runId,
-        prompt: built.prompt,
-        strength: built.strength,
+        prompt,
         status: 'pending' as const,
         createdAt: runCreatedAt + i,
         sourceDataUrl: source.dataUrl,
@@ -922,9 +914,9 @@ export function VariantsScreen(props: {
             </div>
             <p className="mt-2 max-h-[260px] overflow-y-auto custom-scrollbar whitespace-pre-wrap text-[8px] leading-relaxed text-[var(--text-secondary)]">{activePrompt}</p>
           </div>
-          {selectedModels.some((id) => isInstructionEditModel(variantModelById(id).model) || isSeedImageModel(variantModelById(id).model)) ? (
+          {selectedModels.some((id) => isInstructionEditModel(variantModelById(id).model)) ? (
             <p className="text-[8px] leading-relaxed text-[var(--text-3)]">
-              Qwen dostane místo toho krátkou instrukci (jinou pro každou variantu), např. „{buildEditInstruction(customPrompt, distance, 0)}“. Runware SDXL dostane popis scény a sílu změny podle vzdálenosti.
+              Qwen dostane místo toho krátkou instrukci (jinou pro každou variantu), např. „{buildEditInstruction(customPrompt, distance, 0)}“.
             </p>
           ) : null}
         </AtelierSection>

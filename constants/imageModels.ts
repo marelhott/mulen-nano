@@ -12,7 +12,6 @@ export const IMAGE_MODELS = [
   { id: 'qwen-uncensored', title: 'Qwen Uncensored', model: 'venice/qwen-edit-uncensored', minInputs: 1, maxInputs: 3, resolution: undefined },
   { id: 'qwen-turbo', title: 'Qwen Turbo', model: 'venice/qwen-image-2-1-turbo-edit', minInputs: 1, maxInputs: 6, resolution: '1K' },
   { id: 'qwen-pro', title: 'Qwen Pro', model: 'venice/qwen-image-2-1-pro-edit', minInputs: 1, maxInputs: 10, resolution: '1K' },
-  { id: 'runware', title: 'Runware SDXL', model: 'runware/sdxl', minInputs: 0, maxInputs: 1, resolution: undefined },
   { id: 'lustify', title: 'Lustify v8', model: 'venice/lustify-v8', minInputs: 0, maxInputs: 0, resolution: undefined },
 ] as const;
 

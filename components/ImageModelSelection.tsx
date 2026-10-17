@@ -52,16 +52,10 @@ export function ImageModelSelector(props: {
       const reason = imageModelInputError(model, props.inputCount!);
       return reason ? <p key={model} role="status" className="text-[10px] text-[var(--text-secondary)]">{reason}</p> : null;
     })}
-    {configured && [...new Set(selected.map((model) => model.startsWith('venice/') ? 'venice' : model.startsWith('runware/') ? 'runware' : 'openrouter'))].map((service) => {
-      const local = selection.settings[service as 'venice' | 'runware' | 'openrouter']?.apiKey;
+    {configured && [...new Set(selected.map((model) => model.startsWith('venice/') ? 'venice' : 'openrouter'))].map((service) => {
+      const local = selection.settings[service as 'venice' | 'openrouter']?.apiKey;
       if (local?.trim() || configured[service === 'openrouter' ? 'openRouter' : service]) return null;
-      return <p key={service} role="status" className="text-[10px] text-[var(--text-secondary)]">Chybí klíč {service === 'openrouter' ? 'OpenRouter' : service === 'venice' ? 'Venice' : 'Runware'} v Nastavení i na serveru.</p>;
+      return <p key={service} role="status" className="text-[10px] text-[var(--text-secondary)]">Chybí klíč {service === 'openrouter' ? 'OpenRouter' : 'Venice'} v Nastavení i na serveru.</p>;
     })}
-    {selected.includes('runware/sdxl') && <label className="block text-[10px] text-[var(--text-secondary)]">
-      Síla změny Runware · {(selection.settings.runware?.strength ?? 0.35).toFixed(2)}
-      <input type="range" min="0" max="1" step="0.05" aria-label="Síla změny Runware"
-        value={selection.settings.runware?.strength ?? 0.35} className="w-full mt-2"
-        onChange={(e) => selection.onSettingsChange({ ...selection.settings, runware: { apiKey: '', enabled: true, ...selection.settings.runware, strength: Number(e.target.value) } })} />
-    </label>}
   </section>;
 }

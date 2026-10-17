@@ -78,16 +78,8 @@ describe('Explicitní externí obrazové služby', () => {
       { ...base, preferredModel: 'venice/lustify-v8' },
       'pouze generování z textu',
     ],
-    [
-      {
-        ...base,
-        preferredModel: 'runware/sdxl',
-        images: Array(2).fill({ data: image }),
-      },
-      'jeden vstup',
-    ],
     [{ ...base, prompt: 'x'.repeat(1501) }, '1500'],
-    [{ ...base, preferredModel: 'runware/sdxl', runwareModel: 'auto' }, 'AIR'],
+    [{ ...base, preferredModel: 'runware/sdxl' }, 'Nepodporovaný externí model'],
   ])('neignoruje nekompatibilní vstup', async (body, error) => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
@@ -107,30 +99,6 @@ describe('Explicitní externí obrazové služby', () => {
     expect(fetch.mock.calls[0][0]).toContain('/image/generate');
     expect(JSON.parse(fetch.mock.calls[0][1].body).model).toBe('lustify-v8');
     expect(result.imageBase64).toBe(image);
-  });
-  it('Runware zachová vstup, sílu a vlastní AIR bez fallbacku', async () => {
-    const fetch = vi.fn().mockImplementation(async (_url, options) => {
-      const [task] = JSON.parse(options.body);
-      return Response.json({
-        data: [{ taskUUID: task.taskUUID, imageBase64Data: 'aGVsbG8=' }],
-      });
-    });
-    vi.stubGlobal('fetch', fetch);
-    const result = await generateExternalImage({
-      ...base,
-      preferredModel: 'runware/sdxl',
-      runwareModel: 'civitai:1@2',
-      strength: 0.27,
-      aspectRatio: '3:2',
-    });
-    expect(JSON.parse(fetch.mock.calls[0][1].body)[0]).toMatchObject({
-      seedImage: image,
-      strength: 0.27,
-      model: 'civitai:1@2',
-      width: 1024,
-      height: 680,
-    });
-    expect(result.modelId).toBe('runware/civitai:1@2');
   });
   it('chybějící Venice klíč nenahradí OpenRouter klíčem', async () => {
     vi.stubEnv('VENICE_API_KEY', '');
@@ -189,13 +157,6 @@ describe('Explicitní externí obrazové služby', () => {
         'venice/qwen-edit-uncensored'
       ).getName()
     ).toBe('Venice');
-    expect(
-      ProviderFactory.getProvider(
-        AIProviderType.OPENROUTER,
-        {},
-        'runware/sdxl'
-      ).getName()
-    ).toBe('Runware');
     expect(
       ProviderFactory.getProvider(
         AIProviderType.OPENROUTER,

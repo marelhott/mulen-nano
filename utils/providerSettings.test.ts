@@ -47,11 +47,8 @@ it('StrictMode nepřepíše uložené klíče, AIR, sílu ani vybraný externí 
     );
   });
   expect(current!.providerSettings.venice?.apiKey).toBe('venice-test');
-  expect(current!.providerSettings.runware).toMatchObject({
-    apiKey: 'runware-test',
-    model: 'civitai:1@2',
-    strength: 0.27,
-  });
+  // Uložené nastavení zrušené služby (Runware) se nenačítá.
+  expect('runware' in current!.providerSettings).toBe(false);
   expect(current!.nanoBananaImageModel).toBe('venice/qwen-image-2-1-pro-edit');
   expect(
     JSON.parse(localStorage.getItem('providerSettings')!).openrouter.apiKey

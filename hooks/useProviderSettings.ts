@@ -29,7 +29,6 @@ function readStoredImageModel(): NanoBananaImageModel {
 const defaults = (): ProviderSettings => ({
   [AIProviderType.OPENROUTER]: { apiKey: '', enabled: true },
   venice: { apiKey: '', enabled: true },
-  runware: { apiKey: '', enabled: true, model: '', strength: 0.35 },
   headSwap: { preferredPrimary: 'openrouter', hairSource: 'target', sourceGender: 'default', secondarySourceGender: 'default', useUpscale: true, useDetailer: false, facefusionEndpoint: '', refaceEndpoint: '' },
 });
 
@@ -43,7 +42,6 @@ export function useProviderSettings() {
       return { ...defaultProviderSettings,
         [AIProviderType.OPENROUTER]: { apiKey: existing?.apiKey || '', enabled: true },
         venice: { apiKey: stored.venice?.apiKey || '', enabled: true },
-        runware: { apiKey: stored.runware?.apiKey || '', enabled: true, model: stored.runware?.model || '', strength: stored.runware?.strength ?? 0.35 },
       };
     } catch {
       return defaultProviderSettings;

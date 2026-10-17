@@ -2,15 +2,14 @@
 
 ## Rozsah
 
-`constants/imageModels.ts` je jediný katalog 14 obrazových modelů pro Nano, Batch, Varianty, Koláž, AI Upscaler, Reframe, Face Swap, Style Transfer a obrazové operace ve starších nástrojích. `ImageModelSelector` vykresluje stejný katalog všude. Jednoduché sekce sdílejí uložený výběr, Varianty a Koláž ponechávají vícenásobný výběr pro porovnání modelů.
+`constants/imageModels.ts` je jediný katalog 13 obrazových modelů pro Nano, Batch, Varianty, Koláž, AI Upscaler, Reframe, Face Swap, Style Transfer a obrazové operace ve starších nástrojích. `ImageModelSelector` vykresluje stejný katalog všude. Jednoduché sekce sdílejí uložený výběr, Varianty a Koláž ponechávají vícenásobný výběr pro porovnání modelů.
 
-Obrazové požadavky procházejí přes `ProviderFactory.getProvider`. Venice/Runware mají vlastní autentizaci, nikoli OpenRouter klíč. Textové a analytické požadavky nadále používají OpenRouter. Neexistuje automatický fallback na jiný placený model nebo službu.
+Obrazové požadavky procházejí přes `ProviderFactory.getProvider`. Venice má vlastní autentizaci, nikoli OpenRouter klíč. Textové a analytické požadavky nadále používají OpenRouter. Neexistuje automatický fallback na jiný placený model nebo službu.
 
 ## Skutečné limity
 
 - Lustify v8: pouze text-to-image. V úlohách se vstupním obrázkem není funkční volbou a UI to uvede před spuštěním.
 - Qwen Edit Uncensored/Turbo/Pro: vyžadují alespoň jeden obrázek, přijímají nejvýše 3/6/10 vstupů.
-- Runware SDXL: nejvýše jeden vstup, vyžaduje Runware klíč a platný AIR checkpoint v Nastavení nebo na serveru. Není automaticky zvolen náhradní checkpoint.
 - Recraft: jeden vstup; Grok: tři; MAI: pět. Žádná reference se potichu nevynechává.
 - Modely bez parametru `resolution` tento parametr nedostávají. Výsledné rozměry určuje jejich API, ne univerzální přepínač rozlišení.
 - Vlastní LoRA a vlastní soubor SDXL checkpointu nejsou obecné generativní modely. Připojené cloudové adaptéry je neumí použít. UI je označí jako nedostupné; servis je odmítne před požadavkem. Pro skutečný vlastní checkpoint zůstává samostatný lokální A1111 backend.
@@ -20,7 +19,7 @@ Obrazové požadavky procházejí přes `ProviderFactory.getProvider`. Venice/Ru
 
 Kontrakty směrování, oddělení klíčů, limity vstupů, samostatné výstupy stylového přenosu a blokování nepodporovaných adaptérů pokrývá `services/imageExecution.test.ts`. Mockovaný test není důkazem skutečného placeného generování. To je nutné ověřit s aktivním klíčem a kreditem každé služby.
 
-Produkční Vercel při kontrole 17. 10. 2026 neobsahoval `OPENROUTER_API_KEY`, `VENICE_API_KEY` ani `RUNWARE_API_KEY`. Staré klíče jiných služeb jejich funkci nenahrazují. Klíč uložený v prohlížeči platí pouze v tomto prohlížeči. Tento patch produkční secrets nemění.
+Produkční Vercel při kontrole 17. 10. 2026 neobsahoval `OPENROUTER_API_KEY` ani `VENICE_API_KEY`. Staré klíče jiných služeb jejich funkci nenahrazují. Klíč uložený v prohlížeči platí pouze v tomto prohlížeči. Tento patch produkční secrets nemění.
 
 Samostatný Next.js editor `workflow/` není součástí Vite produkčního buildu na Vercelu. Jeho historický katalog a oddělené nasazení je nutné řešit samostatně; nelze jeho funkčnost odvozovat z úspěšného Vite deploye.
 
