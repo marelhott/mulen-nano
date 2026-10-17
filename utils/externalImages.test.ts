@@ -236,3 +236,15 @@ describe('Explicitní externí obrazové služby', () => {
     });
   });
 });
+
+describe('cleanKey', () => {
+  it('odstraní uvozovky, mezery a literální \\n z klíčů vložených do Vercelu', async () => {
+    const { cleanKey } = await import('../lib/external-images.cjs');
+    expect(cleanKey('  abc123  ')).toBe('abc123');
+    expect(cleanKey('"abc123"')).toBe('abc123');
+    expect(cleanKey("'abc123'")).toBe('abc123');
+    expect(cleanKey('abc123\\n')).toBe('abc123');
+    expect(cleanKey('"abc123\\n"')).toBe('abc123');
+    expect(cleanKey(undefined)).toBe('');
+  });
+});
