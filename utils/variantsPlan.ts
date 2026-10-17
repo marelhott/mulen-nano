@@ -2,6 +2,8 @@
 // Čistá logika bez UI (prompt, modely, plán úloh), aby šla testovat samostatně.
 // Prompt je doslova znění ověřené v ChatGPT (angličtina je záměr: modely na ni reagují nejlíp).
 
+import { IMAGE_MODELS, type ImageModelChoice } from '../constants/imageModels';
+
 export const VARIANTS_MAX_PER_MODEL = 5;
 
 export type VariantsDistance = 'near' | 'middle' | 'far' | 'weird';
@@ -45,7 +47,7 @@ export function buildVariantsPrompt(base: string, distance: VariantsDistance): s
   return suffix ? `${text}\n\n${suffix}` : text;
 }
 
-export type VariantModelId = 'gpt' | 'gemini' | 'flux' | 'seedream' | 'muse' | 'grok' | 'mai' | 'recraft';
+export type VariantModelId = ImageModelChoice;
 
 export type VariantModel = {
   id: VariantModelId;
@@ -58,65 +60,7 @@ export type VariantModel = {
   note?: string;
 };
 
-export const VARIANT_MODELS: VariantModel[] = [
-  {
-    id: 'gpt',
-    title: 'ChatGPT',
-    subtitle: 'openai/gpt-image-2.5-sunburst',
-    model: 'openai/gpt-image-2.5-sunburst',
-    resolution: '1K',
-  },
-  {
-    id: 'gemini',
-    title: 'Gemini',
-    subtitle: 'google/gemini-nano-banana-2.1',
-    model: 'google/gemini-nano-banana-2.1',
-    resolution: '1K',
-  },
-  {
-    id: 'flux',
-    title: 'FLUX',
-    subtitle: 'black-forest-labs/flux-3-image',
-    model: 'black-forest-labs/flux-3-image',
-    resolution: undefined,
-    note: 'FLUX 3 je na OpenRouteru nový a může být dočasně nedostupný.',
-  },
-  {
-    id: 'seedream',
-    title: 'Seedream',
-    subtitle: 'bytedance-seed/seedream-5-0-pro',
-    model: 'bytedance-seed/seedream-5-0-pro',
-    resolution: undefined,
-  },
-  {
-    id: 'muse',
-    title: 'Muse',
-    subtitle: 'meta/muse-image',
-    model: 'meta/muse-image',
-    resolution: undefined,
-  },
-  {
-    id: 'grok',
-    title: 'Grok',
-    subtitle: 'x-ai/grok-imagine-image-2.0',
-    model: 'x-ai/grok-imagine-image-2.0',
-    resolution: undefined,
-  },
-  {
-    id: 'mai',
-    title: 'MAI Image',
-    subtitle: 'microsoft/mai-image-2.6',
-    model: 'microsoft/mai-image-2.6',
-    resolution: undefined,
-  },
-  {
-    id: 'recraft',
-    title: 'Recraft',
-    subtitle: 'recraft/recraft-v4.1-pro',
-    model: 'recraft/recraft-v4.1-pro',
-    resolution: undefined,
-  },
-];
+export const VARIANT_MODELS: VariantModel[] = IMAGE_MODELS.map((item) => ({ ...item, subtitle: item.model }));
 
 export function clampVariantCount(value: number): number {
   if (!Number.isFinite(value)) return 1;

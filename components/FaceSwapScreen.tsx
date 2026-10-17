@@ -1,4 +1,6 @@
 import React from 'react';
+import { useImageModelSelection } from './ImageModelSelection';
+import { imageModelById } from '../constants/imageModels';
 import { Download, Sparkles, Upload } from 'lucide-react';
 import type { HeadSwapGender, ProviderSettings } from '../services/aiProvider';
 import type { HeadSwapMode, HeadSwapModelChoice, HeadSwapProgress } from '../services/headSwapService';
@@ -48,7 +50,8 @@ export function FaceSwapScreen(props: {
   const [mode, setMode] = React.useState<HeadSwapMode>('head');
   const [hairSource, setHairSource] = React.useState<'user' | 'target'>(providerSettings.headSwap?.hairSource || 'target');
   const [genderOverride, setGenderOverride] = React.useState<HeadSwapGender>('default');
-  const [selectedModels, setSelectedModels] = React.useState<HeadSwapModelChoice>('both');
+  const selectedModels: HeadSwapModelChoice = 'gemini';
+  const { model } = useImageModelSelection();
   const [outputCount, setOutputCount] = React.useState<1 | 2 | 3>(2);
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [outputs, setOutputs] = React.useState<FaceSwapOutputCard[]>([]);
@@ -59,11 +62,7 @@ export function FaceSwapScreen(props: {
   const sourceInputId = React.useMemo(() => `face-swap-source-${Math.random().toString(36).slice(2)}`, []);
   const targetInputId = React.useMemo(() => `face-swap-target-${Math.random().toString(36).slice(2)}`, []);
 
-  const modelSummary = React.useMemo(() => {
-    if (selectedModels === 'both') return 'Gemini + GPT Image 2.5';
-    if (selectedModels === 'openai') return 'GPT Image 2.5';
-    return 'Gemini Nano Banana';
-  }, [selectedModels]);
+  const modelSummary = imageModelById(model)?.title || model;
 
   const pickSlotFile = React.useCallback(
     async (kind: 'source' | 'target', file: File) => {
@@ -141,6 +140,7 @@ export function FaceSwapScreen(props: {
           mode,
           hairSource: hairSource,
           selectedModels,
+          imageModel: model,
           outputCount,
           sourceGender: genderOverride,
         },
@@ -216,7 +216,7 @@ export function FaceSwapScreen(props: {
       setIsGenerating(false);
       setProgress(null);
     }
-  }, [mode, modelSummary, onToast, outputCount, hairSource, providerSettings, selectedModels, source, target]);
+  }, [mode, modelSummary, onToast, outputCount, hairSource, providerSettings, selectedModels, source, target, model]);
 
   const renderDropSlot = (
     kind: 'source' | 'target',
@@ -289,26 +289,6 @@ export function FaceSwapScreen(props: {
                   className={`mn-option-button flex-1 whitespace-nowrap ${mode === item ? 'mn-option-button-active' : ''}`}
                 >
                   {item}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="text-[9px] font-bold uppercase tracking-wider text-white/55">MODEL</div>
-            <div className="grid grid-cols-3 gap-2">
-              {([
-                { id: 'gemini', label: 'Gemini' },
-                { id: 'openai', label: 'GPT Image 2.5' },
-                { id: 'both', label: 'Oba' },
-              ] as const).map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setSelectedModels(item.id)}
-                  className={`mn-option-button whitespace-nowrap ${selectedModels === item.id ? 'mn-option-button-active' : ''}`}
-                >
-                  <span className="block truncate">{item.label}</span>
                 </button>
               ))}
             </div>

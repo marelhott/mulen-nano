@@ -1,3 +1,5 @@
+import type { ImageModelId } from '../constants/imageModels';
+import { imageModelById } from '../constants/imageModels';
 import type { HeadSwapGender, HeadSwapHairSource, ProviderSettings } from './aiProvider';
 import { AIProviderType } from './aiProvider';
 import { ProviderFactory } from './providerFactory';
@@ -19,6 +21,7 @@ export interface HeadSwapRequest {
   mode?: HeadSwapMode;
   hairSource?: HeadSwapHairSource;
   selectedModels?: HeadSwapModelChoice;
+  imageModel?: ImageModelId;
   outputCount?: number;
   sourceGender?: HeadSwapGender;
 }
@@ -67,20 +70,15 @@ async function runSinglePromptSwap(params: {
   providerType: AIProviderType;
   settings: ProviderSettings;
   promptModel: HeadSwapPromptModel;
+  imageModel?: ImageModelId;
   compositeInput: { data: string; mimeType: string };
   mode: HeadSwapMode;
   hairSource: HeadSwapHairSource;
   batchIndex: number;
   sourceGender?: HeadSwapGender;
 }): Promise<HeadSwapOutput> {
-  const preferredImageModel = params.promptModel === 'openai'
-    ? 'openai/gpt-image-2.5-sunburst'
-    : 'google/gemini-3-pro-image';
-  const provider = ProviderFactory.createProvider(
-    params.providerType,
-    preferredImageModel,
-    params.settings[AIProviderType.OPENROUTER]?.apiKey,
-  );
+  const preferredImageModel = params.imageModel ?? (params.promptModel === 'openai' ? 'openai/gpt-image-2.5-sunburst' : 'google/gemini-3-pro-image');
+  const provider = ProviderFactory.getProvider(params.providerType, params.settings, preferredImageModel);
   const prompt = buildHeadSwapPrompt({
     model: params.promptModel,
     mode: params.mode,
@@ -99,7 +97,7 @@ async function runSinglePromptSwap(params: {
 
   return {
     provider: getHeadSwapProviderId(params.promptModel),
-    label: `${getHeadSwapModelLabel(params.promptModel)} • ${params.batchIndex + 1}`,
+    label: `${imageModelById(preferredImageModel)?.title || preferredImageModel} • ${params.batchIndex + 1}`,
     imageBase64: result.imageBase64,
     batchIndex: params.batchIndex,
     modelId: result.modelId,
@@ -152,6 +150,7 @@ export async function runHeadSwap(params: {
         providerType,
         settings: params.settings,
         promptModel: model,
+        imageModel: params.request.imageModel,
         compositeInput,
         mode,
         hairSource,

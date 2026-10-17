@@ -308,6 +308,10 @@ export function ModelInfluenceScreen(props: {
       onToast({ type: 'error', message: 'Nahraj vstupní obrázek.' });
       return;
     }
+    if (['fal'].includes(backend)) {
+      onToast({ type: 'error', message: 'Vlastní checkpoint není podporovaný připojenými obrazovými API. Není nahrazen jiným modelem. Pro tuto funkci zvol A1111.' });
+      return;
+    }
     let cleanModel = '';
     const modelDisplayDefault = String(modelName || '').trim();
     let modelDisplay: string;
@@ -558,7 +562,7 @@ export function ModelInfluenceScreen(props: {
           <button
             type="button"
             onClick={handleGenerate}
-            disabled={!input || isGenerating}
+            disabled={!input || isGenerating || backend === 'fal'}
             className="mn-action-primary ambient-glow glow-green glow-weak"
           >
             {isGenerating ? 'Generuji…' : 'Generovat'}
@@ -573,7 +577,7 @@ export function ModelInfluenceScreen(props: {
                 className={`mn-option-button flex-1 ${backend === 'fal' ? 'mn-option-button-active' : ''}`}
                 title="OpenRouter (výchozí)"
               >
-                FAL
+                Cloud · checkpoint nedostupný
               </button>
               <button
                 type="button"
@@ -780,6 +784,7 @@ export function ModelInfluenceScreen(props: {
       </section>
 
       <AtelierRightPanel onOpenLibrary={onOpenLibrary}>
+        <p role="status" className="text-[10px] text-[var(--text-secondary)]">Vlastní SDXL checkpoint vyžaduje A1111. Cloudové obrazové modely jej neumí načíst; jejich výběr mění model pro ostatní obrazové úlohy, ne checkpoint.</p>
         <AtelierSection title="Doladění modelu">
           <label className="block space-y-1.5">
             <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">

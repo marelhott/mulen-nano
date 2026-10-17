@@ -1,6 +1,8 @@
 import React from 'react';
 import { Download, X } from 'lucide-react';
-import { OpenRouterProvider } from '../services/openRouterService';
+import { imageExecutionProvider } from '../services/imageExecution';
+import { useImageModelSelection } from './ImageModelSelection';
+import { imageModelById, type ImageModelId } from '../constants/imageModels';
 import { createThumbnail, saveToGallery } from '../utils/galleryDB';
 import { ImageDatabase } from '../utils/imageDatabase';
 import { fileToDataUrl } from './styleTransfer/utils';
@@ -10,10 +12,8 @@ import { AtelierEmptyState, AtelierInfoRows, AtelierRightPanel, AtelierSection }
 import { decideAdaptiveConcurrency, estimateDataUrlBytes, runConcurrentTasks } from '../utils/concurrencyRunner';
 import { toUserFacingAiError } from '../utils/aiErrorMessage';
 
-const NANO_BANANA_2_1_MODEL = 'google/gemini-nano-banana-2.1';
-const PRO_MODEL = 'google/gemini-3-pro-image';
 type UpscaleMode = 'detail-enhance' | 'restore' | 'enhance' | 'denoise' | 'upscale-only';
-type UpscaleModelId = typeof NANO_BANANA_2_1_MODEL | typeof PRO_MODEL;
+type UpscaleModelId = ImageModelId;
 
 const DETAIL_ENHANCE_PROMPT = "Upscale this image and intelligently enhance real visible detail only. Improve sharpness, fine texture clarity, edge definition, material detail, and local contrast while preserving the original image faithfully. Do not redesign, repaint, stylize, beautify, relight creatively, add new objects, alter identity, change composition, change colors, or invent details that are not plausibly supported by the source. The result must look like a high-quality technical restoration and detail enhancement, not an AI reinterpretation.";
 const UPSCALE_PROMPT = "Upscale this image faithfully without any creative intent. Preserve the original photo as much as possible, only compute necessary artifacts.";
@@ -103,11 +103,11 @@ function modeLabel(mode: UpscaleMode): string {
 }
 
 function upscaleModelLabel(model: UpscaleModelId): string {
-  return model === PRO_MODEL ? 'Nano Pro' : 'Nano Banana 2.1';
+  return imageModelById(model)?.title || model;
 }
 
 function upscaleModelSubtitle(model: UpscaleModelId): string {
-  return model === PRO_MODEL ? 'Gemini 3 Pro' : 'Gemini Nano Banana 2.1';
+  return imageModelById(model)?.title || model;
 }
 
 function modePrompt(mode: UpscaleMode): string {
@@ -136,7 +136,7 @@ export function AiUpscalerScreen(props: {
   const [inputs, setInputs] = React.useState<ImageSlot[]>([]);
   const [scale, setScale] = React.useState<2 | 4>(2);
   const [mode, setMode] = React.useState<UpscaleMode>('detail-enhance');
-  const [model, setModel] = React.useState<UpscaleModelId>(PRO_MODEL);
+  const { model, settings } = useImageModelSelection();
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [phase, setPhase] = React.useState<'' | 'queue' | 'running' | 'finalizing'>('');
   const [batchProgress, setBatchProgress] = React.useState<{ current: number; total: number; fileName: string } | null>(null);
@@ -193,10 +193,6 @@ export function AiUpscalerScreen(props: {
   const handleGenerate = React.useCallback(async () => {
     if (inputs.length === 0) {
       onToast({ type: 'error', message: 'Nejdřív nahraj obrázek.' });
-      return;
-    }
-    if (!openRouterKey && !serverProviders.openRouter) {
-      onToast({ type: 'error', message: 'Chybí OpenRouter klíč — nastav ho v Nastavení.' });
       return;
     }
 
@@ -271,7 +267,7 @@ export function AiUpscalerScreen(props: {
         },
         worker: async (input) => {
           const modelName = model;
-          const provider = new OpenRouterProvider(openRouterKey || '', modelName);
+          const provider = imageExecutionProvider({ model: modelName, settings });
           const result = await provider.generateImage(
             [{ data: input.dataUrl, mimeType: input.file.type }],
             modePrompt(mode),
@@ -355,7 +351,7 @@ export function AiUpscalerScreen(props: {
       setPhase('');
       setBatchProgress(null);
     }
-  }, [inputs, mode, model, onToast, outputs, scale, openRouterKey, serverProviders]);
+  }, [inputs, mode, model, onToast, outputs, scale, openRouterKey, serverProviders, settings]);
 
   const findInputForOutput = (output: OutputItem): ImageSlot | undefined => {
     return inputs.find(i => i.id === output.inputId);
@@ -390,26 +386,6 @@ export function AiUpscalerScreen(props: {
                   className={`mn-option-button text-left ${mode === m ? 'mn-option-button-active' : ''}`}>
                   <div className="text-[9px] font-bold">{modeLabel(m)}</div>
                   <div className="mt-0.5 text-[8px] text-white/40 leading-tight">{modeDescription(m)}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="mn-section-label">Model</div>
-            <div className="grid grid-cols-2 gap-2">
-              {([
-                { id: PRO_MODEL, label: 'Nano Pro', subtitle: 'Gemini 3 Pro' },
-                { id: NANO_BANANA_2_1_MODEL, label: 'Nano Banana 2.1', subtitle: 'Gemini Nano Banana 2.1' },
-              ] as const).map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setModel(item.id)}
-                  className={`mn-option-button text-left ${model === item.id ? 'mn-option-button-active' : ''}`}
-                >
-                  <div className="text-[9px] font-bold">{item.label}</div>
-                  <div className="mt-0.5 text-[8px] text-white/40 leading-tight">{item.subtitle}</div>
                 </button>
               ))}
             </div>

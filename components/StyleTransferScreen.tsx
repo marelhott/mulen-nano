@@ -1,4 +1,5 @@
 import React from 'react';
+import { ImageModelSelector, useImageModelSelection } from './ImageModelSelection';
 import { AIProviderType, ProviderSettings } from '../services/aiProvider';
 import { runArbitraryStyleTransferTfjs } from '../services/arbitraryStyleTransferTfjs';
 import { runGatysStyleTransfer, runWctStyleTransfer } from '../services/neuralStyleTransferAlgorithms';
@@ -26,6 +27,7 @@ export function StyleTransferScreen(props: {
   isHoveringGallery: boolean;
   theme?: 'dark' | 'light';
 }) {
+  const selection = useImageModelSelection();
   const { providerSettings, onBack, onOpenLibrary, onToast, isHoveringGallery, theme = 'dark' } = props;
 
   async function normalizeDataUrlPixels(
@@ -194,14 +196,11 @@ export function StyleTransferScreen(props: {
           type: 'info',
         });
       } else {
-        onToast({ message: 'FOFR styl transfer běží přes OpenRouter (cloud).', type: 'info' });
+        onToast({ message: 'Stylový přenos běží přes vybraný obrazový model.', type: 'info' });
       }
 
       if (engine === 'fofr') {
         const token = providerSettings?.[AIProviderType.OPENROUTER]?.apiKey;
-        if (!token) {
-          throw new Error('Chybí OpenRouter API klíč. Otevři Nastavení a vlož klíč pro OpenRouter.');
-        }
 
         // Build a single "style image" from up to 3 refs.
         const seedBase = (Date.now() ^ Math.floor(Math.random() * 1e9)) | 0;
@@ -240,9 +239,10 @@ export function StyleTransferScreen(props: {
           worker: async (_id, context) => {
             const data = await runFofrStyleTransfer({
               token,
+              execution: { model: selection.model, settings: selection.settings },
               styleImage: styleUrl,
               structureImage: fofrUseStructure ? structureUrl : undefined,
-              prompt: '',
+              prompt: `Transfer the visual style from the last image to the first image. Preserve subject identity, objects and composition of the first image. Style direction: ${fofrModel}. Style intensity: ${fofrStructureDenoisingStrength}. Do not add labels, frames or watermarks.`,
               negativePrompt: '',
               width: fofrWidth,
               height: fofrHeight,
@@ -267,8 +267,8 @@ export function StyleTransferScreen(props: {
                 aspectRatio: 'Original',
                 params: {
                   mode: 'style-transfer-fofr',
-                  engine: 'replicate',
-                  model: fofrModel,
+                  engine: 'image-model',
+                  model: selection.model,
                   number_of_images: 1,
                   structure_depth_strength: fofrStructureDepthStrength,
                   structure_denoising_strength: fofrStructureDenoisingStrength,
@@ -442,6 +442,7 @@ export function StyleTransferScreen(props: {
     localIterationHint,
     localMethod,
     providerSettings,
+    selection,
     reference,
     strength,
     variants,
@@ -575,7 +576,9 @@ export function StyleTransferScreen(props: {
         )}
       </div>
 
-      <AtelierRightPanel onOpenLibrary={onOpenLibrary}>
+      <AtelierRightPanel onOpenLibrary={onOpenLibrary} modelSelector={false}>
+        <ImageModelSelector inputCount={fofrUseStructure ? 2 : 1} disabled={isGenerating}
+          onSelect={(model) => { selection.onChange(model); setEngine('fofr'); }} />
         <AtelierSection title="Doladění stylu">
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -701,7 +704,7 @@ export function StyleTransferScreen(props: {
               </label>
               <label className="block space-y-1.5">
                 <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
-                  <span>Depth</span>
+                  <span>Depth · nedostupné v obrazovém API</span>
                   <span>{fofrStructureDepthStrength.toFixed(2)}</span>
                 </div>
                 <input
@@ -710,6 +713,7 @@ export function StyleTransferScreen(props: {
                   max={2}
                   step={0.05}
                   value={fofrStructureDepthStrength}
+                  disabled
                   onChange={(e) => setFofrStructureDepthStrength(Number(e.target.value))}
                   className="range-green w-full"
                 />

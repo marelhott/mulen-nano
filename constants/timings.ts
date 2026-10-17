@@ -1,7 +1,7 @@
 import { AIProviderType } from '../services/aiProvider';
-import type { ExternalImageModel } from './externalImageModels';
+import type { ImageModelId } from './imageModels';
 
-export type NanoBananaImageModel = 'google/gemini-3-pro-image' | 'google/gemini-nano-banana-2.1' | 'openai/gpt-image-2.5-sunburst' | ExternalImageModel;
+export type NanoBananaImageModel = ImageModelId;
 
 const GEMINI_FLASH_INTER_REQUEST_DELAY_MS = 250;
 const GEMINI_PRO_INTER_REQUEST_DELAY_MS = 450;

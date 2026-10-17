@@ -1,4 +1,5 @@
 import React from 'react';
+import { ImageModelSelector } from '../ImageModelSelection';
 
 type AtelierRightPanelContextValue = {
   isCollapsed: boolean;
@@ -22,6 +23,7 @@ export function AtelierRightPanelProvider(props: {
 export function AtelierRightPanel(props: {
   children?: React.ReactNode;
   onOpenLibrary?: () => void;
+  modelSelector?: boolean;
 }) {
   const { isCollapsed } = React.useContext(AtelierRightPanelContext);
 
@@ -33,7 +35,10 @@ export function AtelierRightPanel(props: {
     <aside className="hidden lg:flex w-[320px] shrink-0 flex-col h-full z-20 cairn-panel-right"
       style={{backdropFilter:'blur(32px) saturate(200%)', background:'linear-gradient(200deg,rgba(32,44,24,0.94) 0%,rgba(20,28,15,0.96) 100%)', boxShadow:'-4px 0 48px rgba(0,0,0,0.50), inset 0 0 120px rgba(125,154,100,0.08)'}}>
       <div className="flex h-full flex-col overflow-y-auto custom-scrollbar p-6">
-        <div className="space-y-5">{props.children}</div>
+        <div className="space-y-5">
+          {props.modelSelector !== false && <ImageModelSelector inputCount={1} />}
+          {props.children}
+        </div>
         <div className="mt-auto pt-6">
           <AtelierLibraryButton onOpenLibrary={props.onOpenLibrary} />
         </div>

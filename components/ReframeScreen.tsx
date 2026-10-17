@@ -1,6 +1,7 @@
 import React from 'react';
 import { Download, ImagePlus, Sparkles, X } from 'lucide-react';
-import { OpenRouterProvider } from '../services/openRouterService';
+import { imageExecutionProvider } from '../services/imageExecution';
+import { useImageModelSelection } from './ImageModelSelection';
 import type { ProviderSettings } from '../services/aiProvider';
 import { AIProviderType, type ImageInput } from '../services/aiProvider';
 import { createThumbnail, saveToGallery } from '../utils/galleryDB';
@@ -274,6 +275,7 @@ export function ReframeScreen(props: {
   theme?: 'dark' | 'light';
 }) {
   const { providerSettings, onOpenSettings, onOpenLibrary, onToast, theme = 'dark' } = props;
+  const { model, settings } = useImageModelSelection();
   const [input, setInput] = React.useState<InputImage | null>(null);
   const [selected, setSelected] = React.useState<Set<PerspectiveId>>(() => new Set(DEFAULT_SELECTED));
   const [gridMode, setGridMode] = React.useState<'3x3' | 'free'>('3x3');
@@ -335,10 +337,6 @@ export function ReframeScreen(props: {
       onToast({ type: 'error', message: 'Vyber aspoň jednu perspektivu.' });
       return;
     }
-    if (!openRouterKey && !serverOpenRouterReady) {
-      onToast({ type: 'error', message: 'Chybí OpenRouter klíč v Nastavení nebo na Vercelu.' });
-      return;
-    }
 
     const runId = Date.now();
     const placeholders: ReframeOutput[] = selectedPerspectives.map((perspective, index) => ({
@@ -358,7 +356,7 @@ export function ReframeScreen(props: {
 
     try {
       const providerInput = await optimizeImageInput(input.dataUrl, input.file.type);
-      const provider = new OpenRouterProvider(openRouterKey || '', GEMINI_PRO_IMAGE_MODEL);
+      const provider = imageExecutionProvider({ model, settings });
       const inputBytes = estimateDataUrlBytes(providerInput.data);
       const decision = decideAdaptiveConcurrency({
         section: 'reframe',
@@ -447,20 +445,16 @@ export function ReframeScreen(props: {
       setIsGenerating(false);
       setProgress(null);
     }
-  }, [openRouterKey, input, onToast, originalAspectRatio, resolution, selectedPerspectives, serverOpenRouterReady]);
+  }, [openRouterKey, input, onToast, originalAspectRatio, resolution, selectedPerspectives, serverOpenRouterReady, model, settings]);
 
   const handleEditOutput = React.useCallback(async (output: ReframeOutput) => {
     const prompt = output.editPrompt?.trim();
     if (!prompt || !output.dataUrl) return;
-    if (!openRouterKey && !serverOpenRouterReady) {
-      onToast({ type: 'error', message: 'Chybí OpenRouter klíč v Nastavení nebo na Vercelu.' });
-      return;
-    }
 
     setOutputs((prev) => prev.map((item) => item.id === output.id ? { ...item, status: 'running', error: undefined } : item));
     try {
       const providerInput = await optimizeImageInput(output.dataUrl, 'image/png');
-      const provider = new OpenRouterProvider(openRouterKey || '', GEMINI_PRO_IMAGE_MODEL);
+      const provider = imageExecutionProvider({ model, settings });
       const result = await provider.generateImage(
         [providerInput],
         buildEditPrompt(prompt, output.perspectiveLabel, originalAspectRatio),
@@ -499,7 +493,7 @@ export function ReframeScreen(props: {
       ));
       onToast({ type: 'error', message: error?.message || 'Úprava selhala.' });
     }
-  }, [openRouterKey, onToast, originalAspectRatio, resolution, serverOpenRouterReady]);
+  }, [openRouterKey, onToast, originalAspectRatio, resolution, serverOpenRouterReady, model, settings]);
 
   return (
     <div className="flex-1 relative flex min-w-0 canvas-surface h-full overflow-hidden">

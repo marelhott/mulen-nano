@@ -1,4 +1,6 @@
 import React from 'react';
+import { ImageModelSelector } from './ImageModelSelection';
+import { imageModelInputError } from '../constants/imageModels';
 import { Images, Trash2, X } from 'lucide-react';
 import { ImageComparisonModal } from './ImageComparisonModal';
 import { AtelierEmptyState, AtelierRightPanel, AtelierSection } from './atelier/AtelierLayout';
@@ -487,6 +489,8 @@ export function CollageScreen(props: {
     const runCreatedAt = Date.now();
     const runSources = sources.map(({ name, dataUrl, mimeType }) => ({ name, dataUrl, mimeType }));
     runSourcesRef.current = runSources;
+    const incompatible = selectedModels.map((id) => imageModelInputError(variantModelById(id).model, sources.length)).find(Boolean);
+    if (incompatible) { onToast({ type: 'error', message: incompatible }); return; }
     const tasks = planVariantTasks(selectedModels, count, (modelId, index) => makeId(`collage-${modelId}-${index}`));
     const pending: VariantOutput[] = tasks.map((task, i) => ({
       id: task.id,
@@ -741,54 +745,9 @@ export function CollageScreen(props: {
         </div>
       </section>
 
-      <AtelierRightPanel onOpenLibrary={onOpenLibrary}>
-        <AtelierSection title="Modely">
-          <div className="grid grid-cols-2 gap-1.5">
-            {VARIANT_MODELS.map((model) => {
-              const isActive = selectedModels.includes(model.id);
-              const vendor = model.model.split('/')[0];
-              return (
-                <button
-                  key={model.id}
-                  type="button"
-                  onClick={() => toggleModel(model.id)}
-                  className={`mn-option-button relative text-left ${isActive ? 'mn-option-button-active' : ''}`}
-                  aria-pressed={isActive}
-                  title={model.model}
-                >
-                  <span
-                    className={`absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full ${isActive ? 'bg-[var(--accent-contrast)]' : 'bg-[var(--text-3)]/40'}`}
-                    aria-hidden
-                  />
-                  <div className="pr-3 text-[8px] font-black uppercase tracking-[0.16em] leading-tight">{model.title}</div>
-                  <div className={`mt-0.5 truncate text-[6px] font-semibold uppercase tracking-wider leading-tight ${isActive ? 'text-[var(--accent-contrast)]/70' : 'text-[var(--text-3)]'}`}>
-                    {vendor}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-          <div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-wider text-[var(--text-3)]">
-            <span>{selectedModels.length} z {VARIANT_MODELS.length} · {totalImages} obr.</span>
-            <button
-              type="button"
-              onClick={() => {
-                const next = selectedModels.length === VARIANT_MODELS.length ? [] : VARIANT_MODELS.map((m) => m.id);
-                setSelectedModels(next);
-                writeStored('collage.models', next.join(','));
-              }}
-              className="hover:text-[var(--accent)]"
-            >
-              {selectedModels.length === VARIANT_MODELS.length ? 'Zrušit vše' : 'Vybrat vše'}
-            </button>
-          </div>
-          {VARIANT_MODELS.filter((model) => model.note && selectedModels.includes(model.id)).map((model) => (
-            <div key={model.id} className="rounded-md border border-[rgba(168,191,143,0.12)] bg-[rgba(20,28,15,0.55)] px-3 py-2 text-[8px] leading-relaxed text-[var(--text-3)]">
-              <span className="font-black uppercase tracking-wider text-[var(--text-secondary)]">{model.title}: </span>
-              {model.note}
-            </div>
-          ))}
-        </AtelierSection>
+      <AtelierRightPanel onOpenLibrary={onOpenLibrary} modelSelector={false}>
+        <ImageModelSelector inputCount={sources.length} selected={selectedModels.map((id) => variantModelById(id).model)}
+          onSelect={(model) => { const item = VARIANT_MODELS.find((entry) => entry.model === model); if (item) toggleModel(item.id); }} disabled={isGenerating} />
 
         <AtelierSection title="Aktivní Prompt">
           <div className="rounded-md border border-[rgba(168,191,143,0.18)] bg-[rgba(28,40,20,0.70)] px-3 py-3">

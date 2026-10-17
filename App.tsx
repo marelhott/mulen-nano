@@ -22,7 +22,8 @@ import { formatJsonPromptForImage } from './utils/jsonPrompting';
 import { SharedMediaHub, openSharedMedia } from './components/SharedMediaHub';
 import { SettingsModal } from './components/SettingsModal';
 import { ProviderSelector } from './components/ProviderSelector';
-import { OpenRouterProvider } from './services/openRouterService';
+import { IMAGE_MODELS, imageModelInputError } from './constants/imageModels';
+import { runConcurrentTasks } from './utils/concurrencyRunner';
 import { AIProviderType, PROVIDER_METADATA, ProviderSettings, type ImageInput } from './services/aiProvider';
 import { ProviderFactory } from './services/providerFactory';
 import { Toast, ToastType } from './components/Toast';
@@ -34,14 +35,14 @@ import { MaskCanvas } from './components/MaskCanvas';
 import { FreeComparisonModal } from './components/FreeComparisonModal';
 import { mapAspectRatio, type ProviderType } from './utils/aspectRatioMapping';
 import { upscaleImage } from './utils/upscaling';
-import { getInterRequestDelayMs, getRetryBackoffMs, type NanoBananaImageModel } from './constants/timings';
+import { getInterRequestDelayMs, getRetryBackoffMs } from './constants/timings';
 import { useProviderSettings } from './hooks/useProviderSettings';
 import { CLOUD_SYNC_EVENT_NAME, type CloudSyncEventDetail } from './utils/cloudSyncEvents';
 import { toUserFacingAiError } from './utils/aiErrorMessage';
 import { useGenerationQueue } from './hooks/useGenerationQueue';
 import { useGenerationSnapshot, type GenerationQueueSnapshot } from './hooks/useGenerationSnapshot';
 import { useGenerationSettingsGuard } from './hooks/useGenerationSettingsGuard';
-import { ExternalImageModels } from './components/ExternalImageModels';
+import { ImageModelSelector, ImageModelSelectionProvider } from './components/ImageModelSelection';
 import { isExternalImageModel } from './constants/externalImageModels';
 import { getGenerationResultSummary } from './utils/generationFeedback';
 import { useRepopulateActions } from './hooks/useRepopulateActions';
@@ -1617,7 +1618,7 @@ const App: React.FC = () => {
     generationLockRef.current = true;
     setIsMobileMenuOpen(false);
     setIsGenerating(true);
-    const runTargets = imageModelPresets.map((preset) => ({
+    let runTargets = imageModelPresets.map((preset) => ({
       id: preset.id,
       type: preset.provider,
       label: preset.title,
@@ -1682,6 +1683,9 @@ const App: React.FC = () => {
         targetBytes: 900_000,
       });
 
+      runTargets = runTargets.filter((item) => !imageModelInputError(item.geminiModel || '', providerImages.length));
+      if (!runTargets.length) throw new Error('Žádný vybraný model nepodporuje tento počet vstupů.');
+      setGenerationProgress({ current: 0, total: runTargets.length });
       // Create loading entries for all model presets.
       const allModelsRunId = `all-models-run-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       const ids = runTargets.map((p, i) => `${Date.now()}-all-models-${i}`);
@@ -1709,12 +1713,10 @@ const App: React.FC = () => {
       }));
 
       // Launch all model presets in parallel.
-      const promises = runTargets.map(async (p, i) => {
+      const results = await runConcurrentTasks({ items: runTargets, concurrency: 3, worker: async (p, context) => {
+        const i = context.index;
         try {
-          const provider =
-            p.type === AIProviderType.OPENROUTER
-              ? new OpenRouterProvider(providerSettings[AIProviderType.OPENROUTER]?.apiKey || '', p.geminiModel)
-              : ProviderFactory.getProvider(p.type, providerSettings);
+          const provider = ProviderFactory.getProvider(p.type, providerSettings, p.geminiModel);
           const result = await provider.generateImage(
             providerImages,
             prompt,
@@ -1781,9 +1783,8 @@ const App: React.FC = () => {
           }));
           return { success: false, label: p.label, error: err?.message };
         }
-      });
+      } });
 
-      const results = await Promise.allSettled(promises);
       const successes = results.filter(r => r.status === 'fulfilled' && (r.value as any)?.success).length;
 
       if (successes === runTargets.length) {
@@ -2856,58 +2857,8 @@ Edit the provided image according to the instruction above. Preserve the origina
   };
 
 
-  const imageModelPresets: Array<{
-    id: string;
-    provider: AIProviderType;
-    model: NanoBananaImageModel;
-    title: string;
-    subtitle: string;
-  }> = [
-    {
-      id: 'gemini-pro',
-      provider: AIProviderType.OPENROUTER,
-      model: 'google/gemini-3-pro-image',
-      title: 'Nano Pro',
-      subtitle: 'google/gemini-3-pro-image',
-    },
-    {
-      id: 'gemini-flash',
-      provider: AIProviderType.OPENROUTER,
-      model: 'google/gemini-nano-banana-2.1',
-      title: 'Nano Banana 2.1',
-      subtitle: 'google/gemini-nano-banana-2.1',
-    },
-    {
-      id: 'openai-image',
-      provider: AIProviderType.OPENROUTER,
-      model: 'openai/gpt-image-2.5-sunburst',
-      title: 'GPT Image 2.5',
-      subtitle: 'openai/gpt-image-2.5-sunburst',
-    },
-  ];
+  const imageModelPresets = IMAGE_MODELS.map((item) => ({ ...item, provider: AIProviderType.OPENROUTER, subtitle: item.model }));
 
-  const selectedImagePresetId = imageModelPresets.find((preset) => preset.model === nanoBananaImageModel)?.id ?? null;
-
-  const handleImageModelPresetSelect = useCallback((presetId: string) => {
-    const preset = imageModelPresets.find((item) => item.id === presetId);
-    if (!preset) return;
-
-    const nextProvider = preset.provider;
-    const nextModel = preset.model;
-    const modelWillChange = nextModel !== nanoBananaImageModel;
-
-    if (!modelWillChange) return;
-
-    if (isGenerating || queuedGenerationCount > 0) {
-      const confirmed = window.confirm(
-        'Generování právě běží nebo čeká ve frontě. Opravdu chceš změnit model? Nové nastavení se projeví až pro další běh.'
-      );
-      if (!confirmed) return;
-    }
-
-    setSelectedProvider(nextProvider);
-    setNanoBananaImageModel(nextModel);
-  }, [imageModelPresets, isGenerating, nanoBananaImageModel, queuedGenerationCount, selectedProvider, setNanoBananaImageModel, setSelectedProvider]);
 
   const simpleLinkModeOptions = [
     { id: 'style' as const, label: 'STYL', summary: 'kompozice', tooltip: 'Přenese kompozici, nasvícení a barvy ze stylu. Obsah/identita zůstává ze vstupního obrázku.' },
@@ -3509,37 +3460,11 @@ Edit the provided image according to the instruction above. Preserve the origina
     </div >
   );
 
-  const renderModelPresetGrid = () => (
-    <div className="grid grid-cols-2 gap-1">
-      {imageModelPresets.map((preset) => {
-        const isActive = selectedImagePresetId === preset.id;
-        return (
-          <button
-            key={preset.id}
-            type="button"
-            onClick={() => handleImageModelPresetSelect(preset.id)}
-            className={`mn-option-button ${isActive ? 'mn-option-button-active' : ''}`}
-            title={`${preset.title} — ${preset.subtitle}`}
-          >
-            <div className="text-[8px] font-black uppercase tracking-[0.18em] leading-tight">{preset.title}</div>
-            <div className={`mt-0.5 text-[6px] font-semibold leading-tight ${isActive ? 'text-[var(--accent-contrast)]/80' : 'text-[var(--text-3)]'}`}>
-              {preset.subtitle}
-            </div>
-          </button>
-        );
-      })}
-    </div>
-  );
-
   const renderRightNanoPanel = () => (
     <div className="flex h-full flex-col overflow-y-auto custom-scrollbar p-6">
       <div className="space-y-5">
         <section className="space-y-2">
-          <h3 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-            Výběr modelů
-          </h3>
-          {renderModelPresetGrid()}
-          <ExternalImageModels model={nanoBananaImageModel} onChange={handleNanoBananaModelChange} settings={providerSettings} onSettingsChange={setProviderSettings} />
+          <ImageModelSelector inputCount={state.sourceImages.length + state.styleImages.length + state.assetImages.length} />
         </section>
 
         <section className="space-y-2">
@@ -3825,6 +3750,7 @@ Edit the provided image according to the instruction above. Preserve the origina
           onRightPanelToggle={() => setIsRightPanelCollapsed(prev => !prev)}
         />
 
+        <ImageModelSelectionProvider value={{ model: nanoBananaImageModel, onChange: handleNanoBananaModelChange, settings: providerSettings, onSettingsChange: setProviderSettings }}>
         <AtelierRightPanelProvider isCollapsed={isRightPanelCollapsed}>
         <div className="flex h-[calc(100vh-73px)] overflow-hidden relative">
           {isFaceSwapRoute ? (
@@ -4294,6 +4220,7 @@ Edit the provided image according to the instruction above. Preserve the origina
           <SharedMediaHub open={isGalleryExpanded} onClose={() => setIsGalleryExpanded(false)} onToast={(t) => setToastWithLog(t)} theme={theme} />
         </div >
         </AtelierRightPanelProvider>
+        </ImageModelSelectionProvider>
 
         {/* Refine dialog */}
         {refineImage && (

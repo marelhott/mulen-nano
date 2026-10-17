@@ -52,19 +52,12 @@ describe('variantsPlan', () => {
     expect(planVariantTasks([], 5, (m, i) => `${m}-${i}`)).toHaveLength(0);
   });
 
-  it('modely mají OpenRouter slugy a FLUX nedostává rozlišení', () => {
-    expect(VARIANT_MODELS.map((m) => m.model)).toEqual([
-      'openai/gpt-image-2.5-sunburst',
-      'google/gemini-nano-banana-2.1',
-      'black-forest-labs/flux-3-image',
-      'bytedance-seed/seedream-5-0-pro',
-      'meta/muse-image',
-      'x-ai/grok-imagine-image-2.0',
-      'microsoft/mai-image-2.6',
-      'recraft/recraft-v4.1-pro',
-    ]);
-    expect(variantModelById('flux').resolution).toBeUndefined();
-    expect(variantModelById('seedream').resolution).toBeUndefined();
-    expect(variantModelById('gpt').resolution).toBe('1K');
+  it('modely sdílejí katalog a posílají jen podporované rozlišení', () => {
+    expect(VARIANT_MODELS).toHaveLength(14);
+    expect(new Set(VARIANT_MODELS.map((item) => item.model)).size).toBe(14);
+    expect(variantModelById('flux').resolution).toBe('1K');
+    expect(variantModelById('seedream').resolution).toBe('1K');
+    expect(variantModelById('gpt').resolution).toBeUndefined();
+    expect(variantModelById('qwen-pro').model).toBe('venice/qwen-image-2-1-pro-edit');
   });
 });

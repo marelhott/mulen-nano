@@ -1,4 +1,5 @@
 import React from 'react';
+import { readImageExecution, type ImageExecution } from '../services/imageExecution';
 import { Plus, X, Save, Trash2 } from 'lucide-react';
 import { ImageComparisonModal } from './ImageComparisonModal';
 import { runFalFluxLoraImg2ImgQueued, runFalLoraImg2ImgQueued, runFalUpscaleQueued } from '../services/falService';
@@ -53,6 +54,7 @@ type SdxlCheckpointPreset = {
   trigger?: string;
 };
 type GenerationRequest = {
+  execution: ImageExecution;
   inputDataUrl: string;
   cfg: number;
   denoise: number;
@@ -776,6 +778,7 @@ export function FluxLoraGeneratorScreen(props: {
       return null;
     }
     return {
+      execution: readImageExecution(),
       inputDataUrl: input.dataUrl,
       cfg,
       denoise,
@@ -926,6 +929,7 @@ export function FluxLoraGeneratorScreen(props: {
       const { images, usedSeed } =
         request.modelFamily === 'sdxl'
           ? await runFalLoraImg2ImgQueued({
+            execution: request.execution,
             modelName: await sdxlModelName!,
             imageUrlOrDataUrl: inputDataUrl,
             prompt,
@@ -943,6 +947,7 @@ export function FluxLoraGeneratorScreen(props: {
             maxWaitMs: 12 * 60_000,
           })
           : await runFalFluxLoraImg2ImgQueued({
+              execution: request.execution,
             endpointId: reqFluxEndpointId,
             imageUrlOrDataUrl: inputDataUrl,
             prompt,
@@ -1062,6 +1067,10 @@ export function FluxLoraGeneratorScreen(props: {
   }, [isTestingGrid, runSingleGeneration]);
 
   const handleGenerate = React.useCallback(() => {
+    if (loras.length || modelFamily === 'sdxl') {
+      onToast({ type: 'error', message: 'Připojená obrazová API nepřijímají vlastní LoRA ani SDXL checkpoint. Úloha není spuštěna přes náhradní model.' });
+      return;
+    }
     const request = buildGenerationRequest();
     if (!request) return;
 
@@ -1074,9 +1083,12 @@ export function FluxLoraGeneratorScreen(props: {
     }
 
     void drainGenerationQueue();
-  }, [buildGenerationRequest, drainGenerationQueue, isGenerating, onToast]);
+  }, [buildGenerationRequest, drainGenerationQueue, isGenerating, onToast, loras.length, modelFamily]);
 
   const handleRunLoraTest = React.useCallback(async (profile: TestProfile = 'balanced') => {
+    onToast({ type: 'error', message: 'Test vlastních LoRA není dostupný: připojená API nepřijímají adaptéry. Žádné obrázky nebudou účtovány.' });
+    return;
+
     if (!input?.dataUrl) {
       onToast({ type: 'error', message: 'Nahraj vstupní obrázek.' });
       return;
@@ -1182,6 +1194,7 @@ export function FluxLoraGeneratorScreen(props: {
         const { images } =
           modelFamily === 'sdxl'
             ? await runFalLoraImg2ImgQueued({
+              execution: readImageExecution(),
               modelName: await sdxlModelName!,
               imageUrlOrDataUrl: inputDataUrl,
               prompt,
@@ -1407,7 +1420,7 @@ export function FluxLoraGeneratorScreen(props: {
           <button
             type="button"
             onClick={handleGenerate}
-            disabled={!input || isTestingGrid}
+            disabled={!input || isTestingGrid || loras.length > 0 || modelFamily === 'sdxl'}
             className="mn-action-primary ambient-glow glow-green glow-weak"
           >
             {isTestingGrid ? 'Testuji…' : isGenerating ? `Generuji… ${queuedGenerations > 0 ? `(+${queuedGenerations})` : ''}` : 'Generovat'}
@@ -1575,7 +1588,7 @@ export function FluxLoraGeneratorScreen(props: {
               <button
                 type="button"
                 onClick={() => void handleRunLoraTest('balanced')}
-                disabled={!input || !loras.length || isGenerating || isTestingGrid}
+                disabled
                 className="px-2.5 py-1 rounded-md border border-white/15 bg-[rgba(32,44,24,0.55)] text-[9px] font-bold uppercase tracking-wider text-white/65 hover:text-white/90 hover:border-white/25 disabled:opacity-35 disabled:cursor-not-allowed transition-colors"
                 title={
                   modelFamily === 'sdxl'
@@ -1588,7 +1601,7 @@ export function FluxLoraGeneratorScreen(props: {
               <button
                 type="button"
                 onClick={() => void handleRunLoraTest('aggressive')}
-                disabled={!input || !loras.length || isGenerating || isTestingGrid}
+                disabled
                 className="px-2.5 py-1 rounded-md border border-[#a8bf8f]/30 bg-[#a8bf8f]/10 text-[9px] font-bold uppercase tracking-wider text-[#9eea83] hover:text-[#c8f6b8] hover:border-[#a8bf8f]/50 disabled:opacity-35 disabled:cursor-not-allowed transition-colors"
                 title="Style peak test: silnější sweep (LoRA+CFG) pro hledání malířského maxima"
               >
@@ -1790,6 +1803,7 @@ export function FluxLoraGeneratorScreen(props: {
       </section>
 
       <AtelierRightPanel onOpenLibrary={onOpenLibrary}>
+        <p role="status" className="text-[10px] text-[var(--text-secondary)]">Vlastní LoRA a checkpointy nejsou podporované připojenými API. Bez adaptéru lze použít vybraný obrazový model; nejde o aplikaci LoRA.</p>
         <AtelierSection title="Presety">
           <div className="space-y-2">
             <div className="flex gap-2">

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AIProviderType, ProviderSettings } from '../services/aiProvider';
 import type { NanoBananaImageModel } from '../constants/timings';
-import { isExternalImageModel } from '../constants/externalImageModels';
+import { imageModelById } from '../constants/imageModels';
 
 const SETTINGS_KEY = 'providerSettings';
 const MODEL_KEY = 'nanoBananaImageModel';
@@ -21,7 +21,7 @@ function readStoredImageModel(): NanoBananaImageModel {
   if (storedModel === LEGACY_FLASH_IMAGE_MODEL || storedModel === `${LEGACY_FLASH_IMAGE_MODEL}-preview`) {
     return NANO_BANANA_2_1_MODEL;
   }
-  return (isExternalImageModel(storedModel || '') || SUPPORTED_IMAGE_MODELS.includes(storedModel as NanoBananaImageModel))
+  return (imageModelById(storedModel || '') || SUPPORTED_IMAGE_MODELS.includes(storedModel as NanoBananaImageModel))
     ? storedModel as NanoBananaImageModel
     : 'google/gemini-3-pro-image';
 }

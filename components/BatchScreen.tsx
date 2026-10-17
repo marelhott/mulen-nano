@@ -13,7 +13,7 @@ import { toUserFacingAiError } from '../utils/aiErrorMessage';
 import { decideAdaptiveConcurrency, estimateDataUrlBytes, runConcurrentTasks } from '../utils/concurrencyRunner';
 import type { ToastType } from './Toast';
 import type { NanoBananaImageModel } from '../constants/timings';
-import { ExternalImageModels } from './ExternalImageModels';
+import { ImageModelSelector } from './ImageModelSelection';
 import { externalModelLabel } from '../constants/externalImageModels';
 
 type BatchPresetId = 'general' | 'portrait' | 'interior';
@@ -182,11 +182,11 @@ export function BatchScreen(props: {
 }) {
   const {
     providerSettings,
-    onProviderSettingsChange,
+    onProviderSettingsChange: _onProviderSettingsChange,
     selectedProvider,
     nanoBananaImageModel,
     onProviderChange,
-    onNanoBananaModelChange,
+    onNanoBananaModelChange: _onNanoBananaModelChange,
     onOpenSettings,
     onOpenLibrary,
     onToast,
@@ -321,17 +321,6 @@ Edit the provided image according to the instruction above. Preserve the origina
     });
   }, [outputs]);
 
-  const handleModelPresetSelect = React.useCallback(
-    (presetIdToApply: string) => {
-      const preset = IMAGE_MODEL_PRESETS.find((item) => item.id === presetIdToApply);
-      if (!preset) return;
-      onProviderChange(preset.provider);
-      if (preset.provider === AIProviderType.OPENROUTER && preset.model) {
-        onNanoBananaModelChange(preset.model);
-      }
-    },
-    [onNanoBananaModelChange, onProviderChange],
-  );
 
   const handleFilesSelected = React.useCallback(async (files: File[]) => {
     const validFiles = files.filter((file) => file.type.startsWith('image/'));
@@ -865,29 +854,8 @@ Edit the provided image according to the instruction above. Preserve the origina
         </div>
       </section>
 
-      <AtelierRightPanel onOpenLibrary={onOpenLibrary}>
-        <AtelierSection title="Výběr modelů">
-          <div className="grid grid-cols-2 gap-1">
-            {IMAGE_MODEL_PRESETS.map((preset) => {
-              const isActive = modelPresetId(selectedProvider, nanoBananaImageModel) === preset.id;
-              return (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => handleModelPresetSelect(preset.id)}
-                  className={`mn-option-button ${isActive ? 'mn-option-button-active' : ''}`}
-                >
-                  <div className="text-[8px] font-black uppercase tracking-[0.18em] leading-tight">{preset.title}</div>
-                  <div className={`mt-0.5 text-[6px] font-semibold leading-tight ${isActive ? 'text-[var(--accent-contrast)]/80' : 'text-[var(--text-3)]'}`}>
-                    {preset.subtitle}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </AtelierSection>
-
-        <ExternalImageModels model={nanoBananaImageModel} onChange={onNanoBananaModelChange} settings={providerSettings} onSettingsChange={onProviderSettingsChange} />
+      <AtelierRightPanel onOpenLibrary={onOpenLibrary} modelSelector={false}>
+        <ImageModelSelector inputCount={1} />
 
         <AtelierSection title="Stav úlohy">
           <AtelierInfoRows
