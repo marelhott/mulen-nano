@@ -346,12 +346,12 @@ export function AiUpscalerScreen(props: {
 
           <div className="space-y-2">
             <div className="mn-section-label">Režim</div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-1.5">
               {(['detail-enhance', 'restore', 'enhance', 'denoise', 'upscale-only'] as const).map(m => (
                 <button key={m} type="button" onClick={() => setMode(m)}
-                  className={`mn-option-button text-left ${mode === m ? 'mn-option-button-active' : ''}`}>
-                  <div className="text-[9px] font-bold">{modeLabel(m)}</div>
-                  <div className="mt-0.5 text-[8px] text-white/40 leading-tight">{modeDescription(m)}</div>
+                  className={`mn-option-button mn-upscale-mode ${mode === m ? 'mn-option-button-active' : ''}`}>
+                  <div className="text-[11px] font-semibold">{modeLabel(m)}</div>
+                  <div className="mt-1 text-[10px] opacity-75 leading-snug">{modeDescription(m)}</div>
                 </button>
               ))}
             </div>
@@ -359,10 +359,10 @@ export function AiUpscalerScreen(props: {
 
           <div className="space-y-2">
             <div className="mn-section-label">Zvětšení</div>
-            <div className="flex items-center justify-between bg-transparent pt-1">
+            <div className="flex items-center justify-between gap-1.5 bg-transparent pt-1">
               {[2, 4].map(v => (
                 <button key={v} type="button" onClick={() => setScale(v as 2 | 4)}
-                  className={`mn-option-button flex-1 ${scale === v ? 'mn-option-button-active' : ''}`}>{v}×</button>
+                  className={`mn-option-button mn-upscale-scale flex-1 ${scale === v ? 'mn-option-button-active' : ''}`}>{v}×</button>
               ))}
             </div>
           </div>

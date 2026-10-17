@@ -792,6 +792,22 @@
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
+  .mn-option-button.mn-upscale-mode,
+  .mn-option-button.mn-upscale-scale {
+    border-radius: 6px;
+    text-transform: none;
+    letter-spacing: 0;
+    box-shadow: none;
+  }
+  .mn-option-button.mn-upscale-mode {
+    min-height: 64px;
+    padding: 8px 10px;
+    text-align: left;
+  }
+  .mn-option-button.mn-upscale-scale {
+    min-height: 32px;
+    padding: 6px 10px;
+  }
   @media (pointer: coarse) {
     .mn-option-button.mn-model-button {
       min-height: 44px;
