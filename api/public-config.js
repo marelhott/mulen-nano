@@ -17,5 +17,7 @@ export default function handler(req, res) {
     r2PublicModelsBaseUrl: String(process.env.R2_PUBLIC_MODELS_BASE_URL || '').trim(),
     r2PublicLorasBaseUrl: String(process.env.R2_PUBLIC_LORAS_BASE_URL || '').trim(),
     openRouter: Boolean(String(process.env.OPENROUTER_API_KEY || '').trim()),
+    venice: Boolean(String(process.env.VENICE_API_KEY || '').trim()),
+    runware: Boolean(String(process.env.RUNWARE_API_KEY || '').trim()),
   });
 }

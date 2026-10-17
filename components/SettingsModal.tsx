@@ -7,6 +7,10 @@ interface SettingsModalProps { isOpen: boolean; onClose: () => void; settings: P
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onSave }) => {
   const [available, setAvailable] = useState<boolean | null>(null);
   const [apiKey, setApiKey] = useState('');
+  const [veniceKey, setVeniceKey] = useState('');
+  const [runwareKey, setRunwareKey] = useState('');
+  const [runwareModel, setRunwareModel] = useState('');
+  const [externalAvailable, setExternalAvailable] = useState({ venice: false, runware: false });
   const [showKey, setShowKey] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testMessage, setTestMessage] = useState<string | null>(null);
@@ -14,14 +18,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   useEffect(() => {
     if (!isOpen) return;
     setApiKey(settings[AIProviderType.OPENROUTER]?.apiKey || '');
+    setVeniceKey(settings.venice?.apiKey || '');
+    setRunwareKey(settings.runware?.apiKey || '');
+    setRunwareModel(settings.runware?.model || '');
     setTestMessage(null);
-    fetch('/api/public-config').then((r) => r.json()).then((data) => setAvailable(Boolean(data?.openRouter))).catch(() => setAvailable(false));
+    fetch('/api/public-config').then((r) => r.json()).then((data) => {
+      setAvailable(Boolean(data?.openRouter));
+      setExternalAvailable({ venice: Boolean(data?.venice), runware: Boolean(data?.runware) });
+    }).catch(() => setAvailable(false));
   }, [isOpen, settings]);
 
   if (!isOpen) return null;
 
   const save = () => {
-    onSave({ ...settings, [AIProviderType.OPENROUTER]: { apiKey: apiKey.trim(), enabled: true } });
+    onSave({ ...settings, [AIProviderType.OPENROUTER]: { apiKey: apiKey.trim(), enabled: true },
+      venice: { apiKey: veniceKey.trim(), enabled: true },
+      runware: { ...settings.runware, apiKey: runwareKey.trim(), enabled: true, model: runwareModel.trim() },
+    });
     onClose();
   };
 
@@ -34,7 +47,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
       const response = await fetch('/api/provider-key-test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apiKey: key }) });
       const data = await response.json().catch(() => ({}));
       if (response.ok && data?.success) {
-        const nextSettings = { ...settings, [AIProviderType.OPENROUTER]: { apiKey: key, enabled: true } };
+        const nextSettings = { ...settings, [AIProviderType.OPENROUTER]: { apiKey: key, enabled: true },
+          venice: { apiKey: veniceKey.trim(), enabled: true },
+          runware: { ...settings.runware, apiKey: runwareKey.trim(), enabled: true, model: runwareModel.trim() },
+        };
         onSave(nextSettings);
         localStorage.setItem('providerSettings', JSON.stringify(nextSettings));
         setTestMessage('Klíč je platný a uložený.');
@@ -45,9 +61,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-5" role="dialog" aria-modal="true">
-      <div className="w-full max-w-md rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-6 shadow-2xl">
-        <h2 className="text-sm font-bold uppercase tracking-[0.18em]">OpenRouter</h2>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-5" role="dialog" aria-modal="true" aria-label="Nastavení AI služeb">
+      <div className="max-h-[90dvh] overflow-y-auto w-full max-w-md rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-6 shadow-2xl">
+        <h2 className="text-sm font-bold uppercase tracking-[0.18em]">AI služby</h2>
+        <h3 className="mt-4 text-xs font-semibold">OpenRouter</h3>
         <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">Volitelný vlastní klíč se používá pouze pro tvoje requesty. Bez něj aplikace použije serverový klíč, pokud je nasazený.</p>
         <label className="mt-5 block text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-secondary)]" htmlFor="openrouter-key">API klíč</label>
         <div className="mt-2 flex gap-2">
@@ -56,8 +73,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
         </div>
         <p className={`mt-3 text-xs ${available ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}>{available === null ? 'Ověřuji server…' : available ? 'Serverový klíč je připraven.' : 'Serverový klíč není nasazený; použij vlastní klíč.'}</p>
         {testMessage && <p className="mt-2 text-xs text-[var(--text-secondary)]">{testMessage}</p>}
+        <div className="mt-5 space-y-4 border-t border-[var(--border-color)] pt-5">
+          {([{ id: 'venice', title: 'Venice · Qwen / Lustify', value: veniceKey, set: setVeniceKey },
+            { id: 'runware', title: 'Runware', value: runwareKey, set: setRunwareKey }] as const).map((service) => <div key={service.id}>
+            <label htmlFor={`${service.id}-key`} className="block text-xs font-semibold">{service.title}</label>
+            <input id={`${service.id}-key`} type={showKey ? 'text' : 'password'} autoComplete="off" value={service.value} onChange={(event) => service.set(event.target.value)} placeholder="API klíč"
+              className="mt-2 w-full rounded-lg border border-[var(--border-color)] bg-transparent px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-[var(--accent)]" />
+            <p className="mt-1 text-xs text-[var(--text-secondary)]">{externalAvailable[service.id] ? 'Serverový klíč je připraven.' : 'Serverový klíč není nastavený.'}</p>
+          </div>)}
+          <div><label htmlFor="runware-model" className="block text-xs font-semibold">Runware · AIR modelu SDXL</label>
+            <input id="runware-model" value={runwareModel} onChange={(event) => setRunwareModel(event.target.value)} placeholder="civitai:…@…"
+              className="mt-2 w-full rounded-lg border border-[var(--border-color)] bg-transparent px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-[var(--accent)]" />
+          </div>
+          <p className="text-xs text-[var(--text-secondary)]">Vlastní klíče se ukládají v tomto prohlížeči. Pro ostatní uživatele musí být nastavené na serveru.</p>
+        </div>
         <div className="mt-6 flex justify-end gap-2">
-          <button className="mn-option-button" disabled={testing} onClick={testKey}>{testing ? <Loader2 className="animate-spin" size={14} /> : 'Ověřit'}</button>
+          <button className="mn-option-button" onClick={onClose}>Zavřít</button>
+          <button className="mn-option-button" disabled={testing} onClick={testKey}>{testing ? <Loader2 className="animate-spin" size={14} /> : 'Ověřit OpenRouter'}</button>
           <button className="mn-option-button mn-option-button-active" onClick={save}>Uložit</button>
         </div>
       </div>

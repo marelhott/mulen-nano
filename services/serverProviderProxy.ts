@@ -1,5 +1,6 @@
 import { GenerateImageResult, ImageInput } from './aiProvider';
 import { defaultRetryPolicy } from '../utils/concurrencyRunner';
+import { isExternalImageModel } from '../constants/externalImageModels';
 
 type ServerProviderAction =
   | 'enhancePrompt'
@@ -12,6 +13,11 @@ type ServerProviderRequest = {
   action: ServerProviderAction;
   apiKey?: string;
   preferredModel?: string;
+  externalApiKey?: string;
+  runwareModel?: string;
+  strength?: number;
+  width?: number;
+  height?: number;
   images?: ImageInput[];
   prompt?: string;
   shortPrompt?: string;
@@ -39,7 +45,8 @@ async function callServerProvider<T>(payload: ServerProviderRequest): Promise<T>
   const retry = defaultRetryPolicy({ maxAttempts: 3, baseDelayMs: 800 });
   const requestPayload: ServerProviderRequest = {
     ...payload,
-    apiKey: payload.apiKey?.trim() || getStoredOpenRouterKey(),
+    apiKey: payload.action === 'generateImage' && isExternalImageModel(payload.preferredModel)
+      ? undefined : payload.apiKey?.trim() || getStoredOpenRouterKey(),
   };
 
   for (let attempt = 1; attempt <= retry.maxAttempts; attempt += 1) {
@@ -90,6 +97,11 @@ export const serverProviderProxy = {
     aspectRatio?: string;
     useGrounding?: boolean;
     preferredModel?: string;
+    externalApiKey?: string;
+    runwareModel?: string;
+    strength?: number;
+    width?: number;
+    height?: number;
     apiKey?: string;
   }): Promise<GenerateImageResult> {
     return callServerProvider<GenerateImageResult>({ action: 'generateImage', ...params });

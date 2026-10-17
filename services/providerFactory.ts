@@ -1,11 +1,14 @@
 import { AIProvider, AIProviderType, ProviderSettings } from './aiProvider';
 import { OpenRouterProvider } from './openRouterService';
+import { ExternalImageProvider } from './externalImageProvider';
+import { isExternalImageModel } from '../constants/externalImageModels';
 
 export class ProviderFactory {
   static createProvider(_type: AIProviderType, preferredImageModel?: string, apiKey?: string): AIProvider {
     return new OpenRouterProvider(apiKey, preferredImageModel);
   }
   static getProvider(selectedType: AIProviderType, settings: ProviderSettings, preferredImageModel?: string): AIProvider {
+    if (isExternalImageModel(preferredImageModel)) return new ExternalImageProvider(preferredImageModel, settings);
     return this.createProvider(selectedType, preferredImageModel, settings[AIProviderType.OPENROUTER]?.apiKey);
   }
   static validateApiKey(_type: AIProviderType, apiKey: string): boolean {

@@ -1,4 +1,5 @@
 const { generateText, generateImage, DEFAULT_TEXT_MODEL, DEFAULT_VISION_MODEL, DEFAULT_IMAGE_MODEL } = require('../../lib/openrouter.cjs');
+const { isExternalModel, generateExternalImage } = require('../../lib/external-images.cjs');
 
 const json = (statusCode, body) => ({
   statusCode,
@@ -18,7 +19,7 @@ exports.handler = async (event) => {
     let result;
 
     if (action === 'generateImage') {
-      result = await generateImage({
+      result = isExternalModel(body.preferredModel) ? await generateExternalImage(body) : await generateImage({
         model: modelFor(body.preferredModel, DEFAULT_IMAGE_MODEL),
         prompt: String(body.prompt || ''),
         images: Array.isArray(body.images) ? body.images.map((image) => image?.data).filter(Boolean) : [],

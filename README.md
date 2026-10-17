@@ -48,7 +48,7 @@ This repository contains the main Mulen Nano SPA and a separate `workflow/` Next
 3. Set environment variables in the Vercel dashboard:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
-   - provider server keys as needed (`OPENROUTER_API_KEY`, `OPENROUTER_API_KEY`, `OPENROUTER_API_KEY`, `OPENROUTER_API_KEY`, `OPENROUTER_API_KEY`)
+   - serverové klíče podle používané služby: `OPENROUTER_API_KEY`, volitelně `VENICE_API_KEY` a `RUNWARE_API_KEY`; Runware SDXL potřebuje také AIR checkpointu (`RUNWARE_IMAGE_MODEL`). Viz [externí obrazové modely](docs/external-image-models.md).
 4. Deploy!
 
 ### Supabase requirements

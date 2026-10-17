@@ -41,6 +41,8 @@ import { toUserFacingAiError } from './utils/aiErrorMessage';
 import { useGenerationQueue } from './hooks/useGenerationQueue';
 import { useGenerationSnapshot, type GenerationQueueSnapshot } from './hooks/useGenerationSnapshot';
 import { useGenerationSettingsGuard } from './hooks/useGenerationSettingsGuard';
+import { ExternalImageModels } from './components/ExternalImageModels';
+import { isExternalImageModel } from './constants/externalImageModels';
 import { getGenerationResultSummary } from './utils/generationFeedback';
 import { useRepopulateActions } from './hooks/useRepopulateActions';
 import { usePromptHistoryActions } from './hooks/usePromptHistoryActions';
@@ -2018,6 +2020,7 @@ const App: React.FC = () => {
 
             if (
               selectedProvider === AIProviderType.OPENROUTER &&
+              !isExternalImageModel(nanoBananaImageModel) &&
               sourceImagesData.length > 0 &&
               styleImagesData.length > 0
             ) {
@@ -3536,6 +3539,7 @@ Edit the provided image according to the instruction above. Preserve the origina
             Výběr modelů
           </h3>
           {renderModelPresetGrid()}
+          <ExternalImageModels model={nanoBananaImageModel} onChange={handleNanoBananaModelChange} settings={providerSettings} onSettingsChange={setProviderSettings} />
         </section>
 
         <section className="space-y-2">
@@ -3549,6 +3553,7 @@ Edit the provided image according to the instruction above. Preserve the origina
           {renderGroundingControl()}
           <ProviderSelector
             selectedProvider={selectedProvider}
+            imageModel={nanoBananaImageModel}
             onChange={handleProviderChange}
             settings={providerSettings}
           />
@@ -3900,6 +3905,7 @@ Edit the provided image according to the instruction above. Preserve the origina
             <Suspense fallback={routeScreenFallback}>
               <LazyBatchScreen
                 providerSettings={providerSettings}
+                onProviderSettingsChange={setProviderSettings}
                 selectedProvider={selectedProvider}
                 nanoBananaImageModel={nanoBananaImageModel}
                 onProviderChange={handleProviderChange}

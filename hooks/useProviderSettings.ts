@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AIProviderType, ProviderSettings } from '../services/aiProvider';
 import type { NanoBananaImageModel } from '../constants/timings';
+import { isExternalImageModel } from '../constants/externalImageModels';
 
 const SETTINGS_KEY = 'providerSettings';
 const MODEL_KEY = 'nanoBananaImageModel';
@@ -20,33 +21,35 @@ function readStoredImageModel(): NanoBananaImageModel {
   if (storedModel === LEGACY_FLASH_IMAGE_MODEL || storedModel === `${LEGACY_FLASH_IMAGE_MODEL}-preview`) {
     return NANO_BANANA_2_1_MODEL;
   }
-  return SUPPORTED_IMAGE_MODELS.includes(storedModel as NanoBananaImageModel)
+  return (isExternalImageModel(storedModel || '') || SUPPORTED_IMAGE_MODELS.includes(storedModel as NanoBananaImageModel))
     ? storedModel as NanoBananaImageModel
     : 'google/gemini-3-pro-image';
 }
 
 const defaults = (): ProviderSettings => ({
   [AIProviderType.OPENROUTER]: { apiKey: '', enabled: true },
+  venice: { apiKey: '', enabled: true },
+  runware: { apiKey: '', enabled: true, model: '', strength: 0.35 },
   headSwap: { preferredPrimary: 'openrouter', hairSource: 'target', sourceGender: 'default', secondarySourceGender: 'default', useUpscale: true, useDetailer: false, facefusionEndpoint: '', refaceEndpoint: '' },
 });
 
 export function useProviderSettings() {
   const defaultProviderSettings = useMemo(defaults, []);
-  const [providerSettings, setProviderSettings] = useState<ProviderSettings>(defaultProviderSettings);
-  const [nanoBananaImageModel, setNanoBananaImageModel] = useState<NanoBananaImageModel>(readStoredImageModel);
-
-  useEffect(() => {
-    // Migrujeme pouze jediný OpenRouter klíč; historické provider klíče se zahodí.
+  const [providerSettings, setProviderSettings] = useState<ProviderSettings>(() => {
+    // Zachováme pouze klíče podporovaných služeb, nikoli historické providery.
     try {
       const stored = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') as ProviderSettings;
       const existing = stored[AIProviderType.OPENROUTER];
-      if (existing?.apiKey) {
-        setProviderSettings({ ...defaultProviderSettings, [AIProviderType.OPENROUTER]: { apiKey: existing.apiKey, enabled: true } });
-      }
+      return { ...defaultProviderSettings,
+        [AIProviderType.OPENROUTER]: { apiKey: existing?.apiKey || '', enabled: true },
+        venice: { apiKey: stored.venice?.apiKey || '', enabled: true },
+        runware: { apiKey: stored.runware?.apiKey || '', enabled: true, model: stored.runware?.model || '', strength: stored.runware?.strength ?? 0.35 },
+      };
     } catch {
-      localStorage.removeItem(SETTINGS_KEY);
+      return defaultProviderSettings;
     }
-  }, [defaultProviderSettings]);
+  });
+  const [nanoBananaImageModel, setNanoBananaImageModel] = useState<NanoBananaImageModel>(readStoredImageModel);
 
   useEffect(() => localStorage.setItem(MODEL_KEY, nanoBananaImageModel), [nanoBananaImageModel]);
   useEffect(() => localStorage.setItem(SETTINGS_KEY, JSON.stringify(providerSettings)), [providerSettings]);

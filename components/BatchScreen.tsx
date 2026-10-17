@@ -13,6 +13,8 @@ import { toUserFacingAiError } from '../utils/aiErrorMessage';
 import { decideAdaptiveConcurrency, estimateDataUrlBytes, runConcurrentTasks } from '../utils/concurrencyRunner';
 import type { ToastType } from './Toast';
 import type { NanoBananaImageModel } from '../constants/timings';
+import { ExternalImageModels } from './ExternalImageModels';
+import { externalModelLabel } from '../constants/externalImageModels';
 
 type BatchPresetId = 'general' | 'portrait' | 'interior';
 
@@ -163,11 +165,12 @@ function modelPresetId(_selectedProvider: AIProviderType, nanoBananaImageModel: 
 
 function modelLabel(selectedProvider: AIProviderType, nanoBananaImageModel: NanoBananaImageModel): string {
   const preset = IMAGE_MODEL_PRESETS.find((item) => item.id === modelPresetId(selectedProvider, nanoBananaImageModel));
-  return preset ? `${preset.title} / ${preset.subtitle}` : 'Vlastní';
+  return preset ? `${preset.title} / ${preset.subtitle}` : externalModelLabel(nanoBananaImageModel) || 'Vlastní';
 }
 
 export function BatchScreen(props: {
   providerSettings: ProviderSettings;
+  onProviderSettingsChange: (settings: ProviderSettings) => void;
   selectedProvider: AIProviderType;
   nanoBananaImageModel: NanoBananaImageModel;
   onProviderChange: (provider: AIProviderType) => void;
@@ -179,6 +182,7 @@ export function BatchScreen(props: {
 }) {
   const {
     providerSettings,
+    onProviderSettingsChange,
     selectedProvider,
     nanoBananaImageModel,
     onProviderChange,
@@ -287,7 +291,7 @@ Edit the provided image according to the instruction above. Preserve the origina
       );
       onToast({ message: toUserFacingAiError(error, 'Úprava batch obrázku selhala.'), type: 'error' });
     }
-  }, [onToast, outputs, providerSettings, selectedOutputId]);
+  }, [onToast, outputs, providerSettings, selectedOutputId, nanoBananaImageModel]);
 
   const handleUndoSelectedOutput = React.useCallback(() => {
     const output = outputs.find((item) => item.id === selectedOutputId);
@@ -422,7 +426,7 @@ Edit the provided image according to the instruction above. Preserve the origina
     } finally {
       setIsGenerating(false);
     }
-  }, [outputs, providerSettings, selectedProvider, onToast]);
+  }, [outputs, providerSettings, selectedProvider, onToast, nanoBananaImageModel]);
 
   const handleGenerate = React.useCallback(async () => {
     if (inputs.length === 0) {
@@ -597,7 +601,7 @@ Edit the provided image according to the instruction above. Preserve the origina
       setIsGenerating(false);
       setProgress(null);
     }
-  }, [activeModelLabel, activePrompt, inputs, numberOfImages, onToast, providerSettings, selectedProvider]);
+  }, [activeModelLabel, activePrompt, inputs, numberOfImages, onToast, providerSettings, selectedProvider, nanoBananaImageModel]);
 
   return (
     <div className="flex-1 relative flex min-w-0 canvas-surface h-full overflow-hidden">
@@ -883,6 +887,8 @@ Edit the provided image according to the instruction above. Preserve the origina
           </div>
         </AtelierSection>
 
+        <ExternalImageModels model={nanoBananaImageModel} onChange={onNanoBananaModelChange} settings={providerSettings} onSettingsChange={onProviderSettingsChange} />
+
         <AtelierSection title="Stav úlohy">
           <AtelierInfoRows
             rows={[
@@ -930,7 +936,7 @@ Edit the provided image according to the instruction above. Preserve the origina
         </AtelierSection>
 
         <AtelierSection title="AI Poskytovatel">
-          <ProviderSelector selectedProvider={selectedProvider} onChange={onProviderChange} settings={providerSettings} />
+          <ProviderSelector selectedProvider={selectedProvider} onChange={onProviderChange} settings={providerSettings} imageModel={nanoBananaImageModel} />
         </AtelierSection>
       </AtelierRightPanel>
 
