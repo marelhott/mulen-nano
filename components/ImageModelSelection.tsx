@@ -39,12 +39,11 @@ export function ImageModelSelector(props: {
         const reason = props.inputCount === undefined ? undefined : imageModelInputError(item.model, props.inputCount);
         const active = selected.includes(item.model);
         return <React.Fragment key={item.model}>
-          {index === 9 && <hr className="col-span-2 my-2 border-[var(--border)]" />}
+          {index === 9 && <hr className="col-span-2 my-1 border-[var(--border)]" />}
           <button type="button" aria-pressed={active} disabled={props.disabled || (!!reason && !active)}
             title={reason || item.model} onClick={() => (props.onSelect ?? selection.onChange)(item.model)}
-            className={`mn-option-button min-w-0 disabled:opacity-40 disabled:cursor-not-allowed ${active ? 'mn-option-button-active' : ''}`}>
-            <span className="block text-[9px] font-bold break-words">{item.title}</span>
-            <span className="block mt-1 text-[8px] opacity-75">{item.model.startsWith('venice/') ? 'Venice' : item.model.startsWith('runware/') ? 'Runware' : 'OpenRouter'}{item.maxInputs === 0 ? ' · pouze text' : ''}</span>
+            className={`mn-option-button mn-model-button min-w-0 disabled:opacity-40 disabled:cursor-not-allowed ${active ? 'mn-option-button-active' : ''}`}>
+            <span>{item.title}</span>
           </button>
         </React.Fragment>;
       })}
