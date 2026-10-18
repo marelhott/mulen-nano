@@ -13,7 +13,7 @@ import { ImageDatabase } from '../utils/imageDatabase';
 import { buildBatchRecipe } from '../utils/generationRecipe';
 import { toUserFacingAiError } from '../utils/aiErrorMessage';
 import { decideAdaptiveConcurrency, estimateDataUrlBytes, runConcurrentTasks } from '../utils/concurrencyRunner';
-import { optimizeVariantsInput } from '../utils/variantsInput';
+import { prepareReferenceImages } from '../utils/multiImageInput';
 import {
   COLLAGE_GENERAL_PROMPT,
   COLLAGE_MAX_PER_MODEL,
@@ -21,7 +21,6 @@ import {
   COLLAGE_MIN_SOURCES,
   buildCollageEditInstruction,
   buildCollagePrompt,
-  collageInputBudget,
   rotateInputs,
 } from '../utils/collagePlan';
 import {
@@ -342,23 +341,20 @@ export function CollageScreen(props: {
     async (files: File[]) => {
       const images = files.filter((file) => file.type.startsWith('image/'));
       if (images.length === 0) return;
-      const loaded: SourceImage[] = [];
-      for (const file of images) {
-        const dataUrl = await fileToDataUrl(file);
-        loaded.push({ id: makeId('collage-src'), name: file.name, dataUrl, mimeType: file.type || 'image/jpeg' });
-        try {
-          await ImageDatabase.add(file, dataUrl, 'reference');
-        } catch {
-          // lokální knihovna nesmí blokovat generování
-        }
+      const room = Math.max(0, COLLAGE_MAX_SOURCES - sources.length);
+      if (images.length > room) onToast({ message: `Nejvýš ${COLLAGE_MAX_SOURCES} vstupních obrázků.`, type: 'warning' });
+      try {
+        const loaded = await Promise.all(images.slice(0, room).map(async (file) => {
+          const dataUrl = await fileToDataUrl(file);
+          void ImageDatabase.add(file, dataUrl, 'reference').catch(() => undefined);
+          return { id: makeId('collage-src'), name: file.name, dataUrl, mimeType: file.type || 'image/jpeg' };
+        }));
+        setSources((prev) => [...prev, ...loaded].slice(0, COLLAGE_MAX_SOURCES));
+      } catch (error) {
+        onToast({ message: toUserFacingAiError(error, 'Nepodařilo se načíst obrázky.'), type: 'error' });
       }
-      setSources((prev) => {
-        const room = COLLAGE_MAX_SOURCES - prev.length;
-        if (loaded.length > room) onToast({ message: `Nejvýš ${COLLAGE_MAX_SOURCES} vstupních obrázků.`, type: 'warning' });
-        return [...prev, ...loaded.slice(0, Math.max(0, room))];
-      });
     },
-    [onToast],
+    [onToast, sources.length],
   );
 
   const handleDrop = React.useCallback(
@@ -385,8 +381,7 @@ export function CollageScreen(props: {
 
   const runTasks = React.useCallback(
     async (targets: VariantOutput[], runSources: Array<{ name: string; dataUrl: string; mimeType: string }>) => {
-      const budget = collageInputBudget(runSources.length);
-      const prepared = await Promise.all(runSources.map((item) => optimizeVariantsInput(item.dataUrl, item.mimeType, budget)));
+      const prepared = await prepareReferenceImages(runSources);
       const bytes = prepared.reduce((sum, item) => sum + estimateDataUrlBytes(item.data), 0);
       const decision = decideAdaptiveConcurrency({ section: 'batch', itemCount: targets.length, averageBytes: bytes, maxBytes: bytes });
       const inputs = prepared.map((item) => ({ data: item.data, mimeType: item.mimeType }));
@@ -527,6 +522,8 @@ export function CollageScreen(props: {
       const { succeeded, failed } = await runTasks(pending, runSources);
       reportResult(succeeded, failed);
     } catch (error) {
+      setOutputs((prev) => prev.map((item) => item.runId === runId && item.status !== 'done'
+        ? { ...item, status: 'error', error: toUserFacingAiError(error, 'Příprava vstupů selhala.') } : item));
       onToast({ message: toUserFacingAiError(error, 'Koláže se nepodařilo spustit.'), type: 'error' });
     } finally {
       setIsGenerating(false);
@@ -543,6 +540,8 @@ export function CollageScreen(props: {
       const { succeeded, failed } = await runTasks(failedOutputs.map((item) => ({ ...item, status: 'pending' as const })), runSourcesRef.current);
       reportResult(succeeded, failed);
     } catch (error) {
+      setOutputs((prev) => prev.map((item) => ids.has(item.id) && item.status !== 'done'
+        ? { ...item, status: 'error', error: toUserFacingAiError(error, 'Příprava vstupů selhala.') } : item));
       onToast({ message: toUserFacingAiError(error, 'Opakování selhalo.'), type: 'error' });
     } finally {
       setIsGenerating(false);
@@ -661,6 +660,7 @@ export function CollageScreen(props: {
                 type="file"
                 accept="image/*"
                 multiple
+                aria-label="Vstupní obrázky koláže"
                 className="hidden"
                 onChange={(e) => {
                   void addFiles(Array.from(e.target.files ?? []));

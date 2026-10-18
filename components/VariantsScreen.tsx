@@ -12,7 +12,8 @@ import { ImageDatabase } from '../utils/imageDatabase';
 import { buildBatchRecipe } from '../utils/generationRecipe';
 import { toUserFacingAiError } from '../utils/aiErrorMessage';
 import { decideAdaptiveConcurrency, estimateDataUrlBytes, runConcurrentTasks } from '../utils/concurrencyRunner';
-import { optimizeVariantsInput } from '../utils/variantsInput';
+import { prepareReferenceImages } from '../utils/multiImageInput';
+import { COLLAGE_MAX_SOURCES } from '../utils/collagePlan';
 import {
   deleteVariantsImage,
   deleteVariantsRun,
@@ -68,6 +69,7 @@ type HistoryRun = { run: VariantsRunRecord; items: VariantOutput[] };
 type Preview = { generated: string; original: string | null; prompt: string; createdAt: number };
 
 type RunMeta = {
+  sources: SourceImage[];
   createdAt: number;
   sourceName: string;
   sourceData: string;
@@ -281,7 +283,9 @@ export function VariantsScreen(props: {
 }) {
   const { providerSettings, onOpenSettings, onOpenLibrary, onToast, theme = 'dark' } = props;
 
-  const [source, setSource] = React.useState<SourceImage | null>(null);
+  const [sources, setSources] = React.useState<SourceImage[]>([]);
+  const source = sources[0];
+  const runSourcesRef = React.useRef<SourceImage[]>([]);
   const [selectedModels, setSelectedModels] = React.useState<VariantModelId[]>(() =>
     readStored<VariantModelId[]>('variants.models', DEFAULT_MODELS, (raw) => {
       const ids = raw.split(',').filter((id): id is VariantModelId => VARIANT_MODELS.some((m) => m.id === id));
@@ -397,7 +401,7 @@ export function VariantsScreen(props: {
           onToast({ message: 'Předloha tohoto běhu už v historii není.', type: 'warning' });
           return;
         }
-        setSource({ name: run.sourceName, dataUrl: stored.dataUrl, mimeType: stored.mimeType });
+        setSources(stored.sources ?? [{ name: run.sourceName, dataUrl: stored.dataUrl, mimeType: stored.mimeType }]);
         onToast({ message: 'Předloha načtena z historie.', type: 'info' });
       } catch (error) {
         onToast({ message: toUserFacingAiError(error, 'Předlohu se nepodařilo načíst.'), type: 'error' });
@@ -445,7 +449,7 @@ export function VariantsScreen(props: {
                 models: meta.models,
                 countPerModel: meta.countPerModel,
               },
-              { runId: output.runId, dataUrl: meta.sourceData, mimeType: meta.mimeType },
+              { runId: output.runId, dataUrl: meta.sourceData, mimeType: meta.mimeType, sources: meta.sources },
             );
           } catch (error) {
             savedRuns.current.delete(output.runId);
@@ -477,16 +481,21 @@ export function VariantsScreen(props: {
     });
   }, []);
 
-  const handleFileSelected = React.useCallback(async (file: File | undefined) => {
-    if (!file || !file.type.startsWith('image/')) return;
-    const dataUrl = await fileToDataUrl(file);
-    setSource({ name: file.name, dataUrl, mimeType: file.type || 'image/jpeg' });
+  const handleFilesSelected = React.useCallback(async (files: File[]) => {
+    const images = files.filter((file) => file.type.startsWith('image/'));
+    const room = COLLAGE_MAX_SOURCES - sources.length;
+    if (images.length > room) onToast({ message: `Nejvýš ${COLLAGE_MAX_SOURCES} vstupních obrázků.`, type: 'warning' });
     try {
-      await ImageDatabase.add(file, dataUrl, 'reference');
-    } catch {
-      // lokální knihovna nesmí blokovat generování
+      const loaded = await Promise.all(images.slice(0, Math.max(0, room)).map(async (file) => {
+        const dataUrl = await fileToDataUrl(file);
+        void ImageDatabase.add(file, dataUrl, 'reference').catch(() => undefined);
+        return { name: file.name, dataUrl, mimeType: file.type || 'image/jpeg' };
+      }));
+      setSources((prev) => [...prev, ...loaded].slice(0, COLLAGE_MAX_SOURCES));
+    } catch (error) {
+      onToast({ message: toUserFacingAiError(error, 'Nepodařilo se načíst obrázky.'), type: 'error' });
     }
-  }, []);
+  }, [onToast, sources.length]);
 
   const handleDrop = React.useCallback(
     async (e: React.DragEvent) => {
@@ -494,26 +503,32 @@ export function VariantsScreen(props: {
       e.stopPropagation();
       setDragActive(false);
       try {
+        const files = Array.from(e.dataTransfer.files).filter((file) => file.type.startsWith('image/'));
+        if (files.length > 0) {
+          await handleFilesSelected(files);
+          return;
+        }
         const file = await resolveDropToFile(e);
-        await handleFileSelected(file ?? undefined);
+        if (file) await handleFilesSelected([file]);
       } catch (error: any) {
         onToast({ message: error?.message || 'Nepodařilo se vložit obrázek.', type: 'error' });
       }
     },
-    [handleFileSelected, onToast],
+    [handleFilesSelected, onToast],
   );
 
   // --- generování -----------------------------------------------------------------------------
 
   const runTasks = React.useCallback(
-    async (targets: VariantOutput[], inputDataUrl: string, inputMime: string) => {
-      const prepared = await optimizeVariantsInput(inputDataUrl, inputMime);
+    async (targets: VariantOutput[], runSources: SourceImage[]) => {
+      const inputs = await prepareReferenceImages(runSources);
       const meta = targets[0] ? runMeta.current.get(targets[0].runId) : undefined;
       if (meta) {
-        meta.sourceData = prepared.data;
-        meta.mimeType = prepared.mimeType;
+        meta.sourceData = inputs[0].data;
+        meta.mimeType = inputs[0].mimeType;
+        meta.sources = inputs.map((item, i) => ({ name: runSources[i].name, dataUrl: item.data, mimeType: item.mimeType }));
       }
-      const bytes = estimateDataUrlBytes(prepared.data);
+      const bytes = inputs.reduce((sum, item) => sum + estimateDataUrlBytes(item.data), 0);
       const decision = decideAdaptiveConcurrency({ section: 'batch', itemCount: targets.length, averageBytes: bytes, maxBytes: bytes });
 
       const results = await runConcurrentTasks({
@@ -534,7 +549,7 @@ export function VariantsScreen(props: {
           const model = variantModelById(output.modelId);
           const provider = ProviderFactory.getProvider(AIProviderType.OPENROUTER, providerSettings, model.model);
           const result = await provider.generateImage(
-            [{ data: prepared.data, mimeType: prepared.mimeType }],
+            inputs,
             output.prompt,
             model.resolution,
             'Original',
@@ -552,7 +567,7 @@ export function VariantsScreen(props: {
               promptMode: 'simple',
               resolution: model.resolution ?? 'Original',
               aspectRatio: 'Original',
-              sourceImageCount: 1,
+              sourceImageCount: inputs.length,
               styleImageCount: 0,
               createdAt: Date.now(),
             });
@@ -614,7 +629,7 @@ export function VariantsScreen(props: {
       onToast({ message: 'Vyber aspoň jeden model.', type: 'error' });
       return;
     }
-    const incompatible = selectedModels.map((id) => imageModelInputError(variantModelById(id).model, 1)).find(Boolean);
+    const incompatible = selectedModels.map((id) => imageModelInputError(variantModelById(id).model, sources.length)).find(Boolean);
     if (incompatible) {
       onToast({ type: 'error', message: incompatible });
       return;
@@ -623,6 +638,8 @@ export function VariantsScreen(props: {
     historyWarned.current = false;
     const runId = makeId('variants-run');
     const runCreatedAt = Date.now();
+    const runSources = sources.map((item) => ({ ...item }));
+    runSourcesRef.current = runSources;
     const tasks = planVariantTasks(selectedModels, count, (modelId, index) => makeId(`variant-${modelId}-${index}`));
     const pending: VariantOutput[] = tasks.map((task, i) => {
       // Editační modely (Qwen) nedostanou obecný prompt, ale vlastní instrukci.
@@ -641,6 +658,7 @@ export function VariantsScreen(props: {
     });
     const modelsUsed = VARIANT_MODELS.filter((m) => selectedModels.includes(m.id)).map((m) => m.id);
     runMeta.current.set(runId, {
+      sources: runSources,
       createdAt: runCreatedAt,
       sourceName: source.name,
       sourceData: source.dataUrl,
@@ -657,35 +675,39 @@ export function VariantsScreen(props: {
       createdAt: runCreatedAt,
       sourceThumb,
       sourceName: source.name,
-      summary: `${modelsUsed.map((id) => variantModelById(id).title).join(', ')} · ${count}× na model · ${VARIANTS_DISTANCES.find((d) => d.id === distance)?.label}`,
+      summary: `${modelsUsed.map((id) => variantModelById(id).title).join(', ')} · ${count}× na model · ${sources.length} vstupů · ${VARIANTS_DISTANCES.find((d) => d.id === distance)?.label}`,
     });
     setOutputs(pending);
     void loadHistory();
     try {
-      const { succeeded, failed } = await runTasks(pending, source.dataUrl, source.mimeType);
+      const { succeeded, failed } = await runTasks(pending, runSources);
       reportResult(succeeded, failed);
     } catch (error) {
+      setOutputs((prev) => prev.map((item) => item.runId === runId && item.status !== 'done'
+        ? { ...item, status: 'error', error: toUserFacingAiError(error, 'Příprava vstupů selhala.') } : item));
       onToast({ message: toUserFacingAiError(error, 'Varianty se nepodařilo spustit.'), type: 'error' });
     } finally {
       setIsGenerating(false);
     }
-  }, [activePrompt, count, customPrompt, distance, loadHistory, onToast, reportResult, runTasks, selectedModels, source]);
+  }, [activePrompt, count, customPrompt, distance, loadHistory, onToast, reportResult, runTasks, selectedModels, source, sources]);
 
   const handleRetryFailed = React.useCallback(async () => {
     const failedOutputs = outputs.filter((item) => item.status === 'error');
-    if (failedOutputs.length === 0 || !source) return;
+    if (failedOutputs.length === 0 || runSourcesRef.current.length === 0) return;
     setIsGenerating(true);
     const ids = new Set(failedOutputs.map((item) => item.id));
     setOutputs((prev) => prev.map((item) => (ids.has(item.id) ? { ...item, status: 'pending' as const, error: undefined, attempt: undefined } : item)));
     try {
-      const { succeeded, failed } = await runTasks(failedOutputs.map((item) => ({ ...item, status: 'pending' as const })), source.dataUrl, source.mimeType);
+      const { succeeded, failed } = await runTasks(failedOutputs.map((item) => ({ ...item, status: 'pending' as const })), runSourcesRef.current);
       reportResult(succeeded, failed);
     } catch (error) {
+      setOutputs((prev) => prev.map((item) => ids.has(item.id) && item.status !== 'done'
+        ? { ...item, status: 'error', error: toUserFacingAiError(error, 'Příprava vstupů selhala.') } : item));
       onToast({ message: toUserFacingAiError(error, 'Opakování selhalo.'), type: 'error' });
     } finally {
       setIsGenerating(false);
     }
-  }, [onToast, outputs, reportResult, runTasks, source]);
+  }, [onToast, outputs, reportResult, runTasks]);
 
   return (
     <div className="flex-1 relative flex min-w-0 canvas-surface h-full overflow-hidden">
@@ -744,7 +766,7 @@ export function VariantsScreen(props: {
           </div>
 
           <div className="space-y-1">
-            <h3 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Předloha</h3>
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Vstupy ({sources.length}/{COLLAGE_MAX_SOURCES})</h3>
             <div
               className={`mn-upload-zone ${dragActive ? 'border-[var(--accent)] bg-[var(--accent)]/5' : ''}`}
               style={{ minHeight: 220 }}
@@ -760,38 +782,41 @@ export function VariantsScreen(props: {
               }}
               onDrop={handleDrop}
             >
-              {source ? (
-                <div className="mn-upload-thumb group absolute inset-2">
-                  <img src={source.dataUrl} alt={source.name} className="w-full h-full object-contain opacity-90 group-hover:opacity-100" />
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSource(null);
-                    }}
-                    className="absolute top-0 right-0 p-0.5 bg-black/60 text-white opacity-0 group-hover:opacity-100"
-                  >
-                    <X className="w-2.5 h-2.5" />
-                  </button>
+              {sources.length > 0 ? (
+                <div className="grid grid-cols-3 gap-1.5 p-1.5">
+                  {sources.map((item, index) => (
+                    <div key={`${item.name}-${index}`} className="group relative aspect-square overflow-hidden rounded bg-[var(--bg-panel)]">
+                      <img src={item.dataUrl} alt={item.name} title={item.name} className="h-full w-full object-cover" />
+                      <button type="button" onClick={() => setSources((prev) => prev.filter((_, i) => i !== index))}
+                        className="absolute right-1 top-1 rounded bg-black/70 p-0.5 text-white" title={`Odebrat ${item.name}`}>
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  ))}
+                  {sources.length < COLLAGE_MAX_SOURCES && (
+                    <button type="button" onClick={() => document.getElementById(fileInputId)?.click()}
+                      className="flex aspect-square items-center justify-center rounded border border-dashed border-[var(--border-color)] text-[var(--text-secondary)]" title="Přidat obrázky">+</button>
+                  )}
                 </div>
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center cursor-pointer gap-2" onClick={() => document.getElementById(fileInputId)?.click()}>
                   <Images className="w-5 h-5 text-[var(--text-secondary)]" strokeWidth={1.6} />
-                  <span className="text-[9px] font-semibold text-[var(--text-secondary)]">Přetáhni obraz nebo klikni</span>
+                  <span className="text-[9px] font-semibold text-[var(--text-secondary)]">Přetáhni obrázky nebo klikni</span>
                 </div>
               )}
               <input
                 id={fileInputId}
                 type="file"
                 accept="image/*"
+                multiple
+                aria-label="Vstupní obrázky variant"
                 className="hidden"
                 onChange={(e) => {
-                  void handleFileSelected(e.target.files?.[0]);
+                  void handleFilesSelected(Array.from(e.target.files ?? []));
                   e.currentTarget.value = '';
                 }}
               />
             </div>
-            {source ? <div className="truncate text-[8px] text-[var(--text-soft)]">{source.name}</div> : null}
           </div>
 
           <div className="space-y-2">
@@ -904,7 +929,7 @@ export function VariantsScreen(props: {
       </section>
 
       <AtelierRightPanel onOpenLibrary={onOpenLibrary} modelSelector={false}>
-        <ImageModelSelector inputCount={1} selected={selectedModels.map((id) => variantModelById(id).model)}
+        <ImageModelSelector inputCount={Math.max(1, sources.length)} selected={selectedModels.map((id) => variantModelById(id).model)}
           onSelect={(model) => { const item = VARIANT_MODELS.find((entry) => entry.model === model); if (item) toggleModel(item.id); }} disabled={isGenerating} />
 
         <AtelierSection title="Aktivní Prompt">

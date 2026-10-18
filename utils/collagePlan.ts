@@ -5,11 +5,11 @@
 import { VARIANTS_MAX_PER_MODEL } from './variantsPlan';
 
 export const COLLAGE_MIN_SOURCES = 2;
-export const COLLAGE_MAX_SOURCES = 6;
+export const COLLAGE_MAX_SOURCES = 10;
 export const COLLAGE_MAX_PER_MODEL = VARIANTS_MAX_PER_MODEL;
 
-/** Tělo požadavku na serveru je omezené na 6 MB, proto se celkový rozpočet dělí mezi vstupy. */
-const COLLAGE_TOTAL_INPUT_BYTES = 4_200_000;
+/** Rezerva pro base64 a JSON pod limitem těla požadavku Vercelu. */
+const COLLAGE_TOTAL_INPUT_BYTES = 2_800_000;
 
 export function collageInputBudget(sourceCount: number): { targetBytes: number; maxDimension: number } {
   const n = Math.max(1, sourceCount);

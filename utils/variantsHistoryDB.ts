@@ -24,7 +24,12 @@ export type VariantsRunRecord = {
   countPerModel: number;
 };
 
-export type VariantsSourceRecord = { runId: string; dataUrl: string; mimeType: string };
+export type VariantsSourceRecord = {
+  runId: string;
+  dataUrl: string;
+  mimeType: string;
+  sources?: Array<{ name: string; dataUrl: string; mimeType: string }>;
+};
 
 export type VariantsImageRecord = {
   id: string;
