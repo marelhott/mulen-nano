@@ -9,6 +9,15 @@ export function toUserFacingAiError(error: unknown, fallback = 'Generování sel
 
   if (!message) return fallback;
 
+  if (
+    normalized.includes('safety system') ||
+    normalized.includes('safety_violations') ||
+    normalized.includes('content policy') ||
+    normalized.includes('content_filter')
+  ) {
+    return 'Poskytovatel odmítl vstupní obrázek nebo zadání svým bezpečnostním filtrem.';
+  }
+
   if (normalized.includes('api key') || normalized.includes('api_key') || normalized.includes('unauthorized')) {
     return 'Chybí nebo nefunguje API klíč. Zkontroluj ho v nastavení.';
   }

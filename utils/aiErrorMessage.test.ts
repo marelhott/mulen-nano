@@ -10,6 +10,11 @@ describe('toUserFacingAiError', () => {
     expect(toUserFacingAiError('FUNCTION_PAYLOAD_TOO_LARGE')).toContain('příliš velké');
   });
 
+  it('rozpozná skutečné odmítnutí bezpečnostním filtrem poskytovatele', () => {
+    const error = new Error('Your request was rejected by the safety system. safety_violations=[sexu…');
+    expect(toUserFacingAiError(error)).toBe('Poskytovatel odmítl vstupní obrázek nebo zadání svým bezpečnostním filtrem.');
+  });
+
   it('vrátí fallback pro prázdnou chybu', () => {
     expect(toUserFacingAiError('')).toBe('Generování selhalo. Zkus to prosím znovu.');
   });
