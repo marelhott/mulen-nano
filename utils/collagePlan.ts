@@ -4,7 +4,7 @@
 
 import { VARIANTS_MAX_PER_MODEL } from './variantsPlan';
 
-export const COLLAGE_MIN_SOURCES = 2;
+export const COLLAGE_MIN_SOURCES = 1;
 export const COLLAGE_MAX_SOURCES = 10;
 export const COLLAGE_MAX_PER_MODEL = VARIANTS_MAX_PER_MODEL;
 
@@ -37,6 +37,10 @@ Do not add text, captions, borders, watermarks or logos. Output one image.`;
 export function buildCollagePrompt(base: string): string {
   const trimmed = (base ?? '').trim();
   return trimmed.length > 0 ? trimmed : COLLAGE_GENERAL_PROMPT;
+}
+
+export function buildSingleSourceCollagePrompt(base: string): string {
+  return base.trim() || 'Create one new artistic collage using only the attached image as its source. Recompose its shapes, colours, textures and visual motifs into a coherent new artwork. Do not add text, captions, watermarks or unrelated subjects. Output one image.';
 }
 
 /**

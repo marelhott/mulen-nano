@@ -12,7 +12,7 @@ import { ImageDatabase } from '../utils/imageDatabase';
 import { buildBatchRecipe } from '../utils/generationRecipe';
 import { toUserFacingAiError } from '../utils/aiErrorMessage';
 import { decideAdaptiveConcurrency, estimateDataUrlBytes, runConcurrentTasks } from '../utils/concurrencyRunner';
-import { prepareReferenceImages } from '../utils/multiImageInput';
+import { prepareIndependentImages } from '../utils/multiImageInput';
 import { COLLAGE_MAX_SOURCES } from '../utils/collagePlan';
 import {
   deleteVariantsImage,
@@ -35,7 +35,7 @@ import {
   buildVariantsPrompt,
   formatVariantsDate,
   isInstructionEditModel,
-  planVariantTasks,
+  planBatchVariantTasks,
   variantModelById,
   type VariantModelId,
   type VariantsDistance,
@@ -47,6 +47,7 @@ type SourceImage = { name: string; dataUrl: string; mimeType: string };
 type OutputStatus = 'pending' | 'running' | 'retrying' | 'done' | 'error';
 
 export type VariantOutput = {
+  sourceIndex?: number;
   id: string;
   modelId: VariantModelId;
   variantIndex: number;
@@ -116,7 +117,8 @@ function historyItems(run: VariantsRunRecord, thumbs: Awaited<ReturnType<typeof 
     thumbUrl: thumb.thumb,
     createdAt: thumb.createdAt,
     sourceDataUrl: '',
-    sourceName: run.sourceName,
+    sourceIndex: thumb.sourceIndex,
+    sourceName: thumb.sourceName ?? run.sourceName,
   }));
 }
 
@@ -205,7 +207,17 @@ export function VariantCard(props: { output: VariantOutput; onOpen: (output: Var
   );
 }
 
-export function ModelGrids(props: { items: VariantOutput[]; onOpen: (output: VariantOutput) => void; onDelete: (output: VariantOutput) => void }) {
+export function ModelGrids(props: { items: VariantOutput[]; onOpen: (output: VariantOutput) => void; onDelete: (output: VariantOutput) => void; groupBySource?: boolean }) {
+  const sourceIndices = [...new Set(props.items.map((item) => item.sourceIndex ?? 0))].sort((a, b) => a - b);
+  if (props.groupBySource !== false && props.items.some((item) => item.sourceIndex !== undefined)) return <div className="space-y-6">
+    {sourceIndices.map((sourceIndex) => {
+      const items = props.items.filter((item) => (item.sourceIndex ?? 0) === sourceIndex);
+      return <section key={sourceIndex} aria-label={`Vstup ${sourceIndex + 1}: ${items[0].sourceName}`} className="space-y-3">
+        <h3 className="text-[11px] text-[var(--text-secondary)]">{sourceIndex + 1}. {items[0].sourceName}</h3>
+        <ModelGrids {...props} items={items} groupBySource={false} />
+      </section>;
+    })}
+  </div>;
   const groups = VARIANT_MODELS.map((model) => ({
     model,
     items: props.items.filter((item) => item.modelId === model.id).sort((a, b) => a.variantIndex - b.variantIndex),
@@ -316,7 +328,7 @@ export function VariantsScreen(props: {
   const historyWarned = React.useRef(false);
 
   const activePrompt = React.useMemo(() => buildVariantsPrompt(customPrompt, distance), [customPrompt, distance]);
-  const totalImages = selectedModels.length * count;
+  const totalImages = sources.length * selectedModels.length * count;
   const errorCount = outputs.filter((item) => item.status === 'error').length;
 
   // --- historie -------------------------------------------------------------------------------
@@ -422,7 +434,7 @@ export function VariantsScreen(props: {
           onToast({ message: 'Plný obrázek už v historii není.', type: 'warning' });
           return;
         }
-        setPreview({ generated: image.dataUrl, original: stored?.dataUrl ?? null, prompt: output.prompt, createdAt: output.createdAt });
+        setPreview({ generated: image.dataUrl, original: stored?.sources?.[output.sourceIndex ?? 0]?.dataUrl ?? stored?.dataUrl ?? null, prompt: output.prompt, createdAt: output.createdAt });
       } catch (error) {
         onToast({ message: toUserFacingAiError(error, 'Obrázek se nepodařilo otevřít.'), type: 'error' });
       }
@@ -458,7 +470,7 @@ export function VariantsScreen(props: {
         }
         const thumb = await createThumbnail(imageDataUrl, 360);
         await saveVariantsImage(
-          { id: output.id, runId: output.runId, modelId: output.modelId, variantIndex: output.variantIndex, createdAt: Date.now(), dataUrl: imageDataUrl },
+          { id: output.id, runId: output.runId, modelId: output.modelId, variantIndex: output.variantIndex, sourceIndex: output.sourceIndex, sourceName: output.sourceName, createdAt: Date.now(), dataUrl: imageDataUrl },
           thumb,
         );
       } catch {
@@ -521,15 +533,15 @@ export function VariantsScreen(props: {
 
   const runTasks = React.useCallback(
     async (targets: VariantOutput[], runSources: SourceImage[]) => {
-      const inputs = await prepareReferenceImages(runSources);
+      const inputs = await prepareIndependentImages(runSources);
       const meta = targets[0] ? runMeta.current.get(targets[0].runId) : undefined;
       if (meta) {
         meta.sourceData = inputs[0].data;
         meta.mimeType = inputs[0].mimeType;
         meta.sources = inputs.map((item, i) => ({ name: runSources[i].name, dataUrl: item.data, mimeType: item.mimeType }));
       }
-      const bytes = inputs.reduce((sum, item) => sum + estimateDataUrlBytes(item.data), 0);
-      const decision = decideAdaptiveConcurrency({ section: 'batch', itemCount: targets.length, averageBytes: bytes, maxBytes: bytes });
+      const sizes = inputs.map((item) => estimateDataUrlBytes(item.data));
+      const decision = decideAdaptiveConcurrency({ section: 'batch', itemCount: targets.length, averageBytes: sizes.reduce((a, b) => a + b, 0) / sizes.length, maxBytes: Math.max(...sizes) });
 
       const results = await runConcurrentTasks({
         items: targets,
@@ -549,7 +561,7 @@ export function VariantsScreen(props: {
           const model = variantModelById(output.modelId);
           const provider = ProviderFactory.getProvider(AIProviderType.OPENROUTER, providerSettings, model.model);
           const result = await provider.generateImage(
-            inputs,
+            [inputs[output.sourceIndex ?? 0]],
             output.prompt,
             model.resolution,
             'Original',
@@ -567,7 +579,7 @@ export function VariantsScreen(props: {
               promptMode: 'simple',
               resolution: model.resolution ?? 'Original',
               aspectRatio: 'Original',
-              sourceImageCount: inputs.length,
+              sourceImageCount: 1,
               styleImageCount: 0,
               createdAt: Date.now(),
             });
@@ -579,7 +591,7 @@ export function VariantsScreen(props: {
               prompt: output.prompt,
               resolution: model.resolution ?? 'Original',
               aspectRatio: 'Original',
-              params: { ...recipe, section: 'Varianty', modelId: result.modelId || model.model, runId: output.runId },
+              params: { ...recipe, section: 'Varianty', modelId: result.modelId || model.model, runId: output.runId, sourceIndex: output.sourceIndex, sourceName: output.sourceName },
             });
           } catch {
             // galerie nesmí shodit běh
@@ -629,7 +641,7 @@ export function VariantsScreen(props: {
       onToast({ message: 'Vyber aspoň jeden model.', type: 'error' });
       return;
     }
-    const incompatible = selectedModels.map((id) => imageModelInputError(variantModelById(id).model, sources.length)).find(Boolean);
+    const incompatible = selectedModels.map((id) => imageModelInputError(variantModelById(id).model, 1)).find(Boolean);
     if (incompatible) {
       onToast({ type: 'error', message: incompatible });
       return;
@@ -640,7 +652,7 @@ export function VariantsScreen(props: {
     const runCreatedAt = Date.now();
     const runSources = sources.map((item) => ({ ...item }));
     runSourcesRef.current = runSources;
-    const tasks = planVariantTasks(selectedModels, count, (modelId, index) => makeId(`variant-${modelId}-${index}`));
+    const tasks = planBatchVariantTasks(selectedModels, count, runSources.length, (sourceIndex, modelId, index) => makeId(`variant-${sourceIndex}-${modelId}-${index}`));
     const pending: VariantOutput[] = tasks.map((task, i) => {
       // Editační modely (Qwen) nedostanou obecný prompt, ale vlastní instrukci.
       const prompt = buildPromptForModel(variantModelById(task.modelId).model, customPrompt, distance, task.variantIndex);
@@ -648,12 +660,13 @@ export function VariantsScreen(props: {
         id: task.id,
         modelId: task.modelId,
         variantIndex: task.variantIndex,
+        sourceIndex: task.sourceIndex,
         runId,
         prompt,
         status: 'pending' as const,
         createdAt: runCreatedAt + i,
-        sourceDataUrl: source.dataUrl,
-        sourceName: source.name,
+        sourceDataUrl: runSources[task.sourceIndex].dataUrl,
+        sourceName: runSources[task.sourceIndex].name,
       };
     });
     const modelsUsed = VARIANT_MODELS.filter((m) => selectedModels.includes(m.id)).map((m) => m.id);
@@ -735,6 +748,9 @@ export function VariantsScreen(props: {
           <button type="button" onClick={handleGenerate} disabled={!source || selectedModels.length === 0 || isGenerating} className="mn-action-primary">
             {isGenerating ? 'Běží…' : totalImages > 0 ? `Generovat ${totalImages} variant` : 'Generovat'}
           </button>
+          <div aria-label="Rozsah dávky" className="text-[10px] text-[var(--text-secondary)]">
+            {sources.length} vstupů × {selectedModels.length} modelů × {count} variant = {totalImages}
+          </div>
 
           {errorCount > 0 && !isGenerating && (
             <button
@@ -747,7 +763,7 @@ export function VariantsScreen(props: {
           )}
 
           <div className="space-y-1">
-            <h3 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Počet na model</h3>
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Počet na model a vstup</h3>
             <div className="mn-count-selector">
               {Array.from({ length: VARIANTS_MAX_PER_MODEL }, (_, i) => i + 1).map((n) => (
                 <button
@@ -929,7 +945,7 @@ export function VariantsScreen(props: {
       </section>
 
       <AtelierRightPanel onOpenLibrary={onOpenLibrary} modelSelector={false}>
-        <ImageModelSelector inputCount={Math.max(1, sources.length)} selected={selectedModels.map((id) => variantModelById(id).model)}
+        <ImageModelSelector inputCount={1} selected={selectedModels.map((id) => variantModelById(id).model)}
           onSelect={(model) => { const item = VARIANT_MODELS.find((entry) => entry.model === model); if (item) toggleModel(item.id); }} disabled={isGenerating} />
 
         <AtelierSection title="Aktivní Prompt">

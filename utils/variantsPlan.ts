@@ -125,6 +125,16 @@ export function clampVariantCount(value: number): number {
 
 export type VariantTask = { id: string; modelId: VariantModelId; variantIndex: number };
 
+export function planBatchVariantTasks(
+  selected: VariantModelId[], countPerModel: number, sourceCount: number,
+  makeId: (sourceIndex: number, modelId: VariantModelId, index: number) => string,
+): Array<VariantTask & { sourceIndex: number }> {
+  return Array.from({ length: sourceCount }, (_, sourceIndex) =>
+    planVariantTasks(selected, countPerModel, (modelId, index) => makeId(sourceIndex, modelId, index))
+      .map((task) => ({ ...task, sourceIndex })),
+  ).flat();
+}
+
 /** Úlohy v pořadí modelů z `VARIANT_MODELS` (ne podle pořadí výběru), duplicitní modely se slučují. */
 export function planVariantTasks(
   selected: VariantModelId[],

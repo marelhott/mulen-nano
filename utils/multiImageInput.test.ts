@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { prepareReferenceImages } from './multiImageInput';
+import { prepareIndependentImages, prepareReferenceImages } from './multiImageInput';
 import { optimizeVariantsInput } from './variantsInput';
 import { COLLAGE_MAX_SOURCES } from './collagePlan';
 
@@ -11,13 +11,20 @@ describe('společné vstupy variant a koláží', () => {
     vi.mocked(optimizeVariantsInput).mockImplementation(async (data, mimeType) => ({ data, mimeType }));
   });
 
-  it('připraví všech deset referencí v původním pořadí, ne deset samostatných generování', async () => {
+  it('připraví referenční sadu v původním pořadí', async () => {
     const sources = Array.from({ length: 10 }, (_, i) => ({ name: `${i}.jpg`, dataUrl: `image-${i}`, mimeType: 'image/jpeg' }));
     const inputs = await prepareReferenceImages(sources);
     expect(COLLAGE_MAX_SOURCES).toBe(10);
     expect(inputs.map((item) => item.data)).toEqual(sources.map((item) => item.dataUrl));
     expect(optimizeVariantsInput).toHaveBeenCalledTimes(10);
     expect(optimizeVariantsInput).toHaveBeenCalledWith('image-9', 'image/jpeg', { targetBytes: 280_000, maxDimension: 1400 });
+  });
+
+  it('dávka zachová plný rozpočet pro každý samostatný vstup', async () => {
+    const sources = Array.from({ length: 10 }, (_, i) => ({ name: `${i}.jpg`, dataUrl: `image-${i}`, mimeType: 'image/jpeg' }));
+    const inputs = await prepareIndependentImages(sources);
+    expect(inputs).toHaveLength(10);
+    expect(optimizeVariantsInput).toHaveBeenCalledWith('image-9', 'image/jpeg', { targetBytes: 2_800_000, maxDimension: 1400 });
   });
 
   it('nevynechá tiše jedenáctý vstup a nepovolí prázdnou sadu', async () => {

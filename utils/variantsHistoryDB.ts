@@ -32,6 +32,8 @@ export type VariantsSourceRecord = {
 };
 
 export type VariantsImageRecord = {
+  sourceIndex?: number;
+  sourceName?: string;
   id: string;
   runId: string;
   modelId: VariantModelId;

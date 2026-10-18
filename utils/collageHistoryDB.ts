@@ -27,6 +27,8 @@ export type CollageRunRecord = {
 export type CollageSourceRecord = { runId: string; sources: Array<{ name: string; dataUrl: string; mimeType: string }> };
 
 export type CollageImageRecord = {
+  sourceIndex?: number;
+  sourceName?: string;
   id: string;
   runId: string;
   modelId: VariantModelId;

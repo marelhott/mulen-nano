@@ -3,6 +3,13 @@ import { optimizeVariantsInput } from './variantsInput';
 
 export type ReferenceImage = { name: string; dataUrl: string; mimeType: string };
 
+export async function prepareIndependentImages(sources: ReferenceImage[]) {
+  if (sources.length < 1 || sources.length > COLLAGE_MAX_SOURCES) {
+    throw new Error(`Vlož 1 až ${COLLAGE_MAX_SOURCES} vstupních obrázků.`);
+  }
+  return Promise.all(sources.map(async (source) => (await prepareReferenceImages([source]))[0]));
+}
+
 export async function prepareReferenceImages(sources: ReferenceImage[]) {
   if (sources.length < 1 || sources.length > COLLAGE_MAX_SOURCES) {
     throw new Error(`Vlož 1 až ${COLLAGE_MAX_SOURCES} vstupních obrázků.`);
