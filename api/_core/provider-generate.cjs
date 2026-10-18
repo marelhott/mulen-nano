@@ -69,6 +69,6 @@ exports.handler = async (event) => {
     }
     return json(200, { success: true, result });
   } catch (error) {
-    return json(500, { success: false, error: error?.message || 'OpenRouter request failed' });
+    return json(error?.upstreamStatus || 500, { success: false, error: error?.message || 'OpenRouter request failed', provider: error?.provider, isByok: error?.isByok, quota: error?.quota });
   }
 };

@@ -15,6 +15,12 @@ describe('toUserFacingAiError', () => {
     expect(toUserFacingAiError(error)).toBe('Poskytovatel odmítl vstupní obrázek nebo zadání svým bezpečnostním filtrem.');
   });
 
+  it('kvótu Google nezamění za nedostatek peněz na OpenRouteru', () => {
+    const error = new Error('You exceeded your current quota, please check your plan and billing details. https://ai.google.dev/gemini-api/docs/rate-limits');
+    expect(toUserFacingAiError(error)).toContain('kvótu u Google AI Studio');
+    expect(toUserFacingAiError(error)).not.toContain('billing');
+  });
+
   it('vrátí fallback pro prázdnou chybu', () => {
     expect(toUserFacingAiError('')).toBe('Generování selhalo. Zkus to prosím znovu.');
   });

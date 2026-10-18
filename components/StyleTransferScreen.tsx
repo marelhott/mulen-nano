@@ -1,3 +1,4 @@
+import { useGeneratedImageDeletion } from '../hooks/useGeneratedImageDeletion';
 import React from 'react';
 import { ImageModelSelector, useImageModelSelection } from './ImageModelSelection';
 import { AIProviderType, ProviderSettings } from '../services/aiProvider';
@@ -88,6 +89,10 @@ export function StyleTransferScreen(props: {
   const [highRes, setHighRes] = React.useState(false);
   const [preserveColors, setPreserveColors] = React.useState(false);
   const [outputs, setOutputs] = React.useState<OutputItem[]>([]);
+  useGeneratedImageDeletion((ids) => {
+    setOutputs((prev) => prev.filter((image) => !ids.has(image.id)));
+    setLightboxUrl(null);
+  });
   const [lightboxUrl, setLightboxUrl] = React.useState<string | null>(null);
   const mountedRef = React.useRef(true);
 

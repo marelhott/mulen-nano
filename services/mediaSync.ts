@@ -1,3 +1,4 @@
+import { isGeneratedImageDeleted } from '../utils/generatedImageEvents';
 import {
   getSavedLibraryImageRecord, listSavedLibraryImages, listGeneratedLibraryImages,
   resolveBlobFromSource, saveSavedLibraryImage, markGeneratedImageSynced,
@@ -48,6 +49,7 @@ export async function waitForGeneratedSync(id: string): Promise<void> {
 }
 
 async function uploadGeneratedRecord(image: SingleUserGeneratedImage): Promise<void> {
+  if (isGeneratedImageDeleted(image.id)) return;
   if (!hasBankToken()) throw new Error('Odemkni knihovnu pro uložení výsledku do R2.');
   const blob = await resolveBlobFromSource(image.url);
   const ext = blob.type.split('/')[1] || 'png';

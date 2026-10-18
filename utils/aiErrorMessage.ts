@@ -22,6 +22,10 @@ export function toUserFacingAiError(error: unknown, fallback = 'Generování sel
     return 'Chybí nebo nefunguje API klíč. Zkontroluj ho v nastavení.';
   }
 
+  if (normalized.includes('quota') && (normalized.includes('ai.google.dev') || normalized.includes('google'))) {
+    return 'Vybraný model vyčerpal kvótu u Google AI Studio. Jiné modely mohou dál fungovat. Zkus to později; další pokusy mohou narazit na stejný limit.';
+  }
+
   if (normalized.includes('429') || normalized.includes('rate limit') || normalized.includes('resource_exhausted')) {
     return 'Provider je teď přetížený nebo jsi narazil na limit. Počkej chvíli a zkus to znovu.';
   }
@@ -62,7 +66,7 @@ export function toUserFacingAiError(error: unknown, fallback = 'Generování sel
     return 'Serverové generování je teď blokované na infrastruktuře projektu. To není chyba promptu ani obrázku.';
   }
 
-  if (normalized.includes('quota') || normalized.includes('billing') || normalized.includes('payment')) {
+  if (normalized.includes('insufficient credits') || normalized.includes('insufficient balance') || normalized.includes('payment required')) {
     return 'Provider odmítl požadavek kvůli limitu účtu nebo billing problému.';
   }
 

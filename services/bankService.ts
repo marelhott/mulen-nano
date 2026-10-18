@@ -1,8 +1,9 @@
+import { removeGeneratedImageCopies } from '../utils/generatedImageDeletion';
 // Klient Databanky (Cloudflare R2). Metadata žijí v jednom indexu, obrázky se nahrávají přímo do R2
 // přes předpodepsané odkazy; server je jen podepisuje a hlídá přístup.
 
 import { addItem, findDuplicate, normalizeBankIndex, removeItems, type BankIndex, type BankItem } from '../utils/bankIndex';
-import { listSavedLibraryImages, removeGeneratedLibraryImage, removeSavedLibraryImage } from '../utils/singleUserMediaStore';
+import { listSavedLibraryImages, removeSavedLibraryImage } from '../utils/singleUserMediaStore';
 
 export type BankSpace = 'library' | 'feed';
 export const BANK_CHANGED_EVENT = 'mulen:bank-changed';
@@ -293,7 +294,7 @@ export async function deleteBankItems(ids: string[], space: BankSpace = 'library
     return result.index;
   }, space);
   if (space === 'feed') {
-    for (const item of removed) if (item.galleryId) await removeGeneratedLibraryImage(item.galleryId);
+    await removeGeneratedImageCopies(removed.flatMap((item) => item.galleryId ? [item.galleryId] : []));
   } else {
     const saved = await listSavedLibraryImages();
     for (const image of saved) {

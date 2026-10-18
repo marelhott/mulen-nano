@@ -1,3 +1,4 @@
+import { useGeneratedImageDeletion } from '../hooks/useGeneratedImageDeletion';
 import React from 'react';
 import { ImageModelSelector } from './ImageModelSelection';
 import { imageModelInputError } from '../constants/imageModels';
@@ -8,7 +9,7 @@ import { ModelGrids, type VariantOutput } from './VariantsScreen';
 import { AIProviderType, type ProviderSettings } from '../services/aiProvider';
 import { ProviderFactory } from '../services/providerFactory';
 import { fileToDataUrl, resolveDropToFile } from './styleTransfer/utils';
-import { createThumbnail, saveToGallery } from '../utils/galleryDB';
+import { createThumbnail, saveToGallery, deleteImage as deleteGeneratedImage } from '../utils/galleryDB';
 import { ImageDatabase } from '../utils/imageDatabase';
 import { buildBatchRecipe } from '../utils/generationRecipe';
 import { toUserFacingAiError } from '../utils/aiErrorMessage';
@@ -21,7 +22,6 @@ import {
   buildSingleSourceCollagePrompt,
 } from '../utils/collagePlan';
 import {
-  deleteCollageImage,
   deleteCollageRun,
   getCollageImage,
   getCollageSource,
@@ -222,12 +222,18 @@ export function CollageScreen(props: {
     return () => observer.disconnect();
   }, [fetchHistoryPage, hasMoreHistory, history.length]);
 
+  useGeneratedImageDeletion((ids) => {
+    setOutputs((prev) => prev.filter((item) => !ids.has(item.id)));
+    setHistory((prev) => prev.map((entry) => ({ ...entry, items: entry.items.filter((item) => !ids.has(item.id)) })).filter((entry) => entry.items.length > 0));
+    setPreview(null);
+  });
+
   const handleDeleteImage = React.useCallback(
     async (output: VariantOutput) => {
-      setOutputs((prev) => prev.filter((item) => item.id !== output.id));
-      setHistory((prev) => prev.map((entry) => ({ ...entry, items: entry.items.filter((item) => item.id !== output.id) })).filter((entry) => entry.items.length > 0));
       try {
-        await deleteCollageImage(output.id);
+        await deleteGeneratedImage(output.id);
+        setOutputs((prev) => prev.filter((item) => item.id !== output.id));
+        setHistory((prev) => prev.map((entry) => ({ ...entry, items: entry.items.filter((item) => item.id !== output.id) })).filter((entry) => entry.items.length > 0));
       } catch (error) {
         onToast({ message: toUserFacingAiError(error, 'Smazání obrázku selhalo.'), type: 'error' });
       }
@@ -237,8 +243,10 @@ export function CollageScreen(props: {
 
   const handleDeleteRun = React.useCallback(
     async (runId: string) => {
-      if (!window.confirm('Smazat tento běh včetně všech jeho obrázků z historie?')) return;
+      if (!window.confirm('Smazat všechny výsledky tohoto běhu z celé aplikace i ze sdíleného feedu?')) return;
       try {
+        const thumbs = await listCollageThumbs(runId);
+        for (const image of thumbs) await deleteGeneratedImage(image.id);
         await deleteCollageRun(runId);
         await loadHistory();
       } catch (error) {
@@ -393,7 +401,7 @@ export function CollageScreen(props: {
           setOutputs((prev) =>
             prev.map((item) =>
               item.id === output.id
-                ? { ...item, status: status === 'done' ? 'done' : status === 'error' ? 'error' : status, error: status === 'error' ? toUserFacingAiError(error, 'Generování selhalo.') : undefined, attempt }
+                ? { ...item, status: status === 'done' ? 'done' : status === 'error' ? 'error' : status, error: status === 'error' ? toUserFacingAiError(error, 'Generování selhalo.') : undefined, errorDetail: status === 'error' ? String(error instanceof Error ? error.message : error || '') : undefined, attempt }
                 : item,
             ),
           );

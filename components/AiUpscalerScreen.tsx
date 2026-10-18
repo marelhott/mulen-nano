@@ -1,3 +1,4 @@
+import { useGeneratedImageDeletion } from '../hooks/useGeneratedImageDeletion';
 import React from 'react';
 import { Download, X } from 'lucide-react';
 import { imageExecutionProvider } from '../services/imageExecution';
@@ -114,6 +115,10 @@ export function AiUpscalerScreen(props: {
   const [phase, setPhase] = React.useState<'' | 'queue' | 'running' | 'finalizing'>('');
   const [batchProgress, setBatchProgress] = React.useState<{ current: number; total: number; fileName: string } | null>(null);
   const [outputs, setOutputs] = React.useState<OutputItem[]>([]);
+  useGeneratedImageDeletion((ids) => {
+    setOutputs((prev) => prev.filter((image) => !ids.has(image.id)));
+    setSelectedImage((prev) => prev && ids.has(prev.id) ? null : prev);
+  });
   const [selectedImage, setSelectedImage] = React.useState<OutputItem | null>(null);
   const inputFileId = React.useMemo(() => `upscaler-${Math.random().toString(36).slice(2)}`, []);
   const [activeConcurrency, setActiveConcurrency] = React.useState(2);

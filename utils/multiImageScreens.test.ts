@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   image: vi.fn(),
   preview: vi.fn(),
   toast: vi.fn(),
+  deleteGenerated: vi.fn(),
 }));
 vi.mock('../services/providerFactory', () => ({ ProviderFactory: { getProvider: () => ({ generateImage: mocks.generate }) } }));
 vi.mock('../components/ImageModelSelection', () => ({ ImageModelSelector: () => null }));
@@ -25,7 +26,7 @@ vi.mock('../components/styleTransfer/utils', () => ({
   resolveDropToFile: async () => null,
 }));
 vi.mock('./variantsInput', () => ({ optimizeVariantsInput: async (data: string, mimeType: string) => ({ data, mimeType }) }));
-vi.mock('./galleryDB', () => ({ createThumbnail: async () => 'thumb', saveToGallery: async () => undefined }));
+vi.mock('./galleryDB', () => ({ deleteImage: mocks.deleteGenerated, createThumbnail: async () => 'thumb', saveToGallery: async () => undefined }));
 vi.mock('./imageDatabase', () => ({ ImageDatabase: { add: async () => undefined } }));
 vi.mock('./variantsHistoryDB', () => ({
   listVariantsRuns: mocks.listRuns, listVariantsThumbs: mocks.listThumbs,
@@ -130,6 +131,19 @@ describe('víceobrázkové vstupy obrazovek', () => {
       } finally {
         await act(async () => { finish({ imageBase64: 'generated-image' }); });
       }
+    });
+
+    it(`${name}: smazání výsledku používá společné mazání celé aplikace`, async () => {
+      await act(async () => root.render(React.createElement(Screen, {
+        providerSettings: {} as ProviderSettings, onOpenSettings: vi.fn(), onToast: mocks.toast,
+      })));
+      await upload(1);
+      await clickButton('Generovat');
+      const button = container.querySelector('button[title="Smazat"]') as HTMLButtonElement;
+      expect(button).not.toBeNull();
+      await act(async () => button.click());
+      expect(mocks.deleteGenerated).toHaveBeenCalledWith(expect.any(String));
+      expect(container.querySelector('button[title="Smazat"]')).toBeNull();
     });
 
     it(`${name}: otevření historie porovná výsledek s jeho vlastním vstupem`, async () => {

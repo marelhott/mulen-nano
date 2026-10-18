@@ -1,3 +1,4 @@
+import { isGeneratedImageDeleted } from './generatedImageEvents';
 // Historie sekce Varianty: každý běh (předloha, prompt, modely, datum) a jeho hotové obrázky.
 // Vlastní malá IndexedDB `mulenNanoVariants`, oddělená od sdílené knihovny aplikace, aby se
 // nemigrovala `mulenNanoSingleUserLibrary`. Obrázky v plné velikosti a miniatury jsou ve
@@ -90,6 +91,7 @@ export async function saveVariantsRun(run: VariantsRunRecord, source: VariantsSo
 }
 
 export async function saveVariantsImage(image: VariantsImageRecord, thumb: string): Promise<void> {
+  if (isGeneratedImageDeleted(image.id)) return;
   const db = await openDb();
   const tx = db.transaction([IMAGES, THUMBS], 'readwrite');
   tx.objectStore(IMAGES).put(image);
@@ -125,7 +127,7 @@ export async function listVariantsThumbs(runId: string): Promise<VariantsThumbRe
   const records = await asPromise<VariantsThumbRecord[]>(
     db.transaction(THUMBS, 'readonly').objectStore(THUMBS).index('runId').getAll(IDBKeyRange.only(runId)),
   );
-  return records.sort((a, b) => a.variantIndex - b.variantIndex);
+  return records.filter((image) => !isGeneratedImageDeleted(image.id)).sort((a, b) => a.variantIndex - b.variantIndex);
 }
 
 export async function getVariantsImage(id: string): Promise<VariantsImageRecord | undefined> {

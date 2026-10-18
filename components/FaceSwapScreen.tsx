@@ -1,3 +1,4 @@
+import { useGeneratedImageDeletion } from '../hooks/useGeneratedImageDeletion';
 import React from 'react';
 import { useImageModelSelection } from './ImageModelSelection';
 import { imageModelById } from '../constants/imageModels';
@@ -55,6 +56,10 @@ export function FaceSwapScreen(props: {
   const [outputCount, setOutputCount] = React.useState<1 | 2 | 3>(2);
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [outputs, setOutputs] = React.useState<FaceSwapOutputCard[]>([]);
+  useGeneratedImageDeletion((ids) => {
+    setOutputs((prev) => prev.filter((image) => !ids.has(image.id)));
+    setLightboxUrl(null);
+  });
   const [runMeta, setRunMeta] = React.useState<string>('Zatím žádný výstup');
   const [lightboxUrl, setLightboxUrl] = React.useState<string | null>(null);
   const [progress, setProgress] = React.useState<HeadSwapProgress | null>(null);

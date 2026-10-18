@@ -1,3 +1,4 @@
+import { useGeneratedImageDeletion } from '../hooks/useGeneratedImageDeletion';
 import React from 'react';
 import { Download, Images, X } from 'lucide-react';
 import { ProviderSelector } from './ProviderSelector';
@@ -198,6 +199,7 @@ export function BatchScreen(props: {
   const [numberOfImages, setNumberOfImages] = React.useState(1);
   const [inputs, setInputs] = React.useState<InputSlot[]>([]);
   const [outputs, setOutputs] = React.useState<BatchOutput[]>([]);
+  useGeneratedImageDeletion((ids) => setOutputs((prev) => prev.filter((image) => !ids.has(image.id))));
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [dragActive, setDragActive] = React.useState(false);
   const [progress, setProgress] = React.useState<{ current: number; total: number; fileName: string; variant: number } | null>(null);

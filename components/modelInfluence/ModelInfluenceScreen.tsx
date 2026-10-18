@@ -1,3 +1,4 @@
+import { useGeneratedImageDeletion } from '../../hooks/useGeneratedImageDeletion';
 import React from 'react';
 import { Plus, X } from 'lucide-react';
 import { ImageComparisonModal } from '../ImageComparisonModal';
@@ -220,6 +221,7 @@ export function ModelInfluenceScreen(props: {
   const [falPhase, setFalPhase] = React.useState<'' | 'queue' | 'running' | 'finalizing'>('');
   const [genPhase, setGenPhase] = React.useState<string>('');
   const [generated, setGenerated] = React.useState<OutputItem[]>([]);
+  useGeneratedImageDeletion((ids) => setGenerated((prev) => prev.filter((image) => !ids.has(image.id))));
   const [selectedOutputId, setSelectedOutputId] = React.useState<string | null>(null);
   const [falLogs, setFalLogs] = React.useState<FalLogLine[]>([]);
   const [debugResolvedUrl, setDebugResolvedUrl] = React.useState('');
@@ -763,11 +765,10 @@ export function ModelInfluenceScreen(props: {
                           aria-label="Smazat"
                           onClick={async (e) => {
                             e.stopPropagation();
-                            setGenerated((prev) => prev.filter((it) => it.id !== img.id));
                             try {
                               await deleteGeneratedImage(img.id);
                             } catch {
-                              // ignored: remote delete is best-effort
+                              onToast({ type: 'error', message: 'Smazání výsledku selhalo. Odemkni knihovnu a zkontroluj připojení.' });
                             }
                           }}
                         >

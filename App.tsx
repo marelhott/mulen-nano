@@ -1,3 +1,4 @@
+import { useGeneratedImageDeletion } from './hooks/useGeneratedImageDeletion';
 import React, { Suspense, lazy, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import './src/index.css'; // ENFORCE NEW STYLES
 import { X, FileJson, ArrowLeftRight, Sparkles } from 'lucide-react'; // Added icons for design
@@ -562,6 +563,12 @@ const App: React.FC = () => {
 
   const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
   const [refineImage, setRefineImage] = useState<GeneratedImage | null>(null);
+  useGeneratedImageDeletion((ids) => {
+    setState((prev) => ({ ...prev, generatedImages: prev.generatedImages.filter((image) => !ids.has(image.id)), trashedImages: prev.trashedImages.filter((image) => !ids.has(image.id)) }));
+    setSelectedImage((prev) => prev && ids.has(prev.id) ? null : prev);
+    setRefineImage((prev) => prev && ids.has(prev.id) ? null : prev);
+  });
+
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const [rightPanelWidth, setRightPanelWidth] = useState(360);
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
@@ -2356,17 +2363,13 @@ const App: React.FC = () => {
     }
   };
 
-  const handleDeleteImage = (imageId: string) => {
-    setState(prev => {
-      const img = prev.generatedImages.find(i => i.id === imageId);
-      return {
-        ...prev,
-        generatedImages: prev.generatedImages.filter(i => i.id !== imageId),
-        trashedImages: img
-          ? [{ ...img, trashedAt: Date.now() }, ...prev.trashedImages]
-          : prev.trashedImages,
-      };
-    });
+  const handleDeleteImage = async (imageId: string) => {
+    try {
+      await deleteGalleryImage(imageId);
+      setToast({ message: 'Obrázek smazán z celé aplikace.', type: 'success' });
+    } catch (error) {
+      setToast({ message: toUserFacingAiError(error, 'Smazání obrázku selhalo.'), type: 'error' });
+    }
   };
 
   const handleRestoreFromTrash = (imageId: string) => {
@@ -4017,12 +4020,14 @@ Edit the provided image according to the instruction above. Preserve the origina
                                 <button
                                   onClick={() => {
                                     const toDelete = row.images.map(img => img.id);
-                                    setState(prev => ({
-                                      ...prev,
-                                      generatedImages: prev.generatedImages.filter(img => getImageRowKey(img) !== row.runId),
-                                    }));
-                                    toDelete.forEach(id => deleteGalleryImage(id).catch(() => {}));
-                                    setToast({ message: 'Řádek smazán', type: 'success' });
+                                    void (async () => {
+                                      try {
+                                        for (const id of toDelete) await deleteGalleryImage(id);
+                                        setToast({ message: 'Řádek smazán z celé aplikace.', type: 'success' });
+                                      } catch (error) {
+                                        setToast({ message: toUserFacingAiError(error, 'Smazání řádku selhalo.'), type: 'error' });
+                                      }
+                                    })();
                                   }}
                                   className="p-1 rounded transition-all opacity-30 hover:opacity-100"
                                   style={{ color: 'rgba(168,191,143,0.35)' }}
@@ -4143,12 +4148,7 @@ Edit the provided image according to the instruction above. Preserve the origina
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setState(prev => ({
-                                        ...prev,
-                                        generatedImages: prev.generatedImages.filter(img => img.id !== image.id)
-                                      }));
-                                      deleteGalleryImage(image.id).catch(() => {});
-                                      setToast({ message: 'Obrázek smazán', type: 'success' });
+                                      void handleDeleteImage(image.id);
                                     }}
                                     className="p-1.5 text-[var(--text-secondary)] hover:text-red-500 hover:bg-red-500/10 rounded transition-colors"
                                     title="Smazat"

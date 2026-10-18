@@ -1,3 +1,4 @@
+import { useGeneratedImageDeletion } from '../hooks/useGeneratedImageDeletion';
 import React from 'react';
 import { ImageModelSelector } from './ImageModelSelection';
 import { imageModelInputError } from '../constants/imageModels';
@@ -7,7 +8,7 @@ import { AtelierEmptyState, AtelierRightPanel, AtelierSection } from './atelier/
 import { AIProviderType, type ProviderSettings } from '../services/aiProvider';
 import { ProviderFactory } from '../services/providerFactory';
 import { fileToDataUrl, resolveDropToFile } from './styleTransfer/utils';
-import { createThumbnail, saveToGallery } from '../utils/galleryDB';
+import { createThumbnail, saveToGallery, deleteImage as deleteGeneratedImage } from '../utils/galleryDB';
 import { ImageDatabase } from '../utils/imageDatabase';
 import { buildBatchRecipe } from '../utils/generationRecipe';
 import { toUserFacingAiError } from '../utils/aiErrorMessage';
@@ -15,7 +16,6 @@ import { decideAdaptiveConcurrency, estimateDataUrlBytes, runConcurrentTasks } f
 import { prepareIndependentImages } from '../utils/multiImageInput';
 import { COLLAGE_MAX_SOURCES } from '../utils/collagePlan';
 import {
-  deleteVariantsImage,
   deleteVariantsRun,
   getVariantsImage,
   getVariantsSource,
@@ -59,6 +59,7 @@ export type VariantOutput = {
   /** Miniatura z historie. */
   thumbUrl?: string;
   error?: string;
+  errorDetail?: string;
   attempt?: number;
   createdAt: number;
   sourceDataUrl: string;
@@ -146,7 +147,7 @@ export function VariantCard(props: { output: VariantOutput; onOpen: (output: Var
             <div className="w-6 h-6 bg-red-500/20 text-red-500 border border-red-500/30 rounded-md flex items-center justify-center mb-2">
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
             </div>
-            <p className="text-xs font-medium text-red-400 leading-snug line-clamp-5" title={output.error}>{output.error || 'Generování selhalo.'}</p>
+            <p className="text-xs font-medium text-red-400 leading-snug line-clamp-5" title={output.errorDetail || output.error}>{output.error || 'Generování selhalo.'}</p>
           </div>
         ) : (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-md px-3 transition-all duration-300">
@@ -376,12 +377,18 @@ export function VariantsScreen(props: {
     return () => observer.disconnect();
   }, [fetchHistoryPage, hasMoreHistory, history.length]);
 
+  useGeneratedImageDeletion((ids) => {
+    setOutputs((prev) => prev.filter((item) => !ids.has(item.id)));
+    setHistory((prev) => prev.map((entry) => ({ ...entry, items: entry.items.filter((item) => !ids.has(item.id)) })).filter((entry) => entry.items.length > 0));
+    setPreview(null);
+  });
+
   const handleDeleteImage = React.useCallback(
     async (output: VariantOutput) => {
-      setOutputs((prev) => prev.filter((item) => item.id !== output.id));
-      setHistory((prev) => prev.map((entry) => ({ ...entry, items: entry.items.filter((item) => item.id !== output.id) })).filter((entry) => entry.items.length > 0));
       try {
-        await deleteVariantsImage(output.id);
+        await deleteGeneratedImage(output.id);
+        setOutputs((prev) => prev.filter((item) => item.id !== output.id));
+        setHistory((prev) => prev.map((entry) => ({ ...entry, items: entry.items.filter((item) => item.id !== output.id) })).filter((entry) => entry.items.length > 0));
       } catch (error) {
         onToast({ message: toUserFacingAiError(error, 'Smazání obrázku selhalo.'), type: 'error' });
       }
@@ -391,8 +398,10 @@ export function VariantsScreen(props: {
 
   const handleDeleteRun = React.useCallback(
     async (runId: string) => {
-      if (!window.confirm('Smazat tento běh včetně všech jeho obrázků z historie?')) return;
+      if (!window.confirm('Smazat všechny výsledky tohoto běhu z celé aplikace i ze sdíleného feedu?')) return;
       try {
+        const thumbs = await listVariantsThumbs(runId);
+        for (const image of thumbs) await deleteGeneratedImage(image.id);
         await deleteVariantsRun(runId);
         await loadHistory();
       } catch (error) {
@@ -549,7 +558,7 @@ export function VariantsScreen(props: {
           setOutputs((prev) =>
             prev.map((item) =>
               item.id === output.id
-                ? { ...item, status: status === 'done' ? 'done' : status === 'error' ? 'error' : status, error: status === 'error' ? toUserFacingAiError(error, 'Generování selhalo.') : undefined, attempt }
+                ? { ...item, status: status === 'done' ? 'done' : status === 'error' ? 'error' : status, error: status === 'error' ? toUserFacingAiError(error, 'Generování selhalo.') : undefined, errorDetail: status === 'error' ? String(error instanceof Error ? error.message : error || '') : undefined, attempt }
                 : item,
             ),
           );

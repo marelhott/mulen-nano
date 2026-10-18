@@ -1,4 +1,6 @@
-import { clearGeneratedLibraryImages, getGeneratedLibraryImageRecord, listGeneratedLibraryImages, removeGeneratedLibraryImage, resolveBlobFromSource, saveGeneratedLibraryImage, type SingleUserGeneratedImage } from './singleUserMediaStore';
+import { removeGeneratedImageCopies } from './generatedImageDeletion';
+import { isGeneratedImageDeleted } from './generatedImageEvents';
+import { clearGeneratedLibraryImages, getGeneratedLibraryImageRecord, listGeneratedLibraryImages, resolveBlobFromSource, saveGeneratedLibraryImage, type SingleUserGeneratedImage } from './singleUserMediaStore';
 import { dispatchCloudSyncEvent } from './cloudSyncEvents';
 import { deleteBankItems, getBankUrls, hasBankToken, loadBankIndex } from '../services/bankService';
 import { mediaChanged, syncGeneratedRecord, waitForGeneratedSync } from '../services/mediaSync';
@@ -11,6 +13,7 @@ type SaveToGalleryInput = Omit<GalleryImage, 'id' | 'timestamp'> & {
 };
 
 export const saveToGallery = async (image: SaveToGalleryInput): Promise<void> => {
+  if (image.id && isGeneratedImageDeleted(image.id)) return;
   let mainBlob: Blob | undefined;
   let thumbBlob: Blob | undefined;
 
@@ -45,6 +48,10 @@ export const saveToGallery = async (image: SaveToGalleryInput): Promise<void> =>
     lineage: image.lineage,
   });
 
+  if (isGeneratedImageDeleted(localRecord.id)) {
+    await removeGeneratedImageCopies([localRecord.id]);
+    return;
+  }
   mediaChanged();
   void syncGeneratedRecord(localRecord).catch(() => {
     dispatchCloudSyncEvent({ status: 'failed', resource: 'generated-image', message: 'Výsledek je uložený lokálně. Odemkni knihovnu nebo obnov spojení pro dokončení uložení do R2.' });
@@ -53,15 +60,18 @@ export const saveToGallery = async (image: SaveToGalleryInput): Promise<void> =>
 
 export const getAllImages = async (): Promise<GalleryImage[]> => {
   try {
-    const local = await listGeneratedLibraryImages();
+    const local = (await listGeneratedLibraryImages()).filter((image) => !isGeneratedImageDeleted(image.id));
     if (!hasBankToken()) return local;
     try {
       const index = await loadBankIndex('feed');
       const items = index.items.filter((item) => item.kind === 'image' && item.galleryId && item.itemKey && item.generation);
       const urls = await getBankUrls(items.flatMap((item) => [item.itemKey!, item.thumbKey!]).filter(Boolean));
       const remoteIds = new Set(items.map((item) => item.galleryId));
+      const removed = local.filter((image) => image.remoteStoragePath?.startsWith('r2:') && !remoteIds.has(image.id));
+      if (removed.length) await removeGeneratedImageCopies(removed.map((image) => image.id));
       const merged = new Map(local.filter((image) => !image.remoteStoragePath?.startsWith('r2:') || remoteIds.has(image.id)).map((image) => [image.id, image]));
       for (const item of items) {
+        if (isGeneratedImageDeleted(item.galleryId!)) continue;
         const existing = merged.get(item.galleryId!);
         if (existing && (!existing.remoteStoragePath?.startsWith('r2:') || existing.remoteStoragePath === `r2:${item.itemKey}`)) continue;
         merged.set(item.galleryId!, {
@@ -71,10 +81,10 @@ export const getAllImages = async (): Promise<GalleryImage[]> => {
           params: item.generation!.params, remoteStoragePath: `r2:${item.itemKey}`, remoteThumbnailPath: `r2:${item.thumbKey}`,
         });
       }
-      return [...merged.values()].sort((a, b) => b.timestamp - a.timestamp);
+      return [...merged.values()].filter((image) => !isGeneratedImageDeleted(image.id)).sort((a, b) => b.timestamp - a.timestamp);
     } catch {
       dispatchCloudSyncEvent({ status: 'failed', resource: 'generated-image', message: 'R2 feed není dostupný. Zobrazuji lokální historii.' });
-      return local;
+      return local.filter((image) => !isGeneratedImageDeleted(image.id));
     }
   } catch (error) {
     console.error('Error loading gallery:', error);
@@ -91,7 +101,7 @@ export const deleteImage = async (id: string): Promise<void> => {
   } else if (existing?.remoteStoragePath?.startsWith('r2:')) {
     throw new Error('Pro smazání z R2 odemkni knihovnu.');
   }
-  await removeGeneratedLibraryImage(id);
+  await removeGeneratedImageCopies([id]);
   mediaChanged();
 };
 

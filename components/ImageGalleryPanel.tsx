@@ -1,3 +1,4 @@
+import { useGeneratedImageDeletion } from '../hooks/useGeneratedImageDeletion';
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Upload, X } from 'lucide-react';
 import { getAllImages, deleteImage, GalleryImage } from '../utils/galleryDB';
@@ -27,6 +28,11 @@ export const ImageGalleryPanel = forwardRef<ImageGalleryPanelRef, ImageGalleryPa
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [visibleSavedCount, setVisibleSavedCount] = useState(40);
   const [visibleGeneratedCount, setVisibleGeneratedCount] = useState(40);
+
+  useGeneratedImageDeletion((ids) => {
+    setGeneratedImages((prev) => prev.filter((image) => !ids.has(image.id)));
+    setSelectedImage((prev) => prev && ids.has(prev.id) ? null : prev);
+  });
 
   useEffect(() => {
     loadImages();

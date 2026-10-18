@@ -39,4 +39,22 @@ describe('openrouter generateImage', () => {
     expect(calls[0].body.input_references).toBeUndefined();
     expect(calls[0].body.aspect_ratio).toBeUndefined();
   });
+  it('zachová stav a detail kvóty Google z metadat chyby', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 429, json: async () => ({ error: {
+      message: 'You exceeded your current quota…', metadata: { provider_name: 'Google AI Studio', raw: JSON.stringify({ error: { message: 'Quota exceeded for model gemini-nano-banana-2.1, limit: 0.' } }) },
+    } }) })));
+    await expect(generateImage({ apiKey: 'test', prompt: 'p' })).rejects.toMatchObject({ upstreamStatus: 429, provider: 'Google AI Studio', message: expect.stringContaining('limit: 0') });
+  });
+
+  it('server předá stav 429 a podrobnost limitu bez identifikátoru Google projektu', async () => {
+    const { handler } = require('../api/_core/provider-generate.cjs');
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 429, json: async () => ({ error: {
+      message: 'Quota exceeded', metadata: { provider_name: 'Google AI Studio', is_byok: false, raw: JSON.stringify({ error: { message: 'Google model quota exhausted', details: [{ violations: [{ quotaMetric: 'requests_per_model', quotaValue: '0', quotaDimensions: { model: 'gemini-nano-banana-2.1', project: 'private-project' } }] }, { retryDelay: '60s' }] } }) },
+    } }) })));
+    const result = await handler({ httpMethod: 'POST', body: JSON.stringify({ action: 'generateImage', apiKey: 'test', preferredModel: 'google/gemini-nano-banana-2.1', prompt: 'test' }) });
+    expect(result.statusCode).toBe(429);
+    expect(JSON.parse(result.body)).toMatchObject({ success: false, provider: 'Google AI Studio', isByok: false, quota: [{ metric: 'requests_per_model', limit: '0', model: 'gemini-nano-banana-2.1' }, { retryDelay: '60s' }] });
+    expect(result.body).not.toContain('private-project');
+  });
+
 });

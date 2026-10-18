@@ -1,3 +1,4 @@
+import { isGeneratedImageDeleted } from './generatedImageEvents';
 // Historie sekce Koláž: každý běh (vstupy, prompt, modely, datum) a jeho hotové obrázky.
 // Vlastní malá IndexedDB `mulenNanoCollage`, oddělená od sdílené knihovny aplikace, aby se
 // nemigrovala `mulenNanoSingleUserLibrary`. Obrázky v plné velikosti a miniatury jsou ve
@@ -85,6 +86,7 @@ export async function saveCollageRun(run: CollageRunRecord, source: CollageSourc
 }
 
 export async function saveCollageImage(image: CollageImageRecord, thumb: string): Promise<void> {
+  if (isGeneratedImageDeleted(image.id)) return;
   const db = await openDb();
   const tx = db.transaction([IMAGES, THUMBS], 'readwrite');
   tx.objectStore(IMAGES).put(image);
@@ -120,7 +122,7 @@ export async function listCollageThumbs(runId: string): Promise<CollageThumbReco
   const records = await asPromise<CollageThumbRecord[]>(
     db.transaction(THUMBS, 'readonly').objectStore(THUMBS).index('runId').getAll(IDBKeyRange.only(runId)),
   );
-  return records.sort((a, b) => a.variantIndex - b.variantIndex);
+  return records.filter((image) => !isGeneratedImageDeleted(image.id)).sort((a, b) => a.variantIndex - b.variantIndex);
 }
 
 export async function getCollageImage(id: string): Promise<CollageImageRecord | undefined> {

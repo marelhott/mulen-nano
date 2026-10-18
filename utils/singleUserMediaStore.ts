@@ -1,3 +1,4 @@
+import { isGeneratedImageDeleted } from './generatedImageEvents';
 import { createSingleUserId, markTimedMigrationAttempt, readJsonStorage, shouldRetryTimedMigration, withTimeout } from './singleUserStore';
 
 export type SingleUserSavedImage = {
@@ -165,7 +166,7 @@ async function primeFromAutoBackupIfNeeded(): Promise<void> {
 
   const backupGenerated = Array.isArray(backup.galleryImages) ? backup.galleryImages : [];
   for (const image of backupGenerated) {
-    if (!image?.id || generatedIds.has(image.id) || !image.url) continue;
+    if (!image?.id || isGeneratedImageDeleted(image.id) || generatedIds.has(image.id) || !image.url) continue;
 
     await putRecord<GeneratedRecord>(GENERATED_STORE, {
       id: image.id,

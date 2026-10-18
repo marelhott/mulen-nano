@@ -1,3 +1,4 @@
+import { useGeneratedImageDeletion } from '../hooks/useGeneratedImageDeletion';
 import React, { useState, useEffect, useRef } from 'react';
 import { getAllImages, deleteImage, clearGallery, GalleryImage } from '../utils/galleryDB';
 import { exportAllData, importData } from '../utils/dataBackup';
@@ -16,6 +17,11 @@ export const GalleryModal: React.FC<GalleryModalProps> = ({ isOpen, onClose, onR
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set<string>());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
+
+  useGeneratedImageDeletion((ids) => {
+    setImages((prev) => prev.filter((image) => !ids.has(image.id)));
+    setSelectedImage((prev) => prev && ids.has(prev.id) ? null : prev);
+  });
 
   useEffect(() => {
     if (isOpen) {

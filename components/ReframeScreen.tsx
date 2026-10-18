@@ -1,3 +1,4 @@
+import { useGeneratedImageDeletion } from '../hooks/useGeneratedImageDeletion';
 import React from 'react';
 import { Download, ImagePlus, Sparkles, X } from 'lucide-react';
 import { imageExecutionProvider } from '../services/imageExecution';
@@ -281,6 +282,10 @@ export function ReframeScreen(props: {
   const [gridMode, setGridMode] = React.useState<'3x3' | 'free'>('3x3');
   const [resolution, setResolution] = React.useState<'1K' | '2K'>('2K');
   const [outputs, setOutputs] = React.useState<ReframeOutput[]>([]);
+  useGeneratedImageDeletion((ids) => {
+    setOutputs((prev) => prev.filter((image) => !ids.has(image.id)));
+    setSelectedOutput((prev) => prev && ids.has(prev.id) ? null : prev);
+  });
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [progress, setProgress] = React.useState<{ completed: number; total: number } | null>(null);
   const [serverOpenRouterReady, setServerOpenRouterReady] = React.useState(false);

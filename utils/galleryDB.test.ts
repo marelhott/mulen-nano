@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-const mocks = vi.hoisted(() => ({ list: vi.fn(), token: vi.fn(), index: vi.fn(), urls: vi.fn(), existing: vi.fn(), remove: vi.fn(), deleteBank: vi.fn(), wait: vi.fn() }));
-vi.mock('./singleUserMediaStore', () => ({ listGeneratedLibraryImages: mocks.list, getGeneratedLibraryImageRecord: mocks.existing, removeGeneratedLibraryImage: mocks.remove, clearGeneratedLibraryImages: vi.fn(), resolveBlobFromSource: vi.fn(), saveGeneratedLibraryImage: vi.fn() }));
+const mocks = vi.hoisted(() => ({ list: vi.fn(), token: vi.fn(), index: vi.fn(), urls: vi.fn(), existing: vi.fn(), remove: vi.fn(), deleteBank: vi.fn(), wait: vi.fn(), blob: vi.fn(), save: vi.fn(), sync: vi.fn() }));
+vi.mock('./singleUserMediaStore', () => ({ listGeneratedLibraryImages: mocks.list, getGeneratedLibraryImageRecord: mocks.existing, removeGeneratedLibraryImage: mocks.remove, clearGeneratedLibraryImages: vi.fn(), resolveBlobFromSource: mocks.blob, saveGeneratedLibraryImage: mocks.save }));
 vi.mock('../services/bankService', () => ({ hasBankToken: mocks.token, loadBankIndex: mocks.index, getBankUrls: mocks.urls, deleteBankItems: mocks.deleteBank }));
-vi.mock('../services/mediaSync', () => ({ mediaChanged: vi.fn(), syncGeneratedRecord: vi.fn(), waitForGeneratedSync: mocks.wait }));
-import { deleteImage, getAllImages } from './galleryDB';
+vi.mock('./variantsHistoryDB', () => ({ deleteVariantsImage: vi.fn() }));
+vi.mock('./collageHistoryDB', () => ({ deleteCollageImage: vi.fn() }));
+vi.mock('../services/mediaSync', () => ({ mediaChanged: vi.fn(), syncGeneratedRecord: mocks.sync, waitForGeneratedSync: mocks.wait }));
+import { notifyGeneratedImagesDeleted } from './generatedImageEvents';
+import { deleteImage, getAllImages, saveToGallery } from './galleryDB';
 beforeEach(() => {
   vi.clearAllMocks(); mocks.token.mockReturnValue(true); mocks.list.mockResolvedValue([]); mocks.index.mockResolvedValue({ items: [] }); mocks.urls.mockResolvedValue({ 'items/a.png': 'signed-original', 'thumbs/a.jpg': 'signed-thumb' }); mocks.deleteBank.mockResolvedValue(undefined);
 });
@@ -40,4 +43,16 @@ describe('Společný feed', () => {
     expect(mocks.deleteBank).toHaveBeenCalledWith(['cloud-a'], 'feed');
     expect(mocks.remove).toHaveBeenCalledWith('a');
   });
+  it('smazání během přípravy obrázku zabrání pozdnímu uploadu do R2', async () => {
+    let finish!: (blob: Blob) => void;
+    mocks.blob.mockImplementationOnce(() => new Promise<Blob>((resolve) => { finish = resolve; }));
+    mocks.save.mockResolvedValue({ id: 'late-in-flight', url: 'test' });
+    const pending = saveToGallery({ id: 'late-in-flight', url: 'test', prompt: 'test' });
+    notifyGeneratedImagesDeleted(['late-in-flight']);
+    finish(new Blob(['test']));
+    await pending;
+    expect(mocks.remove).toHaveBeenCalledWith('late-in-flight');
+    expect(mocks.sync).not.toHaveBeenCalled();
+  });
+
 });
