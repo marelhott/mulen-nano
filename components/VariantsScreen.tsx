@@ -146,17 +146,14 @@ export function VariantCard(props: { output: VariantOutput; onOpen: (output: Var
             <div className="w-6 h-6 bg-red-500/20 text-red-500 border border-red-500/30 rounded-md flex items-center justify-center mb-2">
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
             </div>
-            <p className="text-[8px] font-bold text-red-400 leading-snug line-clamp-5" title={output.error}>{output.error}</p>
+            <p className="text-xs font-medium text-red-400 leading-snug line-clamp-5" title={output.error}>{output.error || 'Generování selhalo.'}</p>
           </div>
         ) : (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-md px-3 transition-all duration-300">
             <div className="w-full space-y-2">
-              <div className="relative h-[2px] bg-gray-800 rounded-full overflow-hidden">
-                <div
-                  className="absolute inset-y-0 left-0 bg-[#a8bf8f] rounded-full shadow-[0_0_10px_rgba(126,217,87,0.5)]"
-                  style={{ width: '0%', animation: 'growWidth 60s cubic-bezier(0.4, 0, 0.2, 1) forwards' }}
-                />
-              </div>
+              {output.status !== 'pending' ? (
+                <div role="status" aria-label="Generování probíhá" className="mx-auto h-4 w-4 rounded-full border-2 border-[#a8bf8f]/20 border-t-[#a8bf8f] animate-spin motion-reduce:animate-none" />
+              ) : null}
               <div className="text-center">
                 <span className="text-[8px] text-[#a8bf8f] font-bold tracking-widest uppercase animate-pulse">
                   {output.status === 'retrying' ? `Opakuji ${Math.min(output.attempt || 2, 3)}/3` : output.status === 'running' ? 'Generuji' : 'Čeká'}
@@ -546,13 +543,13 @@ export function VariantsScreen(props: {
       const results = await runConcurrentTasks({
         items: targets,
         concurrency: decision.concurrency,
-        onTaskStateChange: ({ index, status, attempt }) => {
+        onTaskStateChange: ({ index, status, attempt, error }) => {
           const output = targets[index];
           if (!output) return;
           setOutputs((prev) =>
             prev.map((item) =>
               item.id === output.id
-                ? { ...item, status: status === 'done' ? 'done' : status === 'error' ? 'error' : status, error: status === 'error' ? item.error : undefined, attempt }
+                ? { ...item, status: status === 'done' ? 'done' : status === 'error' ? 'error' : status, error: status === 'error' ? toUserFacingAiError(error, 'Generování selhalo.') : undefined, attempt }
                 : item,
             ),
           );

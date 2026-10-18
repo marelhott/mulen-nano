@@ -387,13 +387,13 @@ export function CollageScreen(props: {
       const results = await runConcurrentTasks({
         items: targets,
         concurrency: decision.concurrency,
-        onTaskStateChange: ({ index, status, attempt }) => {
+        onTaskStateChange: ({ index, status, attempt, error }) => {
           const output = targets[index];
           if (!output) return;
           setOutputs((prev) =>
             prev.map((item) =>
               item.id === output.id
-                ? { ...item, status: status === 'done' ? 'done' : status === 'error' ? 'error' : status, error: status === 'error' ? item.error : undefined, attempt }
+                ? { ...item, status: status === 'done' ? 'done' : status === 'error' ? 'error' : status, error: status === 'error' ? toUserFacingAiError(error, 'Generování selhalo.') : undefined, attempt }
                 : item,
             ),
           );

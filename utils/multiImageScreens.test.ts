@@ -114,6 +114,24 @@ describe('víceobrázkové vstupy obrazovek', () => {
       expect(container.querySelectorAll('section[aria-label^="Vstup "]')).toHaveLength(10);
     });
 
+    it(`${name}: ukáže důvod selhání hned, i když další úloha stále běží`, async () => {
+      let finish!: (value: { imageBase64: string }) => void;
+      const pending = new Promise<{ imageBase64: string }>((resolve) => { finish = resolve; });
+      mocks.generate.mockRejectedValueOnce(new Error('Model odmítl vstupní obrázek.'))
+        .mockImplementationOnce(() => pending);
+      await act(async () => root.render(React.createElement(Screen, {
+        providerSettings: {} as ProviderSettings, onOpenSettings: vi.fn(), onToast: mocks.toast,
+      })));
+      await upload(2);
+      await clickButton('Generovat');
+      try {
+        expect(container.textContent).toContain('Model odmítl vstupní obrázek.');
+        expect(container.textContent).toContain('Generuji');
+      } finally {
+        await act(async () => { finish({ imageBase64: 'generated-image' }); });
+      }
+    });
+
     it(`${name}: otevření historie porovná výsledek s jeho vlastním vstupem`, async () => {
       mocks.listRuns.mockResolvedValue([{ id: 'run', createdAt: 1, sourceName: 'first.jpg', sourceThumb: 'thumb',
         sourceNames: ['first.jpg', 'second.jpg'], sourceThumbs: ['thumb', 'thumb'], prompt: 'neutral', models: ['gpt'], countPerModel: 1 }]);
