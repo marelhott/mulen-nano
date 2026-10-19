@@ -132,22 +132,24 @@ export function BankGate(props: { status: BankStatus | null; error: string; onLo
 
 // --- karta, detail --------------------------------------------------------------------------------
 
-function ItemCard(props: { item: BankItem; selected: boolean; version: number; onSelect: () => void; onImageError: (key: string) => void }) {
+function ItemCard(props: { item: BankItem; selected: boolean; version: number; onSelect: () => void; onOpen: () => void; onImageError: (key: string) => void }) {
   const { item, selected } = props;
   const thumb = getCachedBankUrl(item.thumbKey);
   return (
     <button
       type="button"
       onClick={props.onSelect}
-      aria-label={item.kind === 'image' ? `Náhled: ${item.title}` : item.title}
+      onDoubleClick={props.onOpen}
+      aria-pressed={selected}
+      aria-label={item.kind === 'image' ? `Vybrat: ${item.title}` : item.title}
       title={item.title}
-      className={`group relative block aspect-square w-full min-w-0 overflow-hidden rounded-md text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)] ${selected ? 'ring-2 ring-[var(--accent)]' : ''}`}
+      className={`group relative block aspect-square w-full min-w-0 overflow-hidden rounded-md text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)] ${selected && item.kind !== 'image' ? 'ring-1 ring-[var(--accent)]/70' : ''}`}
       data-version={props.version}
     >
-      <div className="absolute inset-0 overflow-hidden">
+      <div className="absolute inset-0 flex items-center justify-center p-px">
         {item.kind === 'image' ? (
           thumb ? (
-            <img src={thumb} alt={item.title} loading="lazy" className="absolute inset-0 h-full w-full object-contain" onError={() => item.thumbKey && props.onImageError(item.thumbKey)} />
+            <img src={thumb} alt={item.title} loading="lazy" className={`max-h-full max-w-full object-contain transition-shadow duration-150 ${selected ? 'ring-1 ring-[var(--accent)]/70' : ''}`} onError={() => item.thumbKey && props.onImageError(item.thumbKey)} />
           ) : null
         ) : (
           <div className="flex h-full w-full flex-col gap-1 p-2">
@@ -811,12 +813,11 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
               </div>)}
               {shown.map((item) => (
                 <div key={item.id} className="group relative min-w-0">
-                  <ItemCard item={item} selected={checked.includes(item.id) || item.id === selectedId} version={urlVersion} onSelect={() => {
-                    if (!props.onChoose) { if (item.kind === 'image') setPreviewId(item.id); else setSelectedId(item.id); }
-                    else if (item.kind === 'image') setChecked((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : props.multiple ? [...current, item.id] : [item.id]);
-                  }} onImageError={handleImageError} />
-                  {item.kind === 'image' && props.onChoose && <button type="button" aria-label={`Zvětšit: ${item.title}`} title="Zvětšit obrázek" onClick={() => setPreviewId(item.id)} className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded bg-[var(--bg-elevated)] opacity-0 focus-visible:opacity-100 group-hover:opacity-100"><Maximize2 size={14} /></button>}
-                  {(!props.onChoose || item.kind === 'image') && <input type="checkbox" aria-label={`Vybrat ${item.title}`} checked={checked.includes(item.id)} onChange={(e) => setChecked((current) => e.target.checked ? props.onChoose && !props.multiple ? [item.id] : [...current, item.id] : current.filter((id) => id !== item.id))} className="absolute left-2 top-2 h-4 w-4 accent-[var(--accent)]" />}
+                  <ItemCard item={item} selected={checked.includes(item.id)} version={urlVersion} onSelect={() => {
+                    if (props.onChoose && item.kind !== 'image') { setSelectedId(item.id); return; }
+                    setChecked((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : props.onChoose && !props.multiple ? [item.id] : [...current, item.id]);
+                  }} onOpen={() => { if (item.kind === 'image') setPreviewId(item.id); else setSelectedId(item.id); }} onImageError={handleImageError} />
+                  {item.kind === 'image' && <button type="button" aria-label={`Zvětšit: ${item.title}`} title="Zvětšit obrázek" onClick={() => setPreviewId(item.id)} className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded bg-[var(--bg-elevated)] opacity-0 focus-visible:opacity-100 group-hover:opacity-100"><Maximize2 size={14} /></button>}
                 </div>
               ))}
             </div>
