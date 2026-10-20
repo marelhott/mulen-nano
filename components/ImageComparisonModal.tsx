@@ -179,7 +179,7 @@ export const ImageComparisonModal: React.FC<ImageComparisonModalProps> = ({
                 style={{ aspectRatio: 'auto', borderColor: 'var(--border-color)', borderWidth: 1 }}
                 onMouseDown={() => setIsDragging(true)}
               >
-                <img src={generatedImage} className="max-w-full max-h-full object-contain pointer-events-none select-none block mx-auto" draggable={false} />
+                <img src={generatedImage} alt="Vygenerovaný obrázek" className="max-w-full max-h-full object-contain pointer-events-none select-none block mx-auto" draggable={false} />
                 <div className="absolute inset-0 overflow-hidden" style={{ clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)` }}>
                   <img src={originalImage} className="max-w-full max-h-full object-contain pointer-events-none select-none block mx-auto" draggable={false} />
                 </div>
@@ -192,6 +192,7 @@ export const ImageComparisonModal: React.FC<ImageComparisonModalProps> = ({
             ) : (
               <img
                 src={generatedImage}
+                alt="Vygenerovaný obrázek"
                 className={`max-w-full max-h-full object-contain shadow-2xl rounded-lg border transition-all duration-500 ${isEditing ? 'blur-md scale-[0.99] opacity-70' : ''}`}
                 style={{ borderColor: 'var(--border-color)' }}
               />

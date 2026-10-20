@@ -12,7 +12,7 @@ import { SavedPromptsDropdown } from './components/SavedPromptsDropdown';
 import { slugify } from './utils/stringUtils.ts';
 import { GalleryImage, saveToGallery, createThumbnail, getAllImages, deleteImage as deleteGalleryImage } from './utils/galleryDB';
 import { ImageDatabase } from './utils/imageDatabase';
-import { urlToDataUrl } from './utils/supabaseStorage';
+import { urlToDataUrl } from './utils/imageDataUrl';
 import { CollectionsModal } from './components/CollectionsModal';
 import { PromptTemplatesModal } from './components/PromptTemplatesModal';
 import { PromptRemixModal } from './components/PromptRemixModal';
@@ -28,8 +28,8 @@ import { runConcurrentTasks } from './utils/concurrencyRunner';
 import { AIProviderType, PROVIDER_METADATA, ProviderSettings, type ImageInput } from './services/aiProvider';
 import { ProviderFactory } from './services/providerFactory';
 import { Toast, ToastType } from './components/Toast';
-import { runSupabaseSmokeTests } from './utils/smokeTests';
-import { ensureSupabaseClient, SUPABASE_ANON_DISABLED_ERROR_MESSAGE, ensureLocalAppUserId } from './utils/supabaseClient';
+import { ensureLocalAppUserId } from './utils/localIdentity';
+import { fetchPublicConfig } from './services/publicConfig';
 import { createReferenceStyleComposite } from './utils/imagePanelComposite';
 import { AppIconRail } from './components/AppIconRail';
 import { MaskCanvas } from './components/MaskCanvas';
@@ -243,10 +243,7 @@ function formatGenerationRowTimestamp(images: Array<Pick<GeneratedImage, 'timest
 }
 
 const App: React.FC = () => {
-  // Supabase connectivity state (separate from app identity)
-  const [isSupabaseReady, setIsSupabaseReady] = useState(false);
-  const [isAuthBootstrapping, setIsAuthBootstrapping] = useState(true);
-  const [authFailureMessage, setAuthFailureMessage] = useState<string | null>(null);
+  const [isAuthBootstrapping, setIsAuthBootstrapping] = useState(false);
   const [, setAppUserId] = useState<string | null>(null);
   const [isAppUserBootstrapping, setIsAppUserBootstrapping] = useState(true);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
@@ -272,6 +269,7 @@ const App: React.FC = () => {
     setSelectedProvider,
     setNanoBananaImageModel,
   } = useProviderSettings();
+  const [workflowUrl, setWorkflowUrl] = useState<string | undefined>(undefined);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const [notificationLog, setNotificationLog] = useState<Array<{ id: number; message: string; type: ToastType; ts: number }>>([]);
@@ -325,13 +323,6 @@ const App: React.FC = () => {
   const [analyzingImageId, setAnalyzingImageId] = useState<string | null>(null);
 
   useEffect(() => {
-    setIsAppUserBootstrapping(true);
-    setAppUserId(ensureLocalAppUserId());
-    setIsAppUserBootstrapping(false);
-    void ImageDatabase.getAll();
-  }, []);
-
-  useEffect(() => {
     const root = document.documentElement;
     const themeColorMeta = document.querySelector('meta[name="theme-color"]');
     const themeColor = theme === 'dark' ? '#0b0c0a' : '#f2f4ec';
@@ -362,134 +353,14 @@ const App: React.FC = () => {
     };
   }, []);
 
+  // Aplikace je lokální; jediné vzdálené úložiště je Cloudflare R2 za PINem.
   useEffect(() => {
-    let cancelled = false;
-    let retryTimer: number | null = null;
-    let heartbeatTimer: number | null = null;
-    let smokeExecuted = false;
-    let lastAuthError = '';
-    let hasPermanentAuthFailure = false;
-
-    const clearRetryTimer = () => {
-      if (!retryTimer) return;
-      window.clearTimeout(retryTimer);
-      retryTimer = null;
-    };
-
-    const scheduleReconnect = (delayMs = 5000) => {
-      if (cancelled || retryTimer) return;
-      retryTimer = window.setTimeout(() => {
-        retryTimer = null;
-        void bootstrapAuth(true);
-      }, delayMs);
-    };
-
-    const runSmokeIfRequested = async () => {
-      if (smokeExecuted) return;
-      if (new URLSearchParams(window.location.search).get('smoke') !== '1') return;
-      smokeExecuted = true;
-
-      const result = await runSupabaseSmokeTests((message, data) => {
-        if (data !== undefined) {
-          console.warn(`[Smoke] ${message}`, data);
-        } else {
-          console.warn(`[Smoke] ${message}`);
-        }
-      });
-      if (cancelled) return;
-
-      if (result.ok) {
-        setToast({ message: '✅ Smoke test Supabase: OK', type: 'success' });
-      } else {
-        setToast({ message: `❌ Smoke test Supabase: ${result.failures[0]}`, type: 'error' });
-        console.error('[Smoke] Failures:', result.failures);
-      }
-    };
-
-    const bootstrapAuth = async (isRetry = false) => {
-      if (!isRetry) setIsAuthBootstrapping(true);
-
-      try {
-        await ensureSupabaseClient();
-        if (cancelled) return;
-
-        hasPermanentAuthFailure = false;
-        clearRetryTimer();
-        lastAuthError = '';
-        setAuthFailureMessage(null);
-        setIsSupabaseReady(true);
-        void ImageDatabase.getAll();
-        void runSmokeIfRequested();
-      } catch (error: any) {
-        if (cancelled) return;
-        const message = error?.message || 'Nepodařilo se inicializovat Supabase.';
-        const isPermanentError =
-          message.includes('Anonymní přihlášení je v Supabase vypnuté') ||
-          message.includes('Supabase není nakonfigurovaná');
-
-        hasPermanentAuthFailure = isPermanentError;
-        setIsSupabaseReady(true);
-        setAuthFailureMessage(message);
-        if (message !== lastAuthError) {
-          setToast({ message: `${message} Aplikace pokračuje v single-user režimu.`, type: 'error' });
-          lastAuthError = message;
-        }
-        if (isPermanentError) {
-          clearRetryTimer();
-        } else {
-          scheduleReconnect(5000);
-        }
-      } finally {
-        if (!cancelled && !isRetry) setIsAuthBootstrapping(false);
-      }
-    };
-
-    const startHeartbeat = () => {
-      heartbeatTimer = window.setInterval(async () => {
-        if (cancelled) return;
-        if (hasPermanentAuthFailure) return;
-        try {
-          await ensureSupabaseClient();
-          if (cancelled) return;
-          setAuthFailureMessage(null);
-          setIsSupabaseReady(true);
-        } catch (error: any) {
-          if (cancelled) return;
-          const message = error?.message || 'Spojení se Supabase bylo přerušeno.';
-          const isPermanentError =
-            message.includes('Anonymní přihlášení je v Supabase vypnuté') ||
-            message.includes('Supabase není nakonfigurovaná');
-
-          hasPermanentAuthFailure = isPermanentError;
-          setIsSupabaseReady(true);
-          setAuthFailureMessage(message);
-          if (message !== lastAuthError) {
-            setToast({ message: `${message} Cloud sync zkusím znovu na pozadí.`, type: 'error' });
-            lastAuthError = message;
-          }
-          if (isPermanentError) {
-            clearRetryTimer();
-          } else {
-            scheduleReconnect(2000);
-          }
-        }
-      }, 60_000);
-    };
-
-    void bootstrapAuth(false);
-    startHeartbeat();
-
-    const onOnline = () => {
-      void bootstrapAuth(true);
-    };
-    window.addEventListener('online', onOnline);
-
-    return () => {
-      cancelled = true;
-      clearRetryTimer();
-      if (heartbeatTimer) window.clearInterval(heartbeatTimer);
-      window.removeEventListener('online', onOnline);
-    };
+    setAppUserId(ensureLocalAppUserId());
+    setIsAppUserBootstrapping(false);
+    setIsAuthBootstrapping(false);
+    void ImageDatabase.getAll();
+    // Workflow editor je samostatná aplikace; odkaz se zobrazí jen když je nastavený.
+    void fetchPublicConfig().then((config) => setWorkflowUrl(config.workflowUrl)).catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -643,13 +514,6 @@ const App: React.FC = () => {
     current: number;
     total: number;
   } | null>(null);
-
-  const supabaseAuthSettingsUrl = useMemo(() => {
-    const rawSupabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-    const match = rawSupabaseUrl?.match(/^https:\/\/([a-z0-9-]+)\.supabase\.co/i);
-    if (!match?.[1]) return 'https://supabase.com/dashboard';
-    return `https://supabase.com/dashboard/project/${match[1]}/auth/providers`;
-  }, []);
 
   const isResizingRef = useRef(false);
   const isResizingRightRef = useRef(false);
@@ -3563,46 +3427,6 @@ Edit the provided image according to the instruction above. Preserve the origina
     );
   }
 
-  if (!isSupabaseReady) {
-    const isAnonDisabled = Boolean(
-      authFailureMessage &&
-      (authFailureMessage.includes('Anonymní přihlášení je v Supabase vypnuté') ||
-        authFailureMessage === SUPABASE_ANON_DISABLED_ERROR_MESSAGE)
-    );
-
-    return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0b0c0a] text-white gap-4">
-        <p className="text-sm text-white/70">{authFailureMessage || 'Nepodařilo se inicializovat anonymní přihlášení.'}</p>
-        {isAnonDisabled ? (
-          <div className="text-xs text-white/45 text-center max-w-md space-y-2">
-            <p>V Supabase je potřeba povolit anonymní přihlášení.</p>
-            <p>Authentication → Providers → Anonymous sign-ins → Enable</p>
-          </div>
-        ) : (
-          <p className="text-xs text-white/45">Aplikace průběžně zkouší obnovit spojení se Supabase.</p>
-        )}
-        <div className="flex items-center gap-2">
-          {isAnonDisabled && (
-            <a
-              href={supabaseAuthSettingsUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="px-4 py-2 rounded-lg border border-[#a8bf8f]/30 hover:border-[#a8bf8f]/60 text-xs uppercase tracking-wider text-[#a7eb89]"
-            >
-              Otevřít Supabase Auth
-            </a>
-          )}
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 rounded-lg border border-[rgba(168,191,143,0.22)] bg-[rgba(32,44,24,0.55)] hover:border-[rgba(168,191,143,0.45)] hover:bg-[rgba(45,62,33,0.70)] text-xs uppercase tracking-wider transition-all"
-          >
-            Zkusit znovu
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   if (isAppUserBootstrapping) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0b0c0a]">
@@ -3672,6 +3496,7 @@ Edit the provided image according to the instruction above. Preserve the origina
       <AppIconRail
         onOpenLibrary={() => setIsGalleryExpanded(true)}
         onOpenFeed={() => openSharedMedia('feed')}
+        workflowUrl={workflowUrl}
         active={
           isFaceSwapRoute
               ? 'face-swap'

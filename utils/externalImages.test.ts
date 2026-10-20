@@ -1,8 +1,12 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRequire } from 'node:module';
 import { ProviderFactory } from '../services/providerFactory';
 import { AIProviderType } from '../services/aiProvider';
 const require = createRequire(import.meta.url);
+const bankCore = require('../utils/bankServerCore.cjs');
+
+const TOKEN_SECRET = 'test-token-secret';
+const AUTH_HEADERS = { authorization: `Bearer ${bankCore.signToken(TOKEN_SECRET).token}` };
 const {
   generateExternalImage,
   dimensions,
@@ -15,6 +19,8 @@ const base = {
   prompt: 'Zachovej koláž.',
   externalApiKey: 'venice-test',
 };
+
+beforeEach(() => vi.stubEnv('BANK_TOKEN_SECRET', TOKEN_SECRET));
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -133,6 +139,7 @@ describe('Explicitní externí obrazové služby', () => {
     vi.stubGlobal('fetch', fetch);
     const response = await handler({
       httpMethod: 'POST',
+      headers: AUTH_HEADERS,
       body: JSON.stringify({
         action: 'generateImage',
         ...base,

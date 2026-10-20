@@ -12,10 +12,9 @@ export default function handler(req, res) {
   }
 
   json(res, 200, {
-    supabaseUrl: String(process.env.VITE_SUPABASE_URL || '').trim(),
-    supabaseAnonKey: String(process.env.VITE_SUPABASE_ANON_KEY || '').trim(),
     r2PublicModelsBaseUrl: String(process.env.R2_PUBLIC_MODELS_BASE_URL || '').trim(),
     r2PublicLorasBaseUrl: String(process.env.R2_PUBLIC_LORAS_BASE_URL || '').trim(),
+    workflowUrl: String(process.env.WORKFLOW_PUBLIC_URL || '').trim().replace(/\/+$/, ''),
     openRouter: Boolean(String(process.env.OPENROUTER_API_KEY || '').trim()),
     venice: Boolean(String(process.env.VENICE_API_KEY || '').trim()),
   });

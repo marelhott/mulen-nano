@@ -1,8 +1,12 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const { generateImage } = require('../lib/openrouter.cjs');
+const bankCore = require('../utils/bankServerCore.cjs');
+
+const TOKEN_SECRET = 'test-token-secret';
+const AUTH_HEADERS = { authorization: `Bearer ${bankCore.signToken(TOKEN_SECRET).token}` };
 
 const DATA_URL = 'data:image/png;base64,AAAA';
 
@@ -16,7 +20,8 @@ function mockFetch(responseBody: unknown) {
 }
 
 describe('openrouter generateImage', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  beforeEach(() => vi.stubEnv('BANK_TOKEN_SECRET', TOKEN_SECRET));
+  afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
   it('posílá vstupní obrázky jako objekty image_url (ne holé řetězce)', async () => {
     const calls = mockFetch({ data: [{ b64_json: 'QUJD' }] });
@@ -51,10 +56,27 @@ describe('openrouter generateImage', () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 429, json: async () => ({ error: {
       message: 'Quota exceeded', metadata: { provider_name: 'Google AI Studio', is_byok: false, raw: JSON.stringify({ error: { message: 'Google model quota exhausted', details: [{ violations: [{ quotaMetric: 'requests_per_model', quotaValue: '0', quotaDimensions: { model: 'gemini-nano-banana-2.1', project: 'private-project' } }] }, { retryDelay: '60s' }] } }) },
     } }) })));
-    const result = await handler({ httpMethod: 'POST', body: JSON.stringify({ action: 'generateImage', apiKey: 'test', preferredModel: 'google/gemini-nano-banana-2.1', prompt: 'test' }) });
+    const result = await handler({ httpMethod: 'POST', headers: AUTH_HEADERS, body: JSON.stringify({ action: 'generateImage', apiKey: 'test', preferredModel: 'google/gemini-nano-banana-2.1', prompt: 'test' }) });
     expect(result.statusCode).toBe(429);
     expect(JSON.parse(result.body)).toMatchObject({ success: false, provider: 'Google AI Studio', isByok: false, quota: [{ metric: 'requests_per_model', limit: '0', model: 'gemini-nano-banana-2.1' }, { retryDelay: '60s' }] });
     expect(result.body).not.toContain('private-project');
+  });
+
+  it('odmítne generování serverovým klíčem bez přihlášení', async () => {
+    vi.stubGlobal('fetch', vi.fn());
+    const { handler } = require('../api/_core/provider-generate.cjs');
+    const result = await handler({ httpMethod: 'POST', body: JSON.stringify({ action: 'generateImage', prompt: 'test' }) });
+    expect(result.statusCode).toBe(401);
+    expect(JSON.parse(result.body).success).toBe(false);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('vlastní klíč projde i bez přihlášení', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ data: [{ b64_json: 'QUJD' }] }) })));
+    const { handler } = require('../api/_core/provider-generate.cjs');
+    const result = await handler({ httpMethod: 'POST', body: JSON.stringify({ action: 'generateImage', prompt: 'test', apiKey: 'k'.repeat(30) }) });
+    expect(result.statusCode).toBe(200);
+    expect(JSON.parse(result.body).success).toBe(true);
   });
 
 });

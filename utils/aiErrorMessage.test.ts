@@ -21,6 +21,10 @@ describe('toUserFacingAiError', () => {
     expect(toUserFacingAiError(error)).not.toContain('billing');
   });
 
+  it('vysvětlí, že serverový klíč vyžaduje PIN', () => {
+    expect(toUserFacingAiError(new Error('Pro generování se nejdřív přihlas PINem ke knihovně.'))).toContain('přihlas PINem');
+  });
+
   it('vrátí fallback pro prázdnou chybu', () => {
     expect(toUserFacingAiError('')).toBe('Generování selhalo. Zkus to prosím znovu.');
   });

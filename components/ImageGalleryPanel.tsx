@@ -62,13 +62,13 @@ export const ImageGalleryPanel = forwardRef<ImageGalleryPanelRef, ImageGalleryPa
     setLoading(true);
     const previousScrollTop = options?.preserveScroll ? (contentRef.current?.scrollTop ?? 0) : null;
     try {
-      // Načíst uložené obrázky z Supabase
+      // Načíst uložené obrázky z lokální knihovny
       const saved = await ImageDatabase.getAll();
       saved.sort((a, b) => b.timestamp - a.timestamp);
       setSavedImages(saved);
       setVisibleSavedCount((prev) => Math.min(Math.max(prev, 40), Math.max(saved.length, 40)));
 
-      // Načíst vygenerované obrázky z Supabase
+      // Načíst vygenerované obrázky z lokální knihovny
       const generated = await getAllImages();
       setGeneratedImages(generated);
       setVisibleGeneratedCount((prev) => Math.min(Math.max(prev, 40), Math.max(generated.length, 40)));

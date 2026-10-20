@@ -1,5 +1,11 @@
 # UI Structure & Visual Blueprint
 
+> **Aktuální stav (2026-10-20):** Cloudová vrstva Supabase byla z projektu odstraněna.
+> Veškerá vzdálená data jsou v soukromém bucketu Cloudflare R2 za PINem (`BANK_PASSPHRASE`, `BANK_TOKEN_SECRET`),
+> lokální historie a metadata žijí v IndexedDB prohlížeče. Placené endpointy poskytovatelů
+> (`/api/provider-generate`, `/api/provider-key-test`) vyžadují přihlášení PINem, pokud se používá serverový klíč.
+> Zmínky o Supabase níže jsou historické a popisují už neplatnou architekturu.
+
 **PURPOSE**: This document captures EVERY visible UI element, layout rule, spacing, alignment, and component nesting so that the UI can be rebuilt WITHOUT screenshots.
 
 ---
@@ -10,11 +16,13 @@
 **Component**: Loading bootstrap state in `<App />`
 
 ### Layout
-- **Container**: Full viewport height, centered  
-- **Width**: Constrained card/modal, centered on screen  
+
+- **Container**: Full viewport height, centered
+- **Width**: Constrained card/modal, centered on screen
 - **Background**: Light/neutral
 
 ### Elements (Top to Bottom)
+
 1. **Logo/Title Area**
    - App branding/name
    - Centered
@@ -24,6 +32,7 @@
    - Centered
 
 ### Behavior
+
 - On load: ensures anonymous Supabase session
 - Success → stores userId in localStorage → loads main app
 - Error → shows retry state
@@ -36,6 +45,7 @@
 **Layout Type**: Two-column (desktop) / Single column stack (mobile)
 
 ### Global Container
+
 ```
 <div className="flex h-screen overflow-hidden bg-white text-ink font-sans">
   └─ Sidebar (left, resizable, 280-400px, hidden on mobile)
@@ -45,6 +55,7 @@
 ```
 
 **Colors**:
+
 - Background: White (`bg-white`)
 - Text: Ink (dark green/black: `text-ink`)
 - Accent: Monstera green (`monstera-*`)
@@ -55,6 +66,7 @@
 ## ELEMENT TREE: LEFT SIDEBAR (Desktop)
 
 **Container**:
+
 - Width: Resizable 280px-400px (default: ~320px)
 - Min-width: 280px
 - Max-width: 400px
@@ -66,19 +78,23 @@
 ### SIDEBAR STRUCTURE (Top to Bottom):
 
 #### 1. HEADER COMPONENT
+
 - Fixed at top
 - Contains: App title + settings icon
 - Settings icon: Click → opens SettingsModal
 - Border-bottom: `monstera-200`
 
 #### 2. SCROLLABLE CONTENT AREA
+
 **Class**: `flex-1 overflow-y-auto custom-scrollbar p-4`
 
 ##### A. PROVIDER SELECTOR
+
 **Component**: `<ProviderSelector />`  
 **Position**: Top of scrollable area, mb-2
 
 **Visual**:
+
 - Dropdown or button group
 - Shows: Gemini / ChatGPT / Grok
 - Selected provider highlighted
@@ -87,16 +103,19 @@
 ##### B. PRIMARY ACTION BUTTONS
 
 ###### Button 1: "GENEROVAT"
+
 **Position**: First button (pt-1)  
 **Sizing**: Full width (`w-full`)  
 **Padding**: `py-2 px-4`  
 **Typography**:
-- Font-weight: 900 (black)  
-- Font-size: 12px  
-- Uppercase: yes  
+
+- Font-weight: 900 (black)
+- Font-size: 12px
+- Uppercase: yes
 - Tracking: 0.2em (very wide letter-spacing)
 
 **Colors** (Dynamic based on state):
+
 - Default: Gradient `from-monstera-300 to-monstera-400`
 - Hover: `from-ink to-monstera-900`, text white
 - Clicked variant (isGenerateClicked): Gradient `from-blue-400 to-blue-500`
@@ -107,24 +126,28 @@
 **Active State**: Shadow removed, translate X+0.5px Y+0.5px (pressed effect)
 
 **Text Logic**:
+
 - If generating: "Generuji"
 - If multiple source images: "Generovat (N)" where N = sourceImages.length
 - Else: "Generovat"
 
 ###### Button 2: "✨ 3 VARIANTY"
-**Position**: Below  "GENEROVAT" (pt-1)  
+
+**Position**: Below "GENEROVAT" (pt-1)  
 **Sizing**: Full width  
 **Padding**: `py-2 px-4`  
 **Typography**:
-- Font-weight: 900  
-- Font-size: 11px  
-- Uppercase: yes  
+
+- Font-weight: 900
+- Font-size: 11px
+- Uppercase: yes
 - Tracking: 0.15em
 
 **Colors**:
+
 - Gradient: `from-purple-500 to-pink-600`
 - Hover: `from-purple-600 to-pink-700`
-- Text: White  
+- Text: White
 - Disabled: opacity-20, grayscale
 
 **Border**: 2px `border-purple-600`  
@@ -132,6 +155,7 @@
 **Active**: Same pressed effect
 
 **Content**:
+
 - Icon: Sparkle SVG (w-4 h-4)
 - Text: "✨ 3 Varianty" (or "Generuji varianty..." when generating)
 - Flexbox: `items-center justify-center gap-2`
@@ -139,7 +163,8 @@
 ##### C. POČET OBRÁZKŮ (Image Count Selector)
 
 **Section Wrapper**: `space-y-0.5`  
-**Label**: 
+**Label**:
+
 - Text: "Počet obrázků"
 - Size: 8px
 - Color: `monstera-600`
@@ -149,6 +174,7 @@
 - Padding-x: 1
 
 **Selector Visual**:
+
 - Container: Flex row, gap-0.5
 - Background: `monstera-50`
 - Padding: 0.5 (tight padding around buttons)
@@ -156,6 +182,7 @@
 - Rounded: md
 
 **Buttons (1-5)**:
+
 - Layout: 5 equal-width buttons (`flex-1`)
 - Height: 5 (h-5) - VERY COMPACT
 - Rounded: yes
@@ -163,12 +190,14 @@
 - Font-size: 9px
 
 **Active Button**:
+
 - Background: white
 - Text: `text-ink`
 - Shadow: sm
 - Border: 1px `monstera-300`
 
 **Inactive Buttons**:
+
 - Text: `monstera-500`
 - Hover: `text-ink`, `bg-white/50`
 
@@ -179,9 +208,11 @@
 **Section Wrapper**: `space-y-1`
 
 ###### Header Row
+
 **Layout**: Flex, justify-between, px-1
 
 **Left Side**:
+
 - Label: "Zadání (Prompt)"
 - Size: 10px
 - Font-weight: black (900)
@@ -190,6 +221,7 @@
 - Tracking: widest
 
 **Right Side** (Flex row, gap-2):
+
 1. **Šablony Button** (Templates)
    - Padding: `px-2 py-1`
    - Size: 8px
@@ -221,9 +253,11 @@
    - Tracking: widest
 
 ###### Mode Switcher (Tabs)
+
 **Layout**: Flex row, gap-1, mb-2
 
 **Tab 1: "Jednoduchý Režim"**
+
 - Flex-1 (equal width)
 - Padding: `px-3 py-1.5`
 - Size: 9px
@@ -232,43 +266,52 @@
 - Tracking: wider
 
 **Active State** (`promptMode === 'simple'`):
+
 - Background: `monstera-500`
 - Text: white
 - Shadow: sm
 
 **Inactive State**:
+
 - Background: `monstera-50`
 - Text: `monstera-700`
 - Hover: `monstera-100`
 
 **Tab 2: "Interpretační Režim"**
+
 - Same styling, toggle-exclusive with Tab 1
 
 **Behavior**: Sets `promptMode` state to 'simple' or 'advanced'
 
 ###### Prompt Textarea
+
 **Sizing**:
+
 - Width: Full (`w-full`)
 - Min-height: 140px
 - Max-height: 300px
 - Resize: none (fixed by user, overflow scrolls)
 
 **Colors**:
+
 - Background: white
 - Border: 1px `monstera-200`
 - Focus border: `monstera-400`
 - Placeholder: `monstera-300`
 
 **Typography**:
+
 - Size: 13px
 - Font-weight: medium
 - Leading: relaxed
 
 **Placeholder Text** (Dynamic):
+
 - Simple mode: "Popište obrázek..."
 - Advanced mode: "Popište obrázek přirozeně. Vyberte variantu níže pro určení stylu interpretace..."
 
 **Other**:
+
 - Rounded: md
 - Padding: 3 (p-3)
 - Shadow: inner
@@ -278,9 +321,11 @@
 **Keyboard**: On Enter → triggers handleKeyDown (may submit)
 
 ###### JSON Context Upload
+
 **Layout**: Flex row, items-center, justify-between, mt-2 mb-2
 
 **Left Side**:
+
 1. **Hidden File Input**
    - ID: "json-upload"
    - Accept: ".json"
@@ -302,6 +347,7 @@
    - Text: "Připojit JSON Kontext" (or "Změnit JSON" if already attached)
 
 **Right Side** (Conditional, if jsonContext exists):
+
 - **Badge**:
   - Background: `blue-50`
   - Border: 1px `blue-100`
@@ -332,6 +378,7 @@
 
 **Variant Cards** (A, B, C):
 Each variant button has IDENTICAL structure:
+
 - **Button Container**:
   - Flex-col, items-center, p-2
   - Rounded-md
@@ -385,6 +432,7 @@ Each variant button has IDENTICAL structure:
   - Arrow: Positioned at top-full, border-triangle pointing down
 
 **Variant Descriptions**:
+
 - **A - Autenticita**: "Maximální autenticita (Priorita reality). Přirozené, nedokonalé, věrohodné."
 - **B - Vylepšení**: "Maximální vylepšení (Idealizované). Vybroušené, filmové, prémiové."
 - **C - Vyvážené**: "Vyvážený realismus (Přirozené + Estetické). Neutrální výchozí."
@@ -393,15 +441,18 @@ Each variant button has IDENTICAL structure:
 **Layout**: Label (acts as entire toggle container), flex items-center gap-3, p-2, rounded-md, border, cursor-pointer
 
 **Active State** (`faceIdentityMode === true`):
+
 - Background: `amber-50`
 - Border: `amber-300`
 
 **Inactive State**:
+
 - Background: white
 - Border: `monstera-200`
 - Hover: border `monstera-300`
 
 **Toggle Switch** (native checkbox styled):
+
 - Hidden checkbox input (`sr-only peer`)
 - Custom div styled as switch:
   - Width: 8 (w-8)
@@ -420,6 +471,7 @@ Each variant button has IDENTICAL structure:
     - Translate-x: full when checked
 
 **Text Content**:
+
 - **Primary Label**:
   - Size: 9px
   - Font-weight: black
@@ -434,9 +486,11 @@ Each variant button has IDENTICAL structure:
   - Text: "Upřednostnit věrnost tváře před estetikou"
 
 ###### Prompt Action Buttons
+
 **Layout**: Flex row, items-center, gap-1.5
 
 **1. "✨ Vylepšit prompt" (Enhance)**
+
 - Flex-1 (takes available space)
 - Padding: `px-2 py-1.5`
 - Size: 9px
@@ -454,6 +508,7 @@ Each variant button has IDENTICAL structure:
 - Display: Flex, items-center, justify-center
 
 **2. Undo Button "↶"**
+
 - Padding: `px-2 py-1.5`
 - Size: 9px
 - Font-weight: black
@@ -468,6 +523,7 @@ Each variant button has IDENTICAL structure:
 - Content: "↶" (arrow symbol)
 
 **3. Redo Button "↷"**
+
 - Identical styling to Undo
 - Content: "↷" (arrow symbol)
 - Disable when: `!promptHistory.canRedo()`
@@ -477,9 +533,11 @@ Each variant button has IDENTICAL structure:
 **Section Wrapper**: `space-y-1.5 mt-4`
 
 ###### Header
+
 **Layout**: Flex, justify-between, px-1
 
 **Left**: Label "Referenční obrázky"
+
 - Size: 10px
 - Font-weight: black
 - Color: `monstera-800`
@@ -487,6 +545,7 @@ Each variant button has IDENTICAL structure:
 - Tracking: widest
 
 **Right** (Conditional, if `isGenerating`):
+
 - Text: "● Generuji..."
 - Size: 8px
 - Font-weight: black
@@ -496,7 +555,9 @@ Each variant button has IDENTICAL structure:
 - Animation: pulse
 
 ###### Image Grid
+
 **Container**:
+
 - Layout: Grid, 4 columns (`grid-cols-4`)
 - Gap: 1 (gap-1)
 - Padding: 1 (p-1)
@@ -505,10 +566,12 @@ Each variant button has IDENTICAL structure:
 - Border: 2px (dynamic based on drag state)
 
 **Drag States**:
+
 - Default: `border-transparent`
 - Drag Over: `bg-monstera-100`, `border-dashed border-monstera-400`, `ring-2 ring-monstera-200`
 
 **Image Tile** (for each sourceImage):
+
 - **Container**:
   - Position: relative
   - Group: yes
@@ -553,11 +616,13 @@ Each variant button has IDENTICAL structure:
   - Click → removes from `state.sourceImages`
 
 **Upload Button** (Conditional: `sourceImages.length < MAX_IMAGES`):
+
 - Component: `<ImageUpload compact={true} />`
 - Takes one grid cell
 - Shows "+" icon and label
 
 **Empty State Drag Indicator** (Conditional: `dragOverTarget === 'reference' && sourceImages.length === 0`):
+
 - **Container**:
   - Col-span: 4 (full width)
   - Flex-col, items-center, justify-center
@@ -575,6 +640,7 @@ Each variant button has IDENTICAL structure:
 **Layout**: Relative flex, items-center, py-4
 
 **Structure**:
+
 - Left border line: flex-grow, border-t, `monstera-200`
 - Center text: "Stylová reference"
   - Flex-shrink, mx-3
@@ -590,9 +656,11 @@ Each variant button has IDENTICAL structure:
 **Section Wrapper**: `space-y-1.5`
 
 ###### Header
+
 **Layout**: Flex, justify-between, px-1
 
 **Left Side** (Flex, items-center, gap-2):
+
 1. Label: "Stylové obrázky" (same styling as Referenční label)
 2. **Info Icon with Tooltip**:
    - Group: relative
@@ -611,7 +679,9 @@ Each variant button has IDENTICAL structure:
      - Content: "Tyto obrázky definují vizuální styl pro generování. AI použije jejich estetiku a umělecký přístup."
 
 ###### Image Grid
+
 **IDENTICAL STRUCTURE TO REFERENCE IMAGES**:
+
 - Grid: 4 columns
 - Same tile styling
 - Same drag/drop states
@@ -621,6 +691,7 @@ Each variant button has IDENTICAL structure:
 - Empty state text: "Přetáhněte sem obrázek"
 
 ##### H. API USAGE PANEL
+
 - Component: `<ApiUsagePanel compact={true} />`
 - Displays usage statistics
 - Compact mode for sidebar
@@ -638,6 +709,7 @@ Each variant button has IDENTICAL structure:
 **Transition**: all
 
 **Content**:
+
 - Icon: Collection box SVG (w-4 h-4)
 - Text: "Kolekce"
 
@@ -650,15 +722,18 @@ Each variant button has IDENTICAL structure:
 **Container**: `flex-1 h-full overflow-y-auto custom-scrollbar bg-white relative flex flex-col min-w-0`
 
 ### MOBILE HEADER (Conditional: `< lg` breakpoint)
+
 - Shows Header component
 - Sticky toolbar with prompt preview + buttons
 
 ### DESKTOP CONTENT STRUCTURE
 
 #### 1. HEADER BAR (hidden on mobile)
+
 **Layout**: Flex, flex-col md:flex-row, md:items-end, justify-between, gap-4, px-1
 
 **Left Side**:
+
 - Flex, items-center, gap-2
 - Decorator: `w-1.5 h-4 bg-ink rounded-full`
 - Title: "GALERIE"
@@ -669,6 +744,7 @@ Each variant button has IDENTICAL structure:
   - Color: `ink`
 
 **Right Side** (Conditional: `state.generatedImages.length > 0`):
+
 - **"Exportovat vše" Button**:
   - Flex, items-center, gap-2
   - Padding: `px-4 py-2`
@@ -687,6 +763,7 @@ Each variant button has IDENTICAL structure:
 #### 2. SELECTION TOOLBAR (Conditional: `selectedGeneratedImages.size > 0`)
 
 **Container**:
+
 - Background: `monstera-100`
 - Padding: `px-4 py-3`
 - Border-bottom: `monstera-300`
@@ -694,12 +771,14 @@ Each variant button has IDENTICAL structure:
 **Layout**: Flex, items-center, justify-between
 
 **Left Side**:
+
 - Text: "✓ Vybráno: {count}"
 - Size: sm
 - Font-weight: bold
 - Color: `ink`
 
 **Right Side** (Flex, gap-2):
+
 1. **"Zrušit" Button**:
    - Padding: `px-3 py-1.5`
    - Size: xs
@@ -724,6 +803,7 @@ Each variant button has IDENTICAL structure:
 #### 3. GENERATED IMAGES GRID
 
 **Empty State** (Conditional: `state.generatedImages.length === 0`):
+
 - **Container**:
   - Padding-y: 20 (mobile) or 40 (desktop)
   - Flex-col, items-center, justify-center
@@ -750,6 +830,7 @@ Each variant button has IDENTICAL structure:
     - Block display
 
 **Grid (Conditional: `state.generatedImages.length > 0`)**:
+
 - **Container**:
   - Display: Grid
   - Gap: 4 (mobile) or 6 (desktop)
@@ -760,6 +841,7 @@ Each variant button has IDENTICAL structure:
 **Image Card** (article element, for each generated image):
 
 ##### Card Container
+
 - Group: yes
 - Display: Flex-col
 - Background: white
@@ -773,6 +855,7 @@ Each variant button has IDENTICAL structure:
 - On right-click: opens context menu (if `image.status === 'success'`)
 
 ##### Image Display Area
+
 - **Container**:
   - Position: relative
   - Background: `monstera-50`
@@ -782,6 +865,7 @@ Each variant button has IDENTICAL structure:
   - Click → opens image in modal (`setSelectedImage(image)`)
 
 ##### Checkbox (Conditional: `image.status === 'success'`)
+
 - Position: absolute, top-2, left-2, z-10
 - Native checkbox input
 - Width: 5, height: 5
@@ -791,12 +875,14 @@ Each variant button has IDENTICAL structure:
 - Click (stopPropagation to prevent modal open)
 
 ##### Loading State (Conditional: `image.status === 'loading'`)
+
 - Position: absolute, inset-0
 - Flex, items-center, justify-center
 - Background: `white/40`
 - Content: `<LoadingSpinner />` component
 
 ##### Success State (Conditional: `image.url && status != loading`)
+
 - **Image Element**:
   - Width: full
   - Height: auto
@@ -826,6 +912,7 @@ Each variant button has IDENTICAL structure:
       - Animation: pulse
 
 ##### Error State (Conditional: `image.status === 'error'`)
+
 - **Container**:
   - Position: absolute, inset-0
   - Flex-col, items-center, justify-center
@@ -859,16 +946,20 @@ Each variant button has IDENTICAL structure:
   - Text: `image.error`
 
 ##### Card Footer (Metadata + Actions)
+
 **Container**:
+
 - Padding: `px-3 py-2.5`
 - Flex-col, gap-2
 - Border-top: 1px `monstera-200`
 - Background: white
 
 ###### Top Row (Prompt + Quick Actions)
+
 **Layout**: Flex, items-center, gap-3
 
 **Left - Prompt Text**:
+
 - Flex-1
 - Size: 11px
 - Font-weight: bold
@@ -919,13 +1010,16 @@ Each variant button has IDENTICAL structure:
    - Click → `handleDeleteImage(image.id)`
 
 ###### Grounding Metadata Links (Conditional: `image.groundingMetadata?.groundingChunks` exists)
+
 **Container**:
+
 - Flex-wrap, gap-1.5, mt-1
 
 **Each Link** (for each chunk with web.uri):
+
 - Element: `<a>` tag
 - href: `chunk.web.uri`
-- target: "_blank"
+- target: "\_blank"
 - rel: "noopener noreferrer"
 - Size: 8px
 - Font-weight: black
@@ -944,12 +1038,15 @@ Each variant button has IDENTICAL structure:
 - Text content: Domain extracted from URI
 
 ###### Inline Edit Section (Conditional: `image.status === 'success' && image.url`)
+
 **Container**:
+
 - Margin-top: 3, padding-top: 3
 - Border-top: 1px `monstera-100`
 - Space-y: 2.5
 
 **Subsection: "Upravit prompt"**
+
 - Space-y: 2
 - Flex, items-start, gap-2
 - Flex-1, space-y-1.5
@@ -957,6 +1054,7 @@ Each variant button has IDENTICAL structure:
 **Header Row** (Flex, items-center, justify-between, px-1):
 
 **Left - Label**:
+
 - Size: 9px
 - Font-weight: black
 - Color: `monstera-700`
@@ -967,6 +1065,7 @@ Each variant button has IDENTICAL structure:
 - Text: "Upravit prompt"
 
 **Right - Add Images Toggle Button**:
+
 - Flex, items-center, gap-1
 - Padding: `px-2 py-1`
 - Size: 8px
@@ -990,18 +1089,21 @@ Each variant button has IDENTICAL structure:
 - Click → toggles `showReferenceUpload` for this image
 
 **Edit Textarea**:
+
 - Value: `editPrompts[image.id] || ''`
 - Similar styling to main prompt textarea
 - Min-height: 80px
 - On change: updates `editPrompts[image.id]`
 
 **Regenerate Button** (below textarea):
+
 - Full width or flex-1
 - Similar styling to main "GENEROVAT" button
 - Text: "Regenerovat obrázek"
 - Click → regenerates image with new prompt + inline references
 
 **Inline Reference Images Grid** (Conditional: `showReferenceUpload[image.id]`):
+
 - Grid, columns auto-fit
 - Similar structure to main reference grid
 - Stores in `inlineEditStates[image.id].referenceImages`
@@ -1011,10 +1113,12 @@ Each variant button has IDENTICAL structure:
 ## MODALS & OVERLAYS
 
 ### MODAL 1: SETTINGS MODAL
+
 **Component**: `<SettingsModal />`  
 **Trigger**: Click settings icon in header
 
 **Layout**:
+
 - Centered overlay modal
 - Background backdrop: semi-transparent dark
 - Modal container: white, rounded, shadow-2xl
@@ -1022,10 +1126,12 @@ Each variant button has IDENTICAL structure:
 - Padding: adequate internal spacing
 
 **Header**:
+
 - Title: Settings or equivalent
 - Close button (X icon, top-right)
 
 **Content Sections** (vertical stack):
+
 1. **Provider Settings** (per provider: Gemini, ChatGPT, Grok)
    - API key input fields
    - Save buttons
@@ -1036,19 +1142,23 @@ Each variant button has IDENTICAL structure:
    - Defaults
 
 **Footer**:
+
 - Action buttons (Save, Cancel)
 
 ### MODAL 2: COLLECTIONS MODAL
+
 **Component**: `<CollectionsModal />`  
 **Trigger**: Click "Kolekce" button in sidebar
 
 **Layout**:
+
 - Full-screen or large centered modal
 - Header with title + close button
 
 **Content** (two-column or list):
 
 **Left Side - Collections List**:
+
 - List of user collections
 - Each collection item shows:
   - Collection name
@@ -1056,10 +1166,12 @@ Each variant button has IDENTICAL structure:
   - Click → shows collection images in right panel
 
 **Actions**:
+
 - "Vytvořit kolekci" button (prominent)
 - Delete icon per collection
 
 **Right Side - Collection Images**:
+
 - Grid of images in selected collection
 - Each image tile:
   - Thumbnail
@@ -1067,23 +1179,28 @@ Each variant button has IDENTICAL structure:
 - Empty state if no collection selected or collection empty
 
 **Footer**:
+
 - Close or action buttons
 
 ### MODAL 3: PROMPT TEMPLATES MODAL
+
 **Component**: `<PromptTemplatesModal />`  
 **Trigger**: Click "Šablony" button in prompt section
 
 **Layout**:
+
 - Large centered modal
 - Backdrop: dark semi-transparent
 
 **Header**:
+
 - Title: "ŠABLONY PROMPTŮ"
 - Close button (X icon)
 
 **Content** (two-panel):
 
 **Left Panel - Categories**:
+
 - Vertical list of categories:
   - OBECNÉ
   - PORTRÉTY
@@ -1095,6 +1212,7 @@ Each variant button has IDENTICAL structure:
 - Click category → shows templates in right panel
 
 **Right Panel - Templates Grid**:
+
 - Card grid of templates
 - Each template card shows:
   - Template name/title
@@ -1103,22 +1221,27 @@ Each variant button has IDENTICAL structure:
   - Click → inserts template into prompt field
 
 **Empty State** (right panel, no category selected):
+
 - Icon or illustration
 - Text: "Vyberte kategorii vlevo" or similar
 
 **Footer**:
+
 - Close button
 
 ### MODAL 4: SAVED PROMPTS MODAL (or Dropdown component)
+
 **Component**: `<SavedPromptsDropdown />` (may be dropdown, not full modal)  
 **Trigger**: Click saved prompts icon in prompt header
 
 **Layout (if dropdown)**:
+
 - Dropdown panel from icon
 - Max-height with scroll
 - Border, shadow
 
 **Content**:
+
 - **Header**:
   - "ULOŽENÉ PROMPTY" title
   - Close button or dismiss on click-outside
@@ -1144,25 +1267,30 @@ Each variant button has IDENTICAL structure:
       - Save / Cancel buttons
 
 **Empty State** (no saved prompts):
+
 - Icon or illustration
 - Text: "Žádné uložené prompty. Uložte si svůj první prompt pomocí tlačítka níže."
 - "ULOŽIT AKTUÁLNÍ PROMPT" button visible
 
 ### MODAL 5: REMIX PROMPTS MODAL
+
 **Component**: `<PromptRemixModal />`  
 **Trigger**: Click "Remix" button in prompt header
 
 **Layout**:
+
 - Large centered modal
 - Backdrop: dark semi-transparent
 
 **Header**:
+
 - Title: "REMIX PROMPTŮ"
 - Close button
 
 **Content** (two-column):
 
 **Left Column - Source Prompts**:
+
 - Title: "Historie promptů" or "Zdrojové prompty"
 - List of previous prompts from history
 - Each prompt item:
@@ -1172,6 +1300,7 @@ Each variant button has IDENTICAL structure:
   - Can select multiple parts
 
 **Right Column - Selected Parts / Result**:
+
 - Title: "Vybrané části" or "Výsledek"
 - Shows parts user has selected from left
 - **Reordering**:
@@ -1181,10 +1310,12 @@ Each variant button has IDENTICAL structure:
 - "Smazat" icon per part to remove from selection
 
 **Empty State** (right column, nothing selected):
+
 - Icon
   - Text: "Vyberte části z historie vlevo a zkombinujte je"
 
 **Footer**:
+
 - **"Použít remixovaný prompt" button**:
   - Click → combines selected parts
   - Inserts into main prompt textarea
@@ -1192,23 +1323,28 @@ Each variant button has IDENTICAL structure:
 - **Cancel button**
 
 **Behavior**:
+
 - User can pick fragments from prompt history
 - Combine them in custom order
 - Result placed in prompt field
 
 ### MODAL 6: IMAGE COMPARISON MODAL (or expanded view)
+
 **Component**: `<ImageComparisonModal />`  
 **Trigger**: Right-click image → "Srovnat" OR click image to expand
 
 **Layout**:
+
 - Full-screen modal or large overlay
 - Backdrop: dark
 
 **Header**:
+
 - Title: Image comparison or image title
 - Close button (X, top-right)
 
 **Content**:
+
 - **Image Display**:
   - Large image view
   - If comparison: side-by-side or slider
@@ -1223,30 +1359,37 @@ Each variant button has IDENTICAL structure:
   - Any other metadata (grounding sources, etc.)
 
 **Navigation** (if multiple images):
+
 - Previous / Next arrows
 - Thumbnail strip at bottom
 
 **Actions**:
+
 - Download button
 - Delete button
 - Copy prompt button
 
 **Footer**:
+
 - Action buttons or close
 
 ### MODAL 7: API KEY MODAL
+
 **Component**: `<ApiKeyModal />`  
 **Trigger**: No API key detected, or from settings
 
 **Layout**:
+
 - Centered modal
 - Backdrop: dark semi-transparent
 
 **Header**:
+
 - Title: "API Key Required" or "Zadejte API klíč"
 - Subtitle: Instructions or provider name
 
 **Content**:
+
 - **Input Field**:
   - Label: "API Key"
   - Input type: text or password
@@ -1258,6 +1401,7 @@ Each variant button has IDENTICAL structure:
   - Security note (e.g., "Klíč je uložen lokálně")
 
 **Footer**:
+
 - **Save / Submit button**:
   - Prominent
   - Disabled until valid key entered
@@ -1269,12 +1413,14 @@ Each variant button has IDENTICAL structure:
 ## RESPONSIVE BEHAVIOR
 
 ### Desktop (≥ lg breakpoint, ~1024px+)
+
 - **Sidebar**: Visible on left, resizable 280-400px
 - **Main content**: Flex-1, fills remaining space
 - **Image grid**: 3-4 columns depending on width
 - **Provider selector**: In sidebar, always visible
 
 ### Tablet (md breakpoint, ~768-1023px)
+
 - **Sidebar**: Hidden (collapses)
 - **Main content**: Full width
 - **Mobile toolbar**: Sticky top bar appears with:
@@ -1285,6 +1431,7 @@ Each variant button has IDENTICAL structure:
 - **Image grid**: 2-3 columns
 
 ### Mobile (< md breakpoint, ~< 768px)
+
 - **Sidebar**: Hidden
 - **Mobile Menu** (full-screen overlay when opened):
   - Trigger: Click settings or prompt preview in toolbar
@@ -1299,6 +1446,7 @@ Each variant button has IDENTICAL structure:
 ## GRID COLUMN LOGIC (Generated Images)
 
 **gridCols** calculation (pseudocode from App.tsx):
+
 ```
 if (viewport >= 1400px) gridCols = 4
 else if (viewport >= 1024px) gridCols = 3
@@ -1309,12 +1457,14 @@ else gridCols = 1
 **Grid CSS**: `grid-template-columns: repeat(${gridCols}, minmax(0, 1fr))`
 
 **Image Tiles**:
+
 - Aspect ratio: Preserved via natural image dimensions
 - Object-fit: Variable (some parts use object-cover for thumbnails)
 - Loading placeholders: aspect-square
 - **CRITICAL**: Images are NOT cropped to uniform tiles in main grid (they display at natural aspect ratio, height auto)
 
 **Reference/Style Image Grids in Sidebar**:
+
 - **Fixed aspect-square tiles** (1:1 ratio enforced)
 - Object-fit: cover (CROPPING applied)
 - 4 columns (`grid-cols-4`)
@@ -1325,6 +1475,7 @@ else gridCols = 1
 ## COLOR PALETTE (CSS Variables)
 
 **Primary Colors**:
+
 - `--color-ink`: #0D2117 or similar (dark green-black)
 - `--color-paper`: #FDFCF9 or similar (off-white, slightly warm)
 - `--color-monstera-*`: Shades of muted green
@@ -1340,11 +1491,13 @@ else gridCols = 1
   - monstera-900: Darkest green
 
 **Accent Colors**:
+
 - Blue gradient: `from-blue-400 to-blue-500` (enhance button, variants)
 - Purple-pink gradient: `from-purple-500 to-pink-600` (3 Variants button)
 - Amber: `amber-50`, `amber-300`, `amber-500`, `amber-800` (face identity toggle)
 
 **Semantic Colors**:
+
 - Red: `red-400/500/600/700` (errors, delete)
 - White: Pure white backgrounds
 - Black: As needed (usually ink is used instead)
@@ -1356,6 +1509,7 @@ else gridCols = 1
 **Font Family**: Sans-serif (likely system font stack or custom)
 
 **Sizes** (from smallest to largest):
+
 - 8px: Smallest labels, badges, tracking-widest text
 - 9px: Small buttons, action text, tooltips
 - 10px: Section labels, compact buttons
@@ -1365,11 +1519,13 @@ else gridCols = 1
 - Larger: Headers, titles (varies)
 
 **Font Weights**:
+
 - medium: 500 (body text, textareas)
 - bold: 700 (labels, some buttons)
 - black: 900 (PRIMARY ACTION BUTTONS, section titles)
 
 **Uppercase + Tracking**:
+
 - ALL primary action buttons: uppercase + tracking-widest or tracking-[0.2em]
 - Section labels: uppercase + tracking-widest
 - Creates strong visual hierarchy
@@ -1379,6 +1535,7 @@ else gridCols = 1
 ## SPACING SYSTEM (Tailwind Scale)
 
 **Common Patterns**:
+
 - `space-y-0.5`: Very tight vertical spacing (2px)
 - `space-y-1`: Tight (4px)
 - `space-y-1.5`: 6px
@@ -1394,21 +1551,25 @@ else gridCols = 1
 ## SHADOWS & EFFECTS
 
 **Brutalist Shadows (on buttons)**:
+
 - `shadow-[5px_5px_0_rgba(13,33,23,1)]`: Hard offset shadow (no blur)
 - `shadow-[4px_4px_0_rgba(147,51,234,0.5)]`: Purple variant
 - Active state: `shadow-none` + `translate-x-0.5 translate-y-0.5` (pressed effect)
 
 **Standard Shadows**:
+
 - `shadow-sm`: Subtle elevation
 - `shadow-md` / `shadow-lg` / `shadow-xl`: Increasing elevation
 - `shadow-2xl`: Large modals, overlays
 - `shadow-inner`: Inset (textarea)
 
 **Blur Effects**:
+
 - `blur-sm`: Applied to images when generating or editing
 - `backdrop-blur-sm`: Modal backgrounds, overlays
 
 **Transitions**:
+
 - Most elements: `transition-all` (smooth all properties)
 - Specific: `transition-colors` (color-only transitions)
 - Durations: Usually default (150-200ms) or `duration-500` for images
@@ -1418,11 +1579,13 @@ else gridCols = 1
 ## ANIMATIONS
 
 **CSS Animations**:
+
 - `animate-fadeIn`: Custom fade-in (opacity 0 → 1)
 - `animate-pulse`: Pulsing effect (generating status, editing badge)
 - `animate-spin`: Spinner rotation
 
 **Usage**:
+
 - Generated images: `animate-fadeIn` on card container
 - Loading spinners: `animate-spin`
 - Status indicators: `animate-pulse`
@@ -1433,12 +1596,14 @@ else gridCols = 1
 ## BORDER RADIUS
 
 **Rounded Corners**:
+
 - `rounded`: Default (~4px)
 - `rounded-md`: Medium (~6px)
 - `rounded-lg`: Large (~8px)
 - `rounded-full`: Pill shape (buttons, toggles, decorators)
 
 **Usage**:
+
 - Most containers, buttons: `rounded-md`
 - Toggle switches: `rounded-full`
 - Icons, decorators: `rounded-full`
@@ -1449,25 +1614,30 @@ else gridCols = 1
 ## INTERACTION STATES
 
 **Hover**:
+
 - Buttons: Background color shift, border color change
 - Links: Color change, background highlight
 - Images: Border color intensifies, delete overlay appears
 
 **Active/Pressed**:
+
 - Buttons with brutalist shadows: Remove shadow, translate slightly
 - Scale: Some buttons use `active:scale-95`
 
 **Focus**:
+
 - Inputs/textareas: Border color changes (e.g., `monstera-200` → `monstera-400`)
 - Outline: Usually `outline-none` with custom focus styles
 
 **Disabled**:
+
 - Opacity: 20-50% reduction
 - Grayscale: Filter applied
 - Cursor: `cursor-not-allowed`
 - Pointer-events may be disabled
 
 **Loading**:
+
 - Spinner replaces content
 - Text changes (e.g., "Generovat" → "Generuji")
 - Disabled state active
@@ -1481,6 +1651,7 @@ else gridCols = 1
 **Stroke-width**: Usually 2 or 2.5 (bold icons)
 
 **Icon Locations**:
+
 - Buttons: Left of text, gap-1 or gap-2
 - Action buttons: Icon only, hovertooltips
 - Info tooltips: Icon with hover explanation
@@ -1490,6 +1661,7 @@ else gridCols = 1
 ## Z-INDEX LAYERS
 
 **Stacking Order** (approximate):
+
 - Base content: z-0
 - Sidebar: z-20
 - Resize handle: z-30
@@ -1532,15 +1704,18 @@ else gridCols = 1
 ## ACCESSIBILITY NOTES
 
 **Screen Reader**:
+
 - `sr-only` class: Hides native checkbox for face toggle but keeps accessible
 - Label associations: Proper `htmlFor` on file upload labels
 
 **Keyboard Navigation**:
+
 - Buttons: All focusable, native button elements
 - Inputs: Standard tab order
 - Modals: Should trap focus (implementation varies)
 
 **ARIA**:
+
 - Not extensively used in provided code (basic HTML semantics)
 - Consider adding ARIA labels for icon-only buttons in redesign
 
@@ -1549,6 +1724,7 @@ else gridCols = 1
 ## CRITICAL LAYOUT RULES FOR REDESIGN
 
 **MUST PRESERVE**:
+
 1. **Two-column desktop layout**: Sidebar (280-400px resizable) + Main content
 2. **Sidebar scrolls independently**: Header fixed, content scrollable
 3. **Main content scrolls independently**: Full viewport height

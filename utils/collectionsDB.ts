@@ -1,9 +1,9 @@
 /**
- * Collections/Mood Boards — organizace obrázků do kolekcí
- * localStorage jako primární store + Supabase sync na pozadí
+ * Collections/Mood Boards — organizace obrázků do kolekcí.
+ * Ukládá se lokálně v localStorage; dřívější cloudová synchronizace přes
+ * Supabase byla odstraněna, protože projekt už běží jen na lokálním úložišti a R2.
  */
 
-import { supabase, ensureLocalAppUserId } from './supabaseClient';
 
 export interface Collection {
   id: string;
@@ -22,68 +22,6 @@ const STORAGE_KEY = 'nanoBanana_collections';
 // Uložit kolekce do localStorage
 function persist(collections: Collection[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(collections));
-}
-
-// Synchronizovat kolekci do Supabase (best-effort, tiché selhání)
-async function syncToSupabase(collection: Collection): Promise<void> {
-  try {
-    const userId = ensureLocalAppUserId();
-    await supabase.from('collections').upsert({
-      id: collection.id,
-      user_id: userId,
-      name: collection.name,
-      description: collection.description ?? null,
-      image_ids: collection.imageIds,
-      color: collection.color ?? null,
-      created_at: new Date(collection.createdAt).toISOString(),
-      updated_at: new Date(collection.updatedAt).toISOString(),
-    }, { onConflict: 'id' });
-  } catch {
-    // Supabase není dostupný — pokračujeme s localStorage
-  }
-}
-
-async function deleteFromSupabase(id: string): Promise<void> {
-  try {
-    await supabase.from('collections').delete().eq('id', id);
-  } catch {
-    // ignore
-  }
-}
-
-// Při startu aplikace stáhnout kolekce ze Supabase a sloučit s lokálními
-export async function syncCollectionsFromCloud(): Promise<void> {
-  try {
-    const userId = ensureLocalAppUserId();
-    const { data, error } = await supabase
-      .from('collections')
-      .select('*')
-      .eq('user_id', userId);
-    if (error || !data) return;
-
-    const local = CollectionsDB.getAll();
-    const localMap = new Map(local.map(c => [c.id, c]));
-
-    for (const row of data) {
-      const local = localMap.get(row.id);
-      const remote: Collection = {
-        id: row.id,
-        name: row.name,
-        description: row.description ?? undefined,
-        imageIds: row.image_ids ?? [],
-        createdAt: new Date(row.created_at).getTime(),
-        updatedAt: new Date(row.updated_at).getTime(),
-        color: row.color ?? undefined,
-      };
-      if (!local || remote.updatedAt > local.updatedAt) {
-        localMap.set(row.id, remote);
-      }
-    }
-
-    persist(Array.from(localMap.values()));
-  } catch {
-    // ignore
-  }
 }
 
 export class CollectionsDB {
@@ -114,7 +52,6 @@ export class CollectionsDB {
     };
     collections.push(newCollection);
     persist(collections);
-    syncToSupabase(newCollection);
     return newCollection;
   }
 
@@ -124,14 +61,12 @@ export class CollectionsDB {
     if (index !== -1) {
       collections[index] = { ...collections[index], ...updates, updatedAt: Date.now() };
       persist(collections);
-      syncToSupabase(collections[index]);
     }
   }
 
   static delete(id: string): void {
     const collections = this.getAll().filter(c => c.id !== id);
     persist(collections);
-    deleteFromSupabase(id);
   }
 
   static addImage(collectionId: string, imageId: string): void {
@@ -141,7 +76,6 @@ export class CollectionsDB {
       collection.imageIds.push(imageId);
       collection.updatedAt = Date.now();
       persist(collections);
-      syncToSupabase(collection);
     }
   }
 
@@ -152,7 +86,6 @@ export class CollectionsDB {
       collection.imageIds = collection.imageIds.filter(id => id !== imageId);
       collection.updatedAt = Date.now();
       persist(collections);
-      syncToSupabase(collection);
     }
   }
 
@@ -174,12 +107,6 @@ export class CollectionsDB {
     if (!collection) return null;
     const publicUrl = isPublic ? `${window.location.origin}/shared/collection/${collectionId}` : undefined;
     this.update(collectionId, { isPublic, publicUrl });
-    try {
-      const userId = ensureLocalAppUserId();
-      await supabase.from('collections').update({ is_public: isPublic }).eq('id', collectionId).eq('user_id', userId);
-    } catch {
-      // ignore
-    }
     return publicUrl ?? null;
   }
 }

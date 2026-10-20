@@ -1,5 +1,11 @@
 # API Contract Documentation
 
+> **Aktuální stav (2026-10-20):** Cloudová vrstva Supabase byla z projektu odstraněna.
+> Veškerá vzdálená data jsou v soukromém bucketu Cloudflare R2 za PINem (`BANK_PASSPHRASE`, `BANK_TOKEN_SECRET`),
+> lokální historie a metadata žijí v IndexedDB prohlížeče. Placené endpointy poskytovatelů
+> (`/api/provider-generate`, `/api/provider-key-test`) vyžadují přihlášení PINem, pokud se používá serverový klíč.
+> Zmínky o Supabase níže jsou historické a popisují už neplatnou architekturu.
+
 ## External APIs
 
 ### 1. Google Gemini API (Nano Banana Pro)

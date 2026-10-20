@@ -1,11 +1,18 @@
 # User Flows
 
+> **Aktuální stav (2026-10-20):** Cloudová vrstva Supabase byla z projektu odstraněna.
+> Veškerá vzdálená data jsou v soukromém bucketu Cloudflare R2 za PINem (`BANK_PASSPHRASE`, `BANK_TOKEN_SECRET`),
+> lokální historie a metadata žijí v IndexedDB prohlížeče. Placené endpointy poskytovatelů
+> (`/api/provider-generate`, `/api/provider-key-test`) vyžadují přihlášení PINem, pokud se používá serverový klíč.
+> Zmínky o Supabase níže jsou historické a popisují už neplatnou architekturu.
+
 ## Flow 1: First-Time User - Generate Image
 
 **Given**: User opens app for first time  
 **When**: User wants to generate an image
 
 **Steps**:
+
 1. App loads PIN auth screen
 2. User enters 4-digit PIN (e.g., "1234")
 3. System creates Supabase user, stores userId + pin in localStorage
@@ -22,6 +29,7 @@
 **Expected Result**: Image successfully generated and visible
 
 **Branches**:
+
 - Invalid PIN format → Error toast
 - API key invalid → Generation fails with error message
 - Network error → Retry or error state
@@ -31,9 +39,10 @@
 ## Flow 2: Returning User - Load and Use Saved Prompt
 
 **Given**: User has previously authenticated and saved prompts  
-**When**:  User returns to app
+**When**: User returns to app
 
 **Steps**:
+
 1. App loads, finds userId in localStorage
 2. Auto-logs in (skips PIN screen)
 3. Main app loads with previous state
@@ -48,6 +57,7 @@
 **Expected Result**: Saved prompt loaded and used successfully
 
 **Branches**:
+
 - localStorage cleared → Shows PIN screen
 - No saved prompts → Dropdown shows defaults only
 
@@ -59,6 +69,7 @@
 **When**: User wants to explore prompt interpretations
 
 **Steps**:
+
 1. User types simple prompt: "robot"
 2. User clicks "3 VARIANTY" button
 3. System generates 3 AI interpretations:
@@ -72,6 +83,7 @@
 **Expected Result**: 3 different interpretations of "robot" displayed
 
 **Branches**:
+
 - Empty prompt → Uses generic/fallback
 - API rate limit → Shows staggered generation
 
@@ -83,6 +95,7 @@
 **When**: User uploads reference
 
 **Steps**:
+
 1. User clicks "+" in "Referenční Obrázky" section
 2. File picker opens
 3. User selects local image (portrait.jpg)
@@ -95,6 +108,7 @@
 **Expected Result**: Reference image successfully used in generation
 
 **Branches**:
+
 - Invalid file type → Error toast
 - Multiple references → All sent to AI
 - Large file → Auto-compresses before send
@@ -107,6 +121,7 @@
 **When**: User wants to modify a result
 
 **Steps**:
+
 1. User clicks on generated image in results panel
 2. ImageComparisonModal opens (or edit modal - check code)
 3. User clicks "Edit" button
@@ -120,6 +135,7 @@
 **Expected Result**: Edited version created, undo/redo available
 
 **Branches**:
+
 - User clicks Undo → Reverts to previous version
 - User clicks Redo → Goes forward in history
 - Multiple edits → Version chain maintained
@@ -132,6 +148,7 @@
 **When**: User creates/uses collection
 
 **Steps**:
+
 1. User clicks "Kolekce" button in toolbar
 2. CollectionsModal opens
 3. User clicks "Vytvořit kolekci"
@@ -146,6 +163,7 @@
 **Expected Result**: Image added to collection, visible in Collections view
 
 **Branches**:
+
 - No collections exist → Show create prompt
 - Image already in collection → Skip or show message
 
@@ -157,6 +175,7 @@
 **When**: User wants to download multiple
 
 **Steps**:
+
 1. User opens Gallery panel (floating right panel)
 2. User switches to "Vygenerované" tab
 3. Hovers over images → Checkboxes appear
@@ -171,6 +190,7 @@
 **Expected Result**: ZIP file contains selected images + metadata
 
 **Branches**:
+
 - No images selected → Button disabled
 - Large selection → May take time, show progress
 
@@ -182,6 +202,7 @@
 **When**: User wants AI to improve it
 
 **Steps**:
+
 1. User types: "cat"
 2. User clicks wand icon (enhance button)
 3. System validates: prompt not empty, Gemini key exists
@@ -194,6 +215,7 @@
 **Expected Result**: Prompt significantly expanded/improved
 
 **Branches**:
+
 - No Gemini key → Error message
 - Empty prompt → Button disabled
 - AI returns error → Toast with error message
@@ -206,6 +228,7 @@
 **When**: User selects template
 
 **Steps**:
+
 1. User clicks "Šablony" button
 2. PromptTemplatesModal opens
 3. User clicks "Landscape" category
@@ -226,6 +249,7 @@
 **When**: API returns error
 
 **Steps**:
+
 1. User clicks generate
 2. Loading starts
 3. API call fails (network/rate limit/auth error)
@@ -238,6 +262,7 @@
 **Expected Result**: Clear error message, user can retry
 
 **Branches**:
+
 - Retry button available → User can regenerate
 - Persistent error → User checks API key/network
 
@@ -249,6 +274,7 @@
 **When**: User wants quick upload
 
 **Steps**:
+
 1. User copies image (Cmd+C from another app)
 2. User focuses prompt textarea or app window
 3. User pastes (Cmd+V)
@@ -261,6 +287,7 @@
 **Expected Result**: Clipboard image loaded as reference
 
 **Branches**:
+
 - Clipboard has text → Ignored, no action
 - Clipboard has multiple items → Uses first image
 
@@ -272,6 +299,7 @@
 **When**: User right-clicks image
 
 **Steps**:
+
 1. User right-clicks generated image
 2. QuickActions menu appears
 3. User clicks "Použít jako základ" (or similar)
@@ -293,6 +321,7 @@
 **When**: User wants side-by-side comparison
 
 **Steps**:
+
 1. User right-clicks first image
 2. Selects "Srovnat"
 3. System finds all generated images
@@ -311,6 +340,7 @@
 **When**: User imports JSON file
 
 **Steps**:
+
 1. User clicks JSON icon in toolbar
 2. File picker opens (accept=".json")
 3. User selects prompt_config.json
@@ -326,6 +356,7 @@
 **Expected Result**: Config loaded from JSON
 
 **Branches**:
+
 - Invalid JSON → Error toast: "Invalid JSON format"
 - Missing prompt → Warning, uses empty string
 - Extra fields → Ignored
@@ -338,6 +369,7 @@
 **When**: User closes and reopens app
 
 **Steps**:
+
 1. User generates images, uses app
 2. User closes browser tab
 3. User reopens app URL
@@ -352,6 +384,7 @@
 **Expected Result**: User state partially restored
 
 **What's Preserved**:
+
 - Authentication (userId, PIN)
 - Saved prompts
 - Collections
@@ -359,6 +392,7 @@
 - API usage stats
 
 **What's Lost**:
+
 - Current results panel images
 - Prompt history (undo/redo)
 - Reference/style images in sidebar

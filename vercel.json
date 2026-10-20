@@ -6,9 +6,6 @@
     "api/provider-generate.js": {
       "maxDuration": 300
     },
-    "api/library-list.js": {
-      "maxDuration": 300
-    },
     "api/r2-presign.js": {
       "maxDuration": 30
     },

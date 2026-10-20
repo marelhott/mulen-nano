@@ -140,9 +140,9 @@ export const ImageDetailModal: React.FC<ImageDetailModalProps> = ({
               style={{ maxWidth: '80%', aspectRatio: 'auto', border: '1px solid rgba(168,191,143,0.15)' }}
               onMouseDown={() => setIsDragging(true)}
             >
-              <img src={image.url} className="max-w-full max-h-[80vh] object-contain block" draggable={false} />
+              <img src={image.url} alt={image.prompt || "Vygenerovaný obrázek"} className="max-w-full max-h-[80vh] object-contain block" draggable={false} />
               <div className="absolute inset-0 overflow-hidden" style={{ clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)` }}>
-                <img src={sourceImageUrl!} className="max-w-full max-h-[80vh] object-contain block" draggable={false} />
+                <img src={sourceImageUrl!} alt="Zdrojový obrázek" className="max-w-full max-h-[80vh] object-contain block" draggable={false} />
               </div>
               <div className="absolute top-0 bottom-0 w-0.5 z-20" style={{ left: `${sliderPosition}%`, background: '#a8bf8f' }}>
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center shadow-lg"
@@ -156,6 +156,7 @@ export const ImageDetailModal: React.FC<ImageDetailModalProps> = ({
           ) : (
             <img
               src={image.url}
+              alt={image.prompt || 'Vygenerovaný obrázek'}
               className={`max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl transition-all duration-500 ${isEditing ? 'blur-md scale-[0.99] opacity-70' : ''}`}
               style={{ border: '1px solid rgba(168,191,143,0.12)' }}
             />

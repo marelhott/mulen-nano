@@ -1,5 +1,11 @@
 # Sdílená knihovna a feed (Cloudflare R2)
 
+> **Aktuální stav (2026-10-20):** Cloudová vrstva Supabase byla z projektu odstraněna.
+> Veškerá vzdálená data jsou v soukromém bucketu Cloudflare R2 za PINem (`BANK_PASSPHRASE`, `BANK_TOKEN_SECRET`),
+> lokální historie a metadata žijí v IndexedDB prohlížeče. Placené endpointy poskytovatelů
+> (`/api/provider-generate`, `/api/provider-key-test`) vyžadují přihlášení PINem, pokud se používá serverový klíč.
+> Zmínky o Supabase níže jsou historické a popisují už neplatnou architekturu.
+
 Jedna soukromá knihovna zdrojů pro všechny sekce, nikoli samostatný generovací nástroj.
 Otevírá se tlačítkem Knihovna, přes upload pole nebo globální ikonou v levém pruhu.
 Vedle knihovny je společný feed výsledků všech sekcí. Původní adresa `/databanka` zůstává kompatibilní.

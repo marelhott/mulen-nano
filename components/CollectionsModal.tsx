@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CollectionsDB, Collection, syncCollectionsFromCloud } from '../utils/collectionsDB';
+import { CollectionsDB, Collection } from '../utils/collectionsDB';
 
 interface CollectionsModalProps {
   isOpen: boolean;
@@ -36,7 +36,6 @@ export const CollectionsModal: React.FC<CollectionsModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       loadCollections();
-      syncCollectionsFromCloud().then(loadCollections).catch(() => {});
     }
   }, [isOpen]);
 

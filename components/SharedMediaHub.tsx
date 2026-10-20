@@ -6,7 +6,6 @@ import { archiveSourceFile, MEDIA_CHANGED_EVENT, syncLibraryToR2 } from '../serv
 import { deleteImage, getAllImages, type GalleryImage } from '../utils/galleryDB';
 import type { BankItem } from '../utils/bankIndex';
 import type { ToastType } from './Toast';
-import { importLegacyCloudLibrary } from '../utils/singleUserMediaStore';
 
 type Tab = 'library' | 'feed';
 type Toast = { message: string; type: ToastType };
@@ -168,11 +167,6 @@ export function SharedMediaHub(props: { open: boolean; onClose: () => void; onTo
         <button type="button" aria-pressed={tab === 'library'} className={`flex items-center gap-2 ${tab === 'library' ? 'text-[var(--accent)]' : ''}`} onClick={() => setTab('library')}><Library className="h-4 w-4" />Knihovna zdrojů</button>
         <button type="button" aria-pressed={tab === 'feed'} className={`flex items-center gap-2 ${tab === 'feed' ? 'text-[var(--accent)]' : ''}`} onClick={() => setTab('feed')}><Images className="h-4 w-4" />Všechny výsledky</button>
         {authed && <button type="button" disabled={busy} onClick={() => { setBusy(true); void syncLibraryToR2().then(() => toast({ message: 'Lokální obrázky jsou synchronizované do R2.', type: 'success' })).catch(() => toast({ message: 'Synchronizace není dokončená. Lokální data zůstala zachovaná.', type: 'error' })).finally(() => setBusy(false)); }}>Synchronizovat</button>}
-        {authed && <button type="button" disabled={busy} onClick={() => {
-          if (!window.confirm('Načíst starou knihovnu ze Supabase a zkopírovat ji do R2? Může obsahovat i dříve smazané obrázky. Původní data se nesmažou.')) return;
-          setBusy(true);
-          void importLegacyCloudLibrary().then(() => syncLibraryToR2()).then(() => toast({ message: 'Import staré knihovny a synchronizace do R2 dokončeny.', type: 'success' })).catch(() => toast({ message: 'Import není dokončený. Původní data zůstala zachovaná.', type: 'error' })).finally(() => setBusy(false));
-        }}>Import staré knihovny</button>}
         {target && <button type="button" disabled={busy} className="ml-auto flex items-center gap-2" onClick={() => nativeInput.current?.click()}><Upload className="h-4 w-4" />Z počítače</button>}
         <button type="button" title="Zavřít knihovnu" onClick={close} className={`${target ? '' : 'ml-auto'} p-2`}><X className="h-4 w-4" /></button>
         <input ref={nativeInput} type="file" hidden accept={target?.accept || 'image/*'} multiple={target?.multiple} onChange={(event) => { const files = Array.from(event.target.files || []); event.target.value = ''; if (files.length) useFiles(files); }} />

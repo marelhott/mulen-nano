@@ -1,11 +1,6 @@
 const { generateText, generateImage, DEFAULT_TEXT_MODEL, DEFAULT_VISION_MODEL, DEFAULT_IMAGE_MODEL } = require('../../lib/openrouter.cjs');
 const { isExternalModel, generateExternalImage } = require('../../lib/external-images.cjs');
-
-const json = (statusCode, body) => ({
-  statusCode,
-  headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
-  body: JSON.stringify(body),
-});
+const { json, denyUnauthorized } = require('../../lib/apiAuth.cjs');
 
 const cleanJson = (value) => String(value || '').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 const modelFor = (requested, fallback) => String(requested || '').trim() || fallback;
@@ -16,6 +11,17 @@ exports.handler = async (event) => {
     const body = JSON.parse(event.body || '{}');
     const action = String(body.action || '');
     const apiKey = String(body.apiKey || '').trim() || undefined;
+
+    // Ověření chrání jen volání, která by utratila serverový klíč. Kdo si přinese vlastní
+    // klíč, platí si volání sám a PIN nepotřebuje.
+    const usesServerKey = action === 'generateImage' && isExternalModel(body.preferredModel)
+      ? !String(body.externalApiKey || '').trim()
+      : !apiKey;
+    if (usesServerKey) {
+      const unauthorized = denyUnauthorized(event);
+      if (unauthorized) return unauthorized;
+    }
+
     let result;
 
     if (action === 'generateImage') {

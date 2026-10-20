@@ -1,5 +1,5 @@
 import { isGeneratedImageDeleted } from './generatedImageEvents';
-import { createSingleUserId, markTimedMigrationAttempt, readJsonStorage, shouldRetryTimedMigration, withTimeout } from './singleUserStore';
+import { createSingleUserId, readJsonStorage } from './singleUserStore';
 
 export type SingleUserSavedImage = {
   id: string;
@@ -41,26 +41,15 @@ type GeneratedRecord = Omit<SingleUserGeneratedImage, 'url' | 'thumbnail'> & {
   thumbnailUrl?: string;
 };
 
-type RemoteLibraryPayload = {
-  success?: boolean;
-  saved?: SingleUserSavedImage[];
-  generated?: SingleUserGeneratedImage[];
-};
-
 const DB_NAME = 'mulenNanoSingleUserLibrary';
 const DB_VERSION = 1;
 const SAVED_STORE = 'saved_images';
 const GENERATED_STORE = 'generated_images';
 const AUTO_BACKUP_KEY = 'nanoBanana_autoBackup';
 const BACKUP_IMPORT_FLAG = 'mulenNano.singleUser.library.backupImported.v1';
-const REMOTE_IMPORT_ATTEMPT_KEY = 'mulenNano.singleUser.library.remoteImportAttempt.v1';
-const REMOTE_IMPORT_COOLDOWN_MS = 1000 * 60 * 15;
-const REMOTE_IMPORT_TIMEOUT_MS = 6000;
-
 let dbPromise: Promise<IDBDatabase> | null = null;
 const objectUrlCache = new Map<string, string>();
 let primedOnce = false;
-let remotePrimePromise: Promise<boolean> | null = null;
 
 function getCachedObjectUrl(key: string, blob?: Blob, fallbackUrl?: string): string {
   if (blob) {
@@ -200,93 +189,15 @@ async function primeFromAutoBackupIfNeeded(): Promise<void> {
   localStorage.setItem(BACKUP_IMPORT_FLAG, '1');
 }
 
-async function primeFromRemoteLibraryIfAllowed(options?: { force?: boolean }): Promise<boolean> {
-  if (typeof window === 'undefined') return false;
-  const force = Boolean(options?.force);
-
-  if (!force && !shouldRetryTimedMigration(REMOTE_IMPORT_ATTEMPT_KEY, REMOTE_IMPORT_COOLDOWN_MS)) {
-    return false;
-  }
-
-  if (remotePrimePromise) {
-    return remotePrimePromise;
-  }
-
-  remotePrimePromise = (async () => {
-    markTimedMigrationAttempt(REMOTE_IMPORT_ATTEMPT_KEY);
-
-    try {
-      const response = await withTimeout(
-        fetch('/api/library-list', {
-          headers: {
-            'Cache-Control': 'no-store',
-            'X-App-User-Id': String(localStorage.getItem('userId') || '').trim(),
-            'X-Auth-User-Id': String(localStorage.getItem('supabaseAuthUserId') || '').trim(),
-          }
-        }),
-        REMOTE_IMPORT_TIMEOUT_MS,
-        'remote library import'
-      );
-
-      const payload = await response.json() as RemoteLibraryPayload;
-      if (!response.ok || payload?.success === false) throw new Error('Starou knihovnu se nepodařilo načíst.');
-
-      const existingSaved = new Set((await getAllRecords<SavedRecord>(SAVED_STORE)).map((item) => item.id));
-      const existingGenerated = new Set((await getAllRecords<GeneratedRecord>(GENERATED_STORE)).map((item) => item.id));
-      let importedAny = false;
-
-      for (const image of payload.saved || []) {
-        if (!image?.id || existingSaved.has(image.id) || !image.url) continue;
-
-        await putRecord<SavedRecord>(SAVED_STORE, {
-          id: image.id,
-          fileName: image.fileName,
-          fileType: image.fileType,
-          fileSize: image.fileSize,
-          timestamp: image.timestamp,
-          category: image.category,
-          sourceUrl: image.url,
-        });
-        importedAny = true;
-      }
-
-      for (const image of payload.generated || []) {
-        if (!image?.id || existingGenerated.has(image.id) || !image.url) continue;
-
-        await putRecord<GeneratedRecord>(GENERATED_STORE, {
-          id: image.id,
-          prompt: image.prompt,
-          timestamp: image.timestamp,
-          resolution: image.resolution,
-          aspectRatio: image.aspectRatio,
-          sourceUrl: image.url,
-          thumbnailUrl: image.thumbnail,
-          params: image.params,
-        });
-        importedAny = true;
-      }
-
-      return importedAny;
-    } catch (error) {
-      console.warn('[single-user-library] Remote import failed:', error);
-      throw error;
-    } finally {
-      remotePrimePromise = null;
-    }
-  })();
-
-  return remotePrimePromise;
-}
-
 async function ensurePrimed(): Promise<void> {
   if (primedOnce) return;
   primedOnce = true;
   await primeFromAutoBackupIfNeeded();
 }
 
-// Starý cloud se importuje jen výslovně, jinak by vracel už smazané položky do nové knihovny.
+/** Starý cloudový import byl odstraněn spolu se Supabase; data zůstávají lokálně a v R2. */
 export async function importLegacyCloudLibrary(): Promise<boolean> {
-  return primeFromRemoteLibraryIfAllowed({ force: true });
+  return false;
 }
 
 export async function listSavedLibraryImages(): Promise<SingleUserSavedImage[]> {

@@ -22,7 +22,6 @@ export default defineConfig(() => {
             if (!id.includes('node_modules')) return undefined;
             if (id.includes('@tensorflow/tfjs')) return 'vendor-tfjs';
             if (id.includes('jszip')) return 'vendor-jszip';
-            if (id.includes('@supabase/supabase-js')) return 'vendor-supabase';
             if (id.includes('@google/genai')) return 'vendor-genai';
             if (
               id.includes('react') ||

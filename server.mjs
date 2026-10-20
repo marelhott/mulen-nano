@@ -126,7 +126,6 @@ async function start() {
   }))
 
   const { default: publicConfigHandler } = await import('./api/public-config.js')
-  const { default: libraryListHandler } = await import('./api/library-list.js')
   const { default: r2PresignHandler } = await import('./api/r2-presign.js')
   const { default: bankHandler } = await import('./api/bank.js')
   const { default: providerGenerateHandler } = await import('./api/provider-generate.js')
@@ -151,7 +150,6 @@ async function start() {
   app.post('/api/provider-generate', providerGenerateHandler)
 
   app.get('/api/public-config', publicConfigHandler)
-  app.get('/api/library-list', libraryListHandler)
   app.post('/api/r2-presign', r2PresignHandler)
   app.post('/api/bank', bankHandler)
   const workflowTarget = `http://localhost:${WORKFLOW_PORT}`

@@ -645,7 +645,7 @@ export function FluxLoraGeneratorScreen(props: {
     });
   }, [activeLoraPresets]);
 
-  // Load presets from Supabase on mount
+  // Načtení presetů z lokálního úložiště při startu
   React.useEffect(() => {
     let cancelled = false;
     listFluxPresets()
@@ -1455,7 +1455,7 @@ export function FluxLoraGeneratorScreen(props: {
               className="mn-upload-zone mn-upload-zone-tall block"
             >
               {input?.dataUrl ? (
-                <img src={input.dataUrl} className="w-full h-full object-cover opacity-92 hover:opacity-100 transition-opacity" />
+                <img src={input.dataUrl} alt="Vstupní obrázek" className="w-full h-full object-cover opacity-92 hover:opacity-100 transition-opacity" />
               ) : (
                 <div className="mn-upload-placeholder">
                   <Plus className="w-5 h-5" strokeWidth={1.8} />

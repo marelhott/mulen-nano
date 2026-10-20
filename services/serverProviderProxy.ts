@@ -1,4 +1,5 @@
 import { GenerateImageResult, ImageInput } from './aiProvider';
+import { getBankToken } from './bankService';
 import { defaultRetryPolicy } from '../utils/concurrencyRunner';
 import { isExternalImageModel } from '../constants/externalImageModels';
 
@@ -47,11 +48,20 @@ async function callServerProvider<T>(payload: ServerProviderRequest): Promise<T>
 
   for (let attempt = 1; attempt <= retry.maxAttempts; attempt += 1) {
     try {
+      const token = getBankToken();
       const response = await fetch('/api/provider-generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(requestPayload),
       });
+
+      // Serverový klíč je za PINem; když chybí přihlášení, otevřeme rovnou knihovnu k odemčení.
+      if (response.status === 401 && !token && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mulen:open-media', { detail: 'library' }));
+      }
 
       const raw = await response.text();
       const data = (() => {

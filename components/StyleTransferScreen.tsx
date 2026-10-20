@@ -211,7 +211,7 @@ export function StyleTransferScreen(props: {
         const seedBase = (Date.now() ^ Math.floor(Math.random() * 1e9)) | 0;
         const stylePatch = await composeStylePatchwork(activeStyles.map((s) => s.dataUrl), { size: 1024, seed: seedBase });
 
-        // OpenRouter přijímá normalizované obrázky přímo, bez mezikroku v Supabase.
+        // OpenRouter přijímá normalizované obrázky přímo, bez mezikroku v cloudu.
         const refNormalized = await normalizeDataUrlPixels(reference.dataUrl, { maxDim: 1800, mime: 'image/jpeg', quality: 0.94 });
         const structureUrl = refNormalized;
         const styleUrl = stylePatch;
@@ -409,7 +409,7 @@ export function StyleTransferScreen(props: {
               },
             });
           } catch {
-            // If Supabase upload fails, we still keep the local result visible.
+            // Když se zápis do R2 nepovede, lokální výsledek zůstává viditelný.
           }
         } catch (e: any) {
           setOutputs((prev) =>

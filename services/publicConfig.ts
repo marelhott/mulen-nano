@@ -1,6 +1,5 @@
 export type PublicConfig = {
-  supabaseUrl?: string;
-  supabaseAnonKey?: string;
+  workflowUrl?: string;
   r2PublicModelsBaseUrl?: string;
   r2PublicLorasBaseUrl?: string;
 };
@@ -24,8 +23,6 @@ export async function fetchPublicConfig(opts: { maxAgeMs?: number } = {}): Promi
     if (!res.ok) throw new Error(`public-config HTTP ${res.status}`);
     const json = (await res.json()) as any;
     const value: PublicConfig = {
-      supabaseUrl: String(json?.supabaseUrl || '').trim() || undefined,
-      supabaseAnonKey: String(json?.supabaseAnonKey || '').trim() || undefined,
       r2PublicModelsBaseUrl: normalizeBaseUrl(json?.r2PublicModelsBaseUrl || json?.r2_public_models_base_url),
       r2PublicLorasBaseUrl: normalizeBaseUrl(json?.r2PublicLorasBaseUrl || json?.r2_public_loras_base_url),
     };

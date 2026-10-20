@@ -1,6 +1,0 @@
--- DEPRECATED / NO-OP
--- This file previously disabled RLS and caused Security Advisor regressions.
--- Keep as no-op for migration history compatibility.
---
--- If you need to restore secure defaults, run:
---   supabase/migrations/20260217_security_advisor_restore_rls.sql

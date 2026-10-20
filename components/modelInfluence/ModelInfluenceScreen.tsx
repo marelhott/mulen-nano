@@ -619,7 +619,7 @@ export function ModelInfluenceScreen(props: {
               className="mn-upload-zone mn-upload-zone-tall block"
             >
               {input?.dataUrl ? (
-                <img src={input.dataUrl} className="w-full h-full object-cover opacity-92 hover:opacity-100 transition-opacity" />
+                <img src={input.dataUrl} alt="Vstupní obrázek" className="w-full h-full object-cover opacity-92 hover:opacity-100 transition-opacity" />
               ) : (
                 <div className="mn-upload-placeholder">
                   <Plus className="w-5 h-5" strokeWidth={1.8} />

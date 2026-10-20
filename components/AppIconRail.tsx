@@ -8,6 +8,8 @@ export function AppIconRail(props: {
   onNavigate: (route: RailRoute) => void;
   onOpenLibrary: () => void;
   onOpenFeed: () => void;
+  /** Veřejná adresa samostatně nasazeného Workflow editoru; bez ní se odkaz nezobrazí. */
+  workflowUrl?: string;
 }) {
   const { active, onNavigate } = props;
 
@@ -60,8 +62,8 @@ export function AppIconRail(props: {
         <button type="button" onClick={props.onOpenFeed} title="Výsledky ze všech sekcí" aria-label="Výsledky ze všech sekcí" className="flex min-h-[44px] w-14 flex-col items-center justify-center gap-1 text-[var(--text-secondary)] hover:text-[var(--accent)]">
           <Images className="h-[13px] w-[13px]" strokeWidth={1.6} /><span className="text-[7px] font-bold uppercase">Výsledky</span>
         </button>
-        <a
-          href="/workflow"
+        {props.workflowUrl ? <a
+          href={props.workflowUrl}
           target="_blank"
           rel="noopener noreferrer"
           title="Workflow Editor (Node Editor)"
@@ -71,7 +73,7 @@ export function AppIconRail(props: {
             <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
           </svg>
           <span className="max-w-full truncate text-[7px] font-bold uppercase tracking-[0.12em] leading-none">Workflow</span>
-        </a>
+        </a> : null}
       </div>
       {bottomItems.map((item) => {
         const isActive = item.id === active;

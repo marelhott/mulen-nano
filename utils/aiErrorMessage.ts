@@ -18,6 +18,10 @@ export function toUserFacingAiError(error: unknown, fallback = 'Generování sel
     return 'Poskytovatel odmítl vstupní obrázek nebo zadání svým bezpečnostním filtrem.';
   }
 
+  if (normalized.includes('přihlas pinem') || normalized.includes('pinem ke knihovně')) {
+    return 'Nejdřív se přihlas PINem ke knihovně. Serverový klíč je chráněný, aby ho nemohl zneužít kdokoli z internetu.';
+  }
+
   if (normalized.includes('api key') || normalized.includes('api_key') || normalized.includes('unauthorized')) {
     return 'Chybí nebo nefunguje API klíč. Zkontroluj ho v nastavení.';
   }
