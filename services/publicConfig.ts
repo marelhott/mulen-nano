@@ -23,6 +23,7 @@ export async function fetchPublicConfig(opts: { maxAgeMs?: number } = {}): Promi
     if (!res.ok) throw new Error(`public-config HTTP ${res.status}`);
     const json = (await res.json()) as any;
     const value: PublicConfig = {
+      workflowUrl: normalizeBaseUrl(json?.workflowUrl || json?.workflow_url),
       r2PublicModelsBaseUrl: normalizeBaseUrl(json?.r2PublicModelsBaseUrl || json?.r2_public_models_base_url),
       r2PublicLorasBaseUrl: normalizeBaseUrl(json?.r2PublicLorasBaseUrl || json?.r2_public_loras_base_url),
     };
