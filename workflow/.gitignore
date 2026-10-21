@@ -45,3 +45,4 @@ logs/*.json
 
 # planning docs
 .planning/
+.env*

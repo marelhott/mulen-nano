@@ -32,6 +32,7 @@ import { useToast } from "@/components/Toast";
 import { calculateGenerationCost } from "@/utils/costCalculator";
 import { logger } from "@/utils/logger";
 import { externalizeWorkflowImages, hydrateWorkflowImages } from "@/utils/imageStorage";
+import { saveWorkflowToBrowser, loadWorkflowFromBrowser } from "@/store/utils/browserWorkflowStorage";
 import {
   loadSaveConfigs,
   saveSaveConfig,
@@ -2531,7 +2532,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
       imageRefBasePath,
     } = get();
 
-    if (!workflowId || !workflowName || !saveDirectoryPath) {
+    if (!workflowId || !workflowName) {
       return false;
     }
 
@@ -2586,22 +2587,28 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
         groups: Object.keys(groups).length > 0 ? groups : undefined,
       };
 
-      // If external image storage is enabled, externalize images before saving
-      if (useExternalImageStorage) {
+      // Externalizace obrázků vyžaduje zapisovatelnou složku; v cloudu zůstávají vložené.
+      if (useExternalImageStorage && saveDirectoryPath) {
         workflow = await externalizeWorkflowImages(workflow, saveDirectoryPath);
       }
 
-      const response = await fetch("/api/workflow", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          directoryPath: saveDirectoryPath,
-          filename: workflowName,
-          workflow,
-        }),
-      });
-
-      const result = await response.json();
+      // Bez složky (typicky cloudové nasazení) ukládáme do prohlížeče.
+      let result: { success: boolean; error?: string };
+      if (!saveDirectoryPath) {
+        const storageError = saveWorkflowToBrowser(workflowId, workflow);
+        result = storageError ? { success: false, error: storageError } : { success: true };
+      } else {
+        const response = await fetch("/api/workflow", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            directoryPath: saveDirectoryPath,
+            filename: workflowName,
+            workflow,
+          }),
+        });
+        result = await response.json();
+      }
 
       if (result.success) {
         const timestamp = Date.now();
@@ -2644,7 +2651,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
             hasUnsavedChanges: false,
             isSaving: false,
             // Update imageRefBasePath to reflect new save location
-            imageRefBasePath: saveDirectoryPath,
+            imageRefBasePath: saveDirectoryPath ?? null,
           });
         } else {
           set({
@@ -2652,7 +2659,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
             hasUnsavedChanges: false,
             isSaving: false,
             // Update imageRefBasePath to reflect save location
-            imageRefBasePath: useExternalImageStorage ? saveDirectoryPath : null,
+            imageRefBasePath: useExternalImageStorage ? (saveDirectoryPath ?? null) : null,
           });
         }
 
@@ -2660,7 +2667,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
         saveSaveConfig({
           workflowId,
           name: workflowName,
-          directoryPath: saveDirectoryPath,
+          directoryPath: saveDirectoryPath ?? "",
           generationsPath: get().generationsPath,
           lastSavedAt: timestamp,
           useExternalImageStorage,
@@ -2694,7 +2701,6 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
         state.hasUnsavedChanges &&
         state.workflowId &&
         state.workflowName &&
-        state.saveDirectoryPath &&
         !state.isSaving
       ) {
         await state.saveToFile();

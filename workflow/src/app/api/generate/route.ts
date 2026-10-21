@@ -27,6 +27,8 @@ export async function POST(request: NextRequest) {
               : 'google/gemini-nano-banana-2.1')
           );
     const images = body.images || [];
+    // Klientský klíč má přednost; serverový je jen záloha.
+    const clientKey = String(request.headers.get('x-openrouter-api-key') || '').trim() || undefined;
     const result = await generateImage({
       model,
       prompt: body.prompt,
@@ -34,6 +36,7 @@ export async function POST(request: NextRequest) {
       aspectRatio: body.aspectRatio,
       resolution: body.resolution,
       timeoutMs: 300000,
+      apiKey: clientKey,
     });
     recordGenerateMetric({ provider: 'openrouter', success: true, statusCode: 200, durationMs: Date.now() - startedAt });
     return NextResponse.json<GenerateResponse>({ success: true, image: result.imageBase64 });

@@ -74,7 +74,8 @@ export function Header() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isProjectConfigured = !!workflowName;
-  const canSave = !!(workflowId && workflowName && saveDirectoryPath);
+  // Bez složky se projekt ukládá do prohlížeče, takže uložit lze i v cloudu.
+  const canSave = !!(workflowId && workflowName);
 
   const formatTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleTimeString([], {

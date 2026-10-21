@@ -11,6 +11,8 @@ export async function POST(request: NextRequest) {
   try {
     const body: LLMGenerateRequest = await request.json();
     if (!body.prompt) return NextResponse.json<LLMGenerateResponse>({ success: false, error: 'Prompt is required' }, { status: 400 });
+    // Klientský klíč má přednost; serverový je jen záloha.
+    const clientKey = String(request.headers.get('x-openrouter-api-key') || '').trim() || undefined;
     const result = await generateText({
       model: String(body.model || 'google/gemini-3-flash-preview'),
       prompt: body.prompt,
@@ -18,6 +20,7 @@ export async function POST(request: NextRequest) {
       temperature: body.temperature ?? 0.7,
       maxTokens: body.maxTokens ?? 1024,
       timeoutMs: 60000,
+      apiKey: clientKey,
     });
     return NextResponse.json<LLMGenerateResponse>({ success: true, text: result.text });
   } catch (error) {
