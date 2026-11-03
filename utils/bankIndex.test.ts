@@ -107,3 +107,15 @@ describe('bankIndex', () => {
     expect(folderPath(index, 'b').map((f) => f.name)).toEqual(['A', 'B']);
   });
 });
+
+describe('shuffleItems', () => {
+  const items = Array.from({ length: 30 }, (_, i) => ({ id: `id-${i}` }));
+  it('stejný seed dává stejné pořadí a nic neztratí', () => {
+    const a = shuffleItems(items, 42);
+    expect(a.map((x) => x.id)).toEqual(shuffleItems(items, 42).map((x) => x.id));
+    expect([...a].map((x) => x.id).sort()).toEqual(items.map((x) => x.id).sort());
+  });
+  it('jiný seed pořadí změní', () => {
+    expect(shuffleItems(items, 1).map((x) => x.id)).not.toEqual(shuffleItems(items, 2).map((x) => x.id));
+  });
+});
