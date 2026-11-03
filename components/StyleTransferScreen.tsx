@@ -569,12 +569,12 @@ export function StyleTransferScreen(props: {
         {lightboxUrl && (
           <div
             className="fixed inset-0 z-[80] bg-black/88 backdrop-blur-sm p-4"
-            onDoubleClick={() => setLightboxUrl(null)}
-            title="Dvojklik pro zavření"
+            onClick={() => setLightboxUrl(null)}
+            title="Klik pro zavření"
           >
             <div
               className="w-full h-full rounded-xl border border-[rgba(168,191,143,0.18)] bg-black/50 overflow-auto custom-scrollbar flex items-center justify-center"
-              onDoubleClick={(e) => {
+              onClick={(e) => {
                 e.stopPropagation();
                 setLightboxUrl(null);
               }}

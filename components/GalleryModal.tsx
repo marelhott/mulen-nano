@@ -423,7 +423,8 @@ export const GalleryModal: React.FC<GalleryModalProps> = ({ isOpen, onClose, onR
               <img
                 src={selectedImage.url}
                 alt={selectedImage.prompt}
-                className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+                className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl cursor-zoom-out"
+                onClick={() => setSelectedImage(null)}
               />
             </div>
 

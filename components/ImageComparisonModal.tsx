@@ -170,7 +170,7 @@ export const ImageComparisonModal: React.FC<ImageComparisonModalProps> = ({
         )}
 
         {/* Image Content */}
-        <div className="relative w-full h-full p-4 md:py-12 md:px-24 flex items-center justify-center" onClick={e => e.stopPropagation()}>
+        <div className={`relative w-full h-full p-4 md:py-12 md:px-24 flex items-center justify-center ${isCompareMode && originalImage ? '' : 'cursor-zoom-out'}`} onClick={e => { if (isCompareMode && originalImage) e.stopPropagation(); else onClose(); }}>
           <div className="relative w-full h-full flex items-center justify-center">
             {isCompareMode && originalImage ? (
               <div

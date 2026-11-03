@@ -132,7 +132,7 @@ export const ImageDetailModal: React.FC<ImageDetailModalProps> = ({
           </button>
         )}
 
-        <div className="p-8 md:p-16 w-full h-full flex items-center justify-center" onClick={e => e.stopPropagation()}>
+        <div className={`p-8 md:p-16 w-full h-full flex items-center justify-center ${activeTab === 'compare' && hasSource ? '' : 'cursor-zoom-out'}`} onClick={e => { if (activeTab === 'compare' && hasSource) e.stopPropagation(); else onClose(); }}>
           {activeTab === 'compare' && hasSource ? (
             <div
               ref={containerRef}

@@ -121,7 +121,7 @@ function Feed(props: { onToast: (toast: Toast) => void; onChoose?: (files: File[
         {props.onChoose && <button type="button" onClick={() => void fetch(preview.url).then((response) => { if (!response.ok) throw new Error('Stažení originálu selhalo.'); return response.blob(); }).then((blob) => props.onChoose?.([new File([blob], `${preview.id}.${blob.type.split('/')[1] || 'png'}`, { type: blob.type })])).catch((error: Error) => props.onToast({ message: error.message, type: 'error' }))}>Použít jako vstup</button>}
         <button type="button" title="Zavřít detail" onClick={() => setPreview(null)}><X className="h-4 w-4" /></button>
       </div>
-      <img src={preview.url} alt={preview.prompt} className="min-h-0 flex-1 object-contain" />
+      <img src={preview.url} alt={preview.prompt} className="min-h-0 flex-1 cursor-zoom-out object-contain" onClick={() => setPreview(null)} />
     </div>}
   </div>;
 }

@@ -492,8 +492,7 @@ export function FaceSwapScreen(props: {
           <img
             src={lightboxUrl}
             alt="Face swap preview fullscreen"
-            className="max-w-[96vw] max-h-[94vh] object-contain rounded-2xl shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
+            className="max-w-[96vw] max-h-[94vh] object-contain rounded-2xl shadow-2xl cursor-zoom-out"
           />
         </div>
       ) : null}

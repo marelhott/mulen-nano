@@ -54,7 +54,7 @@ export function BankImagePreview({ item, position, total, onClose, onStep, onDet
     <div className="relative min-h-0 flex-1">
       <div ref={scroll} className="h-full w-full overflow-auto" data-bank-preview-scroll>
         <div className="relative" style={{ width: `${zoom * 100}%`, height: `${zoom * 100}%` }}>
-          {url ? <img src={url} alt={item.title} className="absolute inset-0 h-full w-full object-contain" onError={() => setError('Originál se nepodařilo načíst.')} /> : null}
+          {url ? <img src={url} alt={item.title} className={`absolute inset-0 h-full w-full object-contain ${zoom <= 1 ? 'cursor-zoom-out' : ''}`} onClick={() => { if (zoom <= 1) onClose(); }} onError={() => setError('Originál se nepodařilo načíst.')} /> : null}
           {(!url || error) && <p role="status" className="absolute inset-0 flex items-center justify-center text-sm text-[var(--text-secondary)]">{error || 'Načítám originál…'}</p>}
         </div>
       </div>
