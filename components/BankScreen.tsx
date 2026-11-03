@@ -133,11 +133,14 @@ export function BankGate(props: { status: BankStatus | null; error: string; onLo
 
 // --- karta, detail --------------------------------------------------------------------------------
 
-function ItemCard(props: { item: BankItem; selected: boolean; version: number; onSelect: (event: React.MouseEvent) => void; onOpen: () => void; onImageError: (key: string) => void }) {
+function ItemCard(props: { item: BankItem; selected: boolean; duplicate?: boolean; version: number; onSelect: (event: React.MouseEvent) => void; onOpen: () => void; onImageError: (key: string) => void }) {
   const { item, selected } = props;
+  const ref = React.useRef<HTMLButtonElement>(null);
+  React.useEffect(() => { if (props.duplicate) ref.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, [props.duplicate]);
   const thumb = getCachedBankUrl(item.thumbKey);
   return (
     <button
+      ref={ref}
       type="button"
       onClick={props.onSelect}
       onDoubleClick={props.onOpen}
@@ -162,6 +165,8 @@ function ItemCard(props: { item: BankItem; selected: boolean; version: number; o
           </div>
         )}
       </div>
+      {props.duplicate && <span aria-hidden="true" className="pointer-events-none absolute inset-0 animate-pulse rounded-md border-[3px] border-amber-400 bg-amber-400/10" />}
+      {props.duplicate && <span className="absolute inset-x-0 bottom-0 bg-amber-400 px-2 py-1 text-center text-xs font-bold text-black">Duplicita – už tu byl</span>}
       {selected && <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-md border-[3px] border-[var(--accent)]" />}
       {selected && <span aria-hidden="true" className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--bg-elevated)] shadow-md"><Check className="h-4 w-4" strokeWidth={3} /></span>}
       {item.kind !== 'image' && <div className="absolute inset-x-0 bottom-0 truncate bg-[var(--bg-elevated)] px-2 py-1.5 text-xs text-[var(--text-secondary)]">{item.title}</div>}
@@ -319,7 +324,8 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
   const [visible, setVisible] = React.useState(PAGE_SIZE);
   const [urlVersion, setUrlVersion] = React.useState(0);
   const [uploading, setUploading] = React.useState<{ done: number; total: number } | null>(null);
-  const [pendingUploads, setPendingUploads] = React.useState<Array<{ id: string; url: string; name: string; folderId: string; running: boolean }>>([]);
+  const [pendingUploads, setPendingUploads] = React.useState<Array<{ id: string; url: string; name: string; folderId: string; running: boolean; duplicate?: boolean }>>([]);
+  const [duplicateIds, setDuplicateIds] = React.useState<string[]>([]);
   const uploadBusy = React.useRef(false);
   const localPreviews = React.useRef(new Set<string>());
   React.useEffect(() => () => { for (const url of localPreviews.current) URL.revokeObjectURL(url); }, []);
@@ -453,6 +459,8 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
       const target = folderId ?? BANK_INBOX_ID;
       let ok = 0;
       let duplicates = 0;
+      const duplicateItemIds: string[] = [];
+      const duplicateEntries = new Map<string, string>();
       setUploading({ done: 0, total: images.length });
       const pending = images.map((file) => {
         const url = URL.createObjectURL(file); localPreviews.current.add(url);
@@ -465,25 +473,40 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
           const file = entry.file;
           try {
             const item = await uploadBankImage(file, { folderId: target });
-            if (item.reused) duplicates += 1;
-            else ok += 1;
+            if (item.reused) {
+              duplicates += 1;
+              duplicateItemIds.push(item.id);
+              duplicateEntries.set(entry.id, entry.url);
+              setPendingUploads((current) => current.map((pendingItem) => pendingItem.id === entry.id ? { ...pendingItem, duplicate: true, running: false } : pendingItem));
+            } else ok += 1;
             setIndex((current) => current.items.some((existing) => existing.id === item.id) ? current : { ...current, items: [...current.items, item] });
           } catch (error) {
             handleError(error, `Nahrání ${file.name} selhalo.`);
           } finally {
-            setPendingUploads((current) => current.filter((item) => item.id !== entry.id));
-            localPreviews.current.delete(entry.url); URL.revokeObjectURL(entry.url);
+            // Duplicitní náhled zůstane chvíli viditelný s označením, uvolní se až po zvýraznění.
+            if (!duplicateEntries.has(entry.id)) {
+              setPendingUploads((current) => current.filter((item) => item.id !== entry.id));
+              localPreviews.current.delete(entry.url); URL.revokeObjectURL(entry.url);
+            }
             setUploading((prev) => (prev ? { ...prev, done: prev.done + 1 } : prev));
           }
         } });
       } finally {
         uploadBusy.current = false;
-        setPendingUploads([]);
+        setPendingUploads((current) => current.filter((item) => item.duplicate));
         setUploading(null);
       }
       if (ok > 0 || duplicates > 0) {
         await reload();
-        onToast({ message: `Přidáno ${ok} obrázků, přeskočeno ${duplicates} duplicit.`, type: 'success' });
+        if (duplicates > 0) {
+          setDuplicateIds(duplicateItemIds);
+          window.setTimeout(() => {
+            setDuplicateIds([]);
+            setPendingUploads((current) => current.filter((item) => !item.duplicate));
+            for (const url of duplicateEntries.values()) { localPreviews.current.delete(url); URL.revokeObjectURL(url); }
+          }, 10000);
+        }
+        onToast({ message: `Přidáno ${ok} obrázků, ${duplicates} už v knihovně bylo${duplicates ? ' (označeno oranžově)' : ''}.`, type: duplicates ? 'warning' : 'success' });
       }
     },
     [folderId, handleError, onToast, reload],
@@ -813,11 +836,12 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
             <div data-bank-thumbnail-grid className="grid items-start gap-3" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(0, min(${thumbnailSize}px, 100%)))` }}>
               {pendingUploads.filter((item) => (!folderId || item.folderId === folderId) && (!kind || kind === 'image') && !tag).map((item) => <div key={item.id} className="relative aspect-square min-w-0 overflow-hidden rounded-md" aria-label={`Nahrávání: ${item.name}`}>
                 <img src={item.url} alt={item.name} decoding="async" loading="lazy" className="absolute inset-0 h-full w-full object-contain" />
-                <span role="status" className="absolute inset-x-0 bottom-0 bg-[var(--bg-elevated)] px-2 py-1 text-xs text-[var(--text-secondary)]">{item.running ? 'Nahrávám…' : 'Čeká…'}</span>
+                {item.duplicate && <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-md border-[3px] border-amber-400 bg-amber-400/10" />}
+                <span role="status" className={`absolute inset-x-0 bottom-0 px-2 py-1 text-xs ${item.duplicate ? 'bg-amber-400 font-bold text-black' : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)]'}`}>{item.duplicate ? 'Duplicita – už je v knihovně' : item.running ? 'Nahrávám…' : 'Čeká…'}</span>
               </div>)}
               {shown.map((item) => (
                 <div key={item.id} className="group relative min-w-0">
-                  <ItemCard item={item} selected={checked.includes(item.id)} version={urlVersion} onSelect={(event) => {
+                  <ItemCard item={item} selected={checked.includes(item.id)} duplicate={duplicateIds.includes(item.id)} version={urlVersion} onSelect={(event) => {
                     if (props.onChoose && item.kind !== 'image') { setSelectedId(item.id); return; }
                     // Výběr zdroje: prostý klik použije obrázek hned, Ctrl/⌘/Shift klik přidává do výběru.
                     if (props.onChoose && (!props.multiple || (!(event.ctrlKey || event.metaKey || event.shiftKey) && !checked.length))) { props.onChoose([item]); return; }
