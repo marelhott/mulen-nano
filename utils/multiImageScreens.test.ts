@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
   deleteGenerated: vi.fn(),
 }));
+vi.mock('./imageAspect', () => ({ readImageAspectRatio: async () => '3:4' }));
 vi.mock('../services/providerFactory', () => ({ ProviderFactory: { getProvider: () => ({ generateImage: mocks.generate }) } }));
 vi.mock('../components/ImageModelSelection', () => ({ ImageModelSelector: () => null }));
 vi.mock('../components/ImageComparisonModal', () => ({ ImageComparisonModal: (props: unknown) => { mocks.preview(props); return null; } }));
@@ -90,7 +91,7 @@ describe('víceobrázkové vstupy obrazovek', () => {
     await clickButton('Generovat');
     expect(mocks.generate).toHaveBeenCalledTimes(1);
     expect(mocks.generate.mock.calls[0][0]).toHaveLength(3);
-    expect(mocks.generate.mock.calls[0][1]).toContain('metamorphosis');
+    expect(mocks.generate.mock.calls[0][1]).toContain('FIDELITY RULES');
   });
 
   for (const [name, Screen] of [['Varianty', VariantsScreen], ['Koláž', CollageScreen]] as const) {

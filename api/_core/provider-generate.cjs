@@ -67,13 +67,13 @@ exports.handler = async (event) => {
         model: modelFor(body.visionModel, DEFAULT_VISION_MODEL),
         images,
         prompt: [
-          `You are a master surreal painter and art director. Look at the ${images.length} attached images. Devise ONE concrete, original concept that fuses them into a single, coherent, gallery-quality artwork.`,
-          'Method: choose one image as the HOST (its space, light, medium and palette become the whole picture). The other ideas are GUESTS and must become native to the host: made of the host\'s materials, shaped by its light, living at its scale. Find a conceptual bridge (a contour that rhymes, a material that turns into another, a scale inversion, one form that is two things at once) and describe the exact visual transformations: what turns into what, and where the transition happens.',
-          'Be bold and specific, never the obvious "A next to B". Avoid separate figures standing in separate places, anything pasted, side-by-side or double-image layouts, and anything that looks like a photo edit.',
-          'Output ONLY the final image-generation prompt in English, 110-170 words, written as a direct description of the finished picture (start with the medium and mood). Do not mention "image 1/2" or "attached"; describe the subjects themselves. End with: One single seamless picture, one light, one scale, one perspective. No text, borders or frames.',
+          `You are a restrained photo editor. Look at the ${images.length} attached images and write ONE precise instruction for fusing them into a single organic picture.`,
+          'Decide: (1) which image is the carrier (about 70% of the frame, its medium, grain, colour and light are kept as they are); (2) the single place where the other image(s) enter; (3) what they merge through: a shared tone, a line that continues from one into the other, a similar shape or the direction of light; (4) the kind of blend: a soft semi-transparent overlay or a gradual dissolve at exactly that place.',
+          'Hard rules: add NOTHING that is not visible in the attached images (no new objects, creatures, plants, water, buildings, effects); keep the medium (a photograph stays a photograph, never repainted as illustration or oil painting); keep every subject whole and recognisable, no hybrids; one light, one perspective; the rest of the picture stays calm and untouched. Less is more.',
+          'Output ONLY the instruction, in English, 70-120 words, concrete about WHAT is placed WHERE and THROUGH WHAT they merge. No poetry, no metaphors, no mention of "image 1/2" (describe the subjects themselves), no mention of style or art movements.',
         ].join('\n\n'),
-        temperature: 0.9,
-        maxTokens: 700,
+        temperature: 0.4,
+        maxTokens: 500,
         apiKey,
       });
       result = String(response.text || '').trim();

@@ -8,8 +8,8 @@ describe('collagePlan', () => {
   });
 
   it('prompt chce plynulé splynutí, ne patchwork, a výchozí dostane techniku', () => {
-    expect(COLLAGE_GENERAL_PROMPT).toContain('metamorphosis');
-    expect(COLLAGE_GENERAL_PROMPT).toContain('NEVER: patchwork');
+    expect(COLLAGE_GENERAL_PROMPT).toContain('FIDELITY RULES');
+    expect(COLLAGE_GENERAL_PROMPT).toContain('add NOTHING');
     expect(buildSingleSourceCollagePrompt('', pickCollageTechnique(2))).toContain('Technique:');
     expect(buildSingleSourceCollagePrompt(' vlastní ', pickCollageTechnique(2))).toBe('vlastní');
     expect(pickCollageTechnique(-1)).toContain('Technique:');
@@ -22,8 +22,8 @@ describe('collagePlan', () => {
   });
 
   it('instrukce pro Qwen se odkazuje na číslované obrázky a vejde se do limitu 1500 znaků', () => {
-    expect(buildCollageEditInstruction(2)).toContain('melts into image 2');
-    expect(buildCollageEditInstruction(3)).toContain('images 2 and 3');
+    expect(buildCollageEditInstruction(2)).toContain('image 2 blends');
+    expect(buildCollageEditInstruction(3)).toContain('images 2 and 3 blend');
     for (const n of [2, 3, 6]) expect(buildCollageEditInstruction(n).length).toBeLessThan(1500);
   });
 

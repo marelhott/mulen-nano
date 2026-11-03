@@ -14,12 +14,14 @@ import { ImageDatabase } from '../utils/imageDatabase';
 import { buildBatchRecipe } from '../utils/generationRecipe';
 import { toUserFacingAiError } from '../utils/aiErrorMessage';
 import { decideAdaptiveConcurrency, estimateDataUrlBytes, runConcurrentTasks } from '../utils/concurrencyRunner';
+import { readImageAspectRatio } from '../utils/imageAspect';
 import { serverProviderProxy } from '../services/serverProviderProxy';
 import { prepareIndependentImages, prepareReferenceImages } from '../utils/multiImageInput';
 import {
   COLLAGE_MAX_PER_MODEL,
   COLLAGE_MAX_SOURCES,
   COLLAGE_MIN_SOURCES,
+  COLLAGE_FIDELITY_TAIL,
   COLLAGE_GENERAL_PROMPT,
   buildCollageEditInstruction,
   buildCollagePrompt,
@@ -175,6 +177,7 @@ export function CollageScreen(props: {
   const savedRuns = React.useRef(new Set<string>());
   const historyWarned = React.useRef(false);
 
+  const [lastRunPrompt, setLastRunPrompt] = React.useState<string | null>(null);
   const [fuseInputs, setFuseInputs] = React.useState<boolean>(() => readStored('collage.fuse', true, (raw) => raw !== '0'));
   // Spojení více vstupů do jednoho díla dává smysl jen od dvou obrázků.
   const fuse = fuseInputs && sources.length >= 2;
@@ -399,6 +402,7 @@ export function CollageScreen(props: {
   const runTasks = React.useCallback(
     async (targets: VariantOutput[], runSources: Array<{ name: string; dataUrl: string; mimeType: string }>) => {
       const fused = targets[0]?.sourceIndex === undefined;
+      const aspectRatio = fused ? await readImageAspectRatio(runSources[0].dataUrl) : 'Original';
       const prepared = fused ? await prepareReferenceImages(runSources) : await prepareIndependentImages(runSources);
       const sizes = prepared.map((item) => estimateDataUrlBytes(item.data));
       const decision = decideAdaptiveConcurrency({ section: 'batch', itemCount: targets.length, averageBytes: sizes.reduce((a, b) => a + b, 0) / sizes.length, maxBytes: Math.max(...sizes) });
@@ -423,7 +427,7 @@ export function CollageScreen(props: {
           const provider = ProviderFactory.getProvider(AIProviderType.OPENROUTER, providerSettings, model.model);
           // Qwen Edit bere první vstup jako základ, proto se základní obrázek střídá podle varianty.
           const ordered = fused ? (isInstructionEditModel(model.model) ? rotateInputs(inputs, output.variantIndex) : inputs) : [inputs[output.sourceIndex ?? 0]];
-          const result = await provider.generateImage(ordered, output.prompt, model.resolution, 'Original', false);
+          const result = await provider.generateImage(ordered, output.prompt, model.resolution, aspectRatio, false);
 
           setOutputs((prev) => prev.map((item) => (item.id === output.id ? { ...item, status: 'done' as const, dataUrl: result.imageBase64 } : item)));
           await persistCollage(output, result.imageBase64);
@@ -524,7 +528,7 @@ export function CollageScreen(props: {
     const technique = () => pickCollageTechnique(Math.floor(Math.random() * 1000));
     const fusePrompt = (modelId: VariantModelId) => {
       if (customPrompt.trim().length > 0) return customPrompt.trim();
-      const body = concept || `${COLLAGE_GENERAL_PROMPT}\n\n${technique()}`;
+      const body = concept ? `${concept}\n\n${COLLAGE_FIDELITY_TAIL}` : `${COLLAGE_GENERAL_PROMPT}\n\n${technique()}`;
       return isInstructionEditModel(variantModelById(modelId).model) ? `${buildCollageEditInstruction(runSources.length)}\n\n${body}` : body;
     };
     const pending: VariantOutput[] = fuse
@@ -551,6 +555,7 @@ export function CollageScreen(props: {
           sourceDataUrl: runSources[task.sourceIndex].dataUrl,
           sourceName: runSources[task.sourceIndex].name,
         }));
+    setLastRunPrompt(pending[0]?.prompt ?? null);
     const modelsUsed = VARIANT_MODELS.filter((m) => selectedModels.includes(m.id)).map((m) => m.id);
     runMeta.current.set(runId, { createdAt: runCreatedAt, sources: runSources, prompt: activePrompt, models: modelsUsed, countPerModel: count });
     const sourceThumbs = await Promise.all(runSources.map((item) => createThumbnail(item.dataUrl, 120).catch(() => '')));
@@ -832,9 +837,9 @@ export function CollageScreen(props: {
         <AtelierSection title="Aktivní Prompt">
           <div className="rounded-md border border-[rgba(168,191,143,0.18)] bg-[rgba(28,40,20,0.70)] px-3 py-3">
             <div className="text-[8px] font-black uppercase tracking-[0.18em] text-[var(--accent)]">
-              {customPrompt.trim().length === 0 ? 'Obecný prompt' : 'Upravený prompt'}
+              {lastRunPrompt ? 'Naposledy odeslaný prompt' : customPrompt.trim().length === 0 ? 'Šablona (záloha)' : 'Upravený prompt'}
             </div>
-            <p className="mt-2 max-h-[260px] overflow-y-auto custom-scrollbar whitespace-pre-wrap text-[8px] leading-relaxed text-[var(--text-secondary)]">{activePrompt}</p>
+            <p className="mt-2 max-h-[260px] overflow-y-auto custom-scrollbar whitespace-pre-wrap text-[8px] leading-relaxed text-[var(--text-secondary)]">{lastRunPrompt ?? activePrompt}</p>
           </div>
         </AtelierSection>
       </AtelierRightPanel>
