@@ -61,6 +61,22 @@ exports.handler = async (event) => {
         apiKey,
       });
       result = cleanJson(response.text);
+    } else if (action === 'composeCollageConcept') {
+      const images = Array.isArray(body.images) ? body.images.map((image) => image?.data || image).filter(Boolean) : [];
+      const response = await generateText({
+        model: modelFor(body.visionModel, DEFAULT_VISION_MODEL),
+        images,
+        prompt: [
+          `You are a master surreal painter and art director. Look at the ${images.length} attached images. Devise ONE concrete, original concept that fuses them into a single, coherent, gallery-quality artwork.`,
+          'Method: choose one image as the HOST (its space, light, medium and palette become the whole picture). The other ideas are GUESTS and must become native to the host: made of the host\'s materials, shaped by its light, living at its scale. Find a conceptual bridge (a contour that rhymes, a material that turns into another, a scale inversion, one form that is two things at once) and describe the exact visual transformations: what turns into what, and where the transition happens.',
+          'Be bold and specific, never the obvious "A next to B". Avoid separate figures standing in separate places, anything pasted, side-by-side or double-image layouts, and anything that looks like a photo edit.',
+          'Output ONLY the final image-generation prompt in English, 110-170 words, written as a direct description of the finished picture (start with the medium and mood). Do not mention "image 1/2" or "attached"; describe the subjects themselves. End with: One single seamless picture, one light, one scale, one perspective. No text, borders or frames.',
+        ].join('\n\n'),
+        temperature: 0.9,
+        maxTokens: 700,
+        apiKey,
+      });
+      result = String(response.text || '').trim();
     } else if (action === 'analyzeStyleTransfer') {
       const response = await generateText({
         model: modelFor(body.visionModel, DEFAULT_VISION_MODEL),

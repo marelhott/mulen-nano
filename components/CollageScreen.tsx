@@ -14,6 +14,7 @@ import { ImageDatabase } from '../utils/imageDatabase';
 import { buildBatchRecipe } from '../utils/generationRecipe';
 import { toUserFacingAiError } from '../utils/aiErrorMessage';
 import { decideAdaptiveConcurrency, estimateDataUrlBytes, runConcurrentTasks } from '../utils/concurrencyRunner';
+import { serverProviderProxy } from '../services/serverProviderProxy';
 import { prepareIndependentImages, prepareReferenceImages } from '../utils/multiImageInput';
 import {
   COLLAGE_MAX_PER_MODEL,
@@ -510,12 +511,21 @@ export function CollageScreen(props: {
     const runCreatedAt = Date.now();
     const runSources = sources.map(({ name, dataUrl, mimeType }) => ({ name, dataUrl, mimeType }));
     runSourcesRef.current = runSources;
+    // Vizuální model nejdřív vymyslí jeden konkrétní koncept spojení; ten dostanou všechny modely.
+    let concept = '';
+    if (fuse && customPrompt.trim().length === 0) {
+      try {
+        const refs = await prepareReferenceImages(runSources);
+        concept = (await serverProviderProxy.composeCollageConcept(refs)).trim();
+      } catch {
+        concept = '';
+      }
+    }
     const technique = () => pickCollageTechnique(Math.floor(Math.random() * 1000));
     const fusePrompt = (modelId: VariantModelId) => {
       if (customPrompt.trim().length > 0) return customPrompt.trim();
-      return isInstructionEditModel(variantModelById(modelId).model)
-        ? `${buildCollageEditInstruction(runSources.length)}\n\n${technique()}`
-        : `${COLLAGE_GENERAL_PROMPT}\n\n${technique()}`;
+      const body = concept || `${COLLAGE_GENERAL_PROMPT}\n\n${technique()}`;
+      return isInstructionEditModel(variantModelById(modelId).model) ? `${buildCollageEditInstruction(runSources.length)}\n\n${body}` : body;
     };
     const pending: VariantOutput[] = fuse
       ? planVariantTasks(selectedModels, 1, (modelId, index) => makeId(`collage-${modelId}-${index}`)).map((task, i) => ({

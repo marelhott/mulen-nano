@@ -8,7 +8,8 @@ type ServerProviderAction =
   | 'generateImage'
   | 'generate3PromptVariants'
   | 'analyzeImageForJson'
-  | 'analyzeStyleTransfer';
+  | 'analyzeStyleTransfer'
+  | 'composeCollageConcept';
 
 type ServerProviderRequest = {
   action: ServerProviderAction;
@@ -115,6 +116,10 @@ export const serverProviderProxy = {
       prompt,
       apiKey,
     });
+  },
+
+  composeCollageConcept(images: ImageInput[], apiKey?: string): Promise<string> {
+    return callServerProvider<string>({ action: 'composeCollageConcept', images, apiKey });
   },
 
   analyzeImageForJson(imageDataUrl: string, apiKey?: string): Promise<string> {
