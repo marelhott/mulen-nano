@@ -6,6 +6,7 @@ import { archiveSourceFile, MEDIA_CHANGED_EVENT, syncLibraryToR2 } from '../serv
 import { deleteImage, getAllImages, type GalleryImage } from '../utils/galleryDB';
 import type { BankItem } from '../utils/bankIndex';
 import type { ToastType } from './Toast';
+import { InfiniteSentinel } from './InfiniteSentinel';
 
 type Tab = 'library' | 'feed';
 type Toast = { message: string; type: ToastType };
@@ -99,7 +100,7 @@ function Feed(props: { onToast: (toast: Toast) => void; onChoose?: (files: File[
           </div>
         </article>)}</div>
       </section>)}
-      {filtered.length > visible && <button type="button" className="mn-action-secondary" onClick={() => setVisible((count) => count + 80)}>Další výsledky</button>}
+      {filtered.length > visible && <InfiniteSentinel token={visible} onMore={() => setVisible((count) => count + 80)} />}
     </div>
     {preview && <div className="absolute inset-0 z-10 flex flex-col bg-[var(--bg-elevated)] p-4">
       <div className="flex items-center gap-4 pb-3 text-sm text-[var(--text-primary)]"><span className="min-w-0 flex-1 truncate">{preview.prompt}</span>

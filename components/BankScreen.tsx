@@ -1,4 +1,5 @@
 import React from 'react';
+import { InfiniteSentinel } from './InfiniteSentinel';
 import { FileText, FolderPlus, Link as LinkIcon, Maximize2, Plus, Search, Trash2, Upload, X } from 'lucide-react';
 import { BankImagePreview } from './BankImagePreview';
 import {
@@ -830,11 +831,7 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
                   : 'Nic neodpovídá filtru.'}
             </div>
           )}
-          {items.length > visible ? (
-            <button type="button" onClick={() => setVisible((v) => v + PAGE_SIZE)} className="mx-auto mt-4 block text-[9px] font-bold uppercase tracking-wider text-[var(--text-secondary)] hover:text-[var(--accent)]">
-              Zobrazit dalších {Math.min(PAGE_SIZE, items.length - visible)}
-            </button>
-          ) : null}
+          {items.length > visible ? <InfiniteSentinel token={visible} onMore={() => setVisible((v) => v + PAGE_SIZE)} /> : null}
         </div>
       </section>
 
