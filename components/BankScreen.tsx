@@ -1,6 +1,6 @@
 import React from 'react';
 import { InfiniteSentinel } from './InfiniteSentinel';
-import { FileText, FolderPlus, Link as LinkIcon, Maximize2, Plus, Search, Trash2, Upload, X } from 'lucide-react';
+import { Check, FileText, FolderPlus, Link as LinkIcon, Maximize2, Plus, Search, Trash2, Upload, X } from 'lucide-react';
 import { BankImagePreview } from './BankImagePreview';
 import {
   BANK_INBOX_ID,
@@ -144,13 +144,13 @@ function ItemCard(props: { item: BankItem; selected: boolean; version: number; o
       aria-pressed={selected}
       aria-label={item.kind === 'image' ? `Vybrat: ${item.title}` : item.title}
       title={item.title}
-      className={`group relative block aspect-square w-full min-w-0 overflow-hidden rounded-md text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)] ${selected && item.kind !== 'image' ? 'ring-1 ring-[var(--accent)]/70' : ''}`}
+      className={`group relative block aspect-square w-full min-w-0 overflow-hidden rounded-md text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)] ${selected ? 'bg-[var(--accent)]/15' : ''}`}
       data-version={props.version}
     >
       <div className="absolute inset-0 flex items-center justify-center p-px">
         {item.kind === 'image' ? (
           thumb ? (
-            <img src={thumb} alt={item.title} loading="lazy" className={`max-h-full max-w-full object-contain transition-shadow duration-150 ${selected ? 'ring-1 ring-[var(--accent)]/70' : ''}`} onError={() => item.thumbKey && props.onImageError(item.thumbKey)} />
+            <img src={thumb} alt={item.title} loading="lazy" className={`max-h-full max-w-full object-contain transition-shadow duration-150 ${selected ? 'opacity-80' : ''}`} onError={() => item.thumbKey && props.onImageError(item.thumbKey)} />
           ) : null
         ) : (
           <div className="flex h-full w-full flex-col gap-1 p-2">
@@ -162,6 +162,8 @@ function ItemCard(props: { item: BankItem; selected: boolean; version: number; o
           </div>
         )}
       </div>
+      {selected && <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-md border-[3px] border-[var(--accent)]" />}
+      {selected && <span aria-hidden="true" className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--bg-elevated)] shadow-md"><Check className="h-4 w-4" strokeWidth={3} /></span>}
       {item.kind !== 'image' && <div className="absolute inset-x-0 bottom-0 truncate bg-[var(--bg-elevated)] px-2 py-1.5 text-xs text-[var(--text-secondary)]">{item.title}</div>}
     </button>
   );
