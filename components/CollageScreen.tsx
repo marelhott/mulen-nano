@@ -20,6 +20,7 @@ import {
   COLLAGE_MAX_SOURCES,
   COLLAGE_MIN_SOURCES,
   buildSingleSourceCollagePrompt,
+  pickCollageTechnique,
 } from '../utils/collagePlan';
 import {
   deleteCollageRun,
@@ -504,7 +505,7 @@ export function CollageScreen(props: {
       variantIndex: task.variantIndex,
       sourceIndex: task.sourceIndex,
       runId,
-      prompt: activePrompt,
+      prompt: buildSingleSourceCollagePrompt(customPrompt, pickCollageTechnique(Math.floor(Math.random() * 1000) + i)),
       status: 'pending' as const,
       createdAt: runCreatedAt + i,
       sourceDataUrl: runSources[task.sourceIndex].dataUrl,
@@ -699,7 +700,7 @@ export function CollageScreen(props: {
                   className="w-full min-h-[260px] max-h-[360px] resize-none rounded-none border-0 border-b border-[var(--border-color)] bg-transparent p-1.5 text-[10px] font-medium text-[var(--text-primary)] placeholder-gray-500 outline-none transition-all focus:border-[var(--accent)] focus:ring-0 custom-scrollbar"
                 />
                 <div className="flex items-center justify-between text-[8px] text-[var(--text-3)]">
-                  <span>{customPrompt.trim().length === 0 ? 'Výchozí znění' : 'Upraveno'}</span>
+                  <span>{customPrompt.trim().length === 0 ? 'Výchozí znění + náhodná technika u každého výsledku' : 'Upraveno'}</span>
                   <button
                     type="button"
                     disabled={customPrompt.trim().length === 0}

@@ -64,10 +64,15 @@ export function isRetriableNetworkError(error: unknown): boolean {
 /** OpenRouter rezervuje kredit pro každý běžící požadavek; při souběhu může část dočasně odmítnout, dokud ostatní nedoběhnou. */
 export function isCreditHoldError(error: unknown): boolean {
   const message = String(error instanceof Error ? error.message : error || '').toLowerCase();
-  return message.includes('in-flight requests') || message.includes('exceed your available credits');
+  return (
+    message.includes('in-flight requests') ||
+    message.includes('available credits') ||
+    message.includes('maximum cost exceeds') ||
+    message.includes('requires more credits')
+  );
 }
 
-const CREDIT_HOLD_MAX_ATTEMPTS = 6;
+const CREDIT_HOLD_MAX_ATTEMPTS = 8;
 const CREDIT_HOLD_DELAY_MS = 8000;
 
 export function defaultRetryPolicy(overrides?: Partial<RetryPolicy>): RetryPolicy {

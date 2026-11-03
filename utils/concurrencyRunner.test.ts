@@ -8,6 +8,7 @@ describe('retry při zablokovaném kreditu', () => {
 
   it('pozná chybu OpenRouter o kreditu držené souběžnými požadavky', () => {
     expect(isCreditHoldError(creditError)).toBe(true);
+    expect(isCreditHoldError(new Error("This request's maximum cost exceeds your available credits. Add credits, or request fewer images."))).toBe(true);
     expect(isCreditHoldError(new Error('Safety system'))).toBe(false);
   });
 

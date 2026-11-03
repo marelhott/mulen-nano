@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COLLAGE_GENERAL_PROMPT, COLLAGE_MAX_PER_MODEL, buildCollageEditInstruction, buildCollagePrompt, collageInputBudget, rotateInputs } from './collagePlan';
+import { COLLAGE_GENERAL_PROMPT, buildSingleSourceCollagePrompt, pickCollageTechnique, COLLAGE_MAX_PER_MODEL, buildCollageEditInstruction, buildCollagePrompt, collageInputBudget, rotateInputs } from './collagePlan';
 
 describe('collagePlan', () => {
   it('prázdný prompt spadne na výchozí, vlastní se použije', () => {
@@ -7,9 +7,12 @@ describe('collagePlan', () => {
     expect(buildCollagePrompt(' moje ')).toBe('moje');
   });
 
-  it('prompt chce jedno sjednocené dílo, ne doslovnou koláž, a heslo méně je více', () => {
-    expect(COLLAGE_GENERAL_PROMPT).toContain('LESS IS MORE');
-    expect(COLLAGE_GENERAL_PROMPT).toContain('IT MUST NOT LOOK LIKE A COLLAGE');
+  it('prompt chce plynulé splynutí, ne patchwork, a výchozí dostane techniku', () => {
+    expect(COLLAGE_GENERAL_PROMPT).toContain('metamorphosis');
+    expect(COLLAGE_GENERAL_PROMPT).toContain('NEVER: patchwork');
+    expect(buildSingleSourceCollagePrompt('', pickCollageTechnique(2))).toContain('Technique:');
+    expect(buildSingleSourceCollagePrompt(' vlastní ', pickCollageTechnique(2))).toBe('vlastní');
+    expect(pickCollageTechnique(-1)).toContain('Technique:');
     expect(COLLAGE_MAX_PER_MODEL).toBe(5);
   });
 
@@ -19,7 +22,7 @@ describe('collagePlan', () => {
   });
 
   it('instrukce pro Qwen se odkazuje na číslované obrázky a vejde se do limitu 1500 znaků', () => {
-    expect(buildCollageEditInstruction(2)).toContain('merges with image 2');
+    expect(buildCollageEditInstruction(2)).toContain('melts into image 2');
     expect(buildCollageEditInstruction(3)).toContain('images 2 and 3');
     for (const n of [2, 3, 6]) expect(buildCollageEditInstruction(n).length).toBeLessThan(1500);
   });
