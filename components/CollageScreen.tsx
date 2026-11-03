@@ -626,7 +626,7 @@ export function CollageScreen(props: {
           {sources.length >= 2 ? (
             <div className="space-y-1">
               <h3 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Zpracování vstupů</h3>
-              <div className="mn-count-selector">
+              <div className="grid grid-cols-2 gap-1 pt-1">
                 {[{ value: true, label: 'Spojit do jednoho' }, { value: false, label: 'Každý zvlášť' }].map((option) => (
                   <button
                     key={option.label}
@@ -636,7 +636,7 @@ export function CollageScreen(props: {
                       setFuseInputs(option.value);
                       writeStored('collage.fuse', option.value ? '1' : '0');
                     }}
-                    className={`mn-count-option ${fuseInputs === option.value ? 'mn-count-option-active' : ''}`}
+                    className={`mn-count-option !h-8 !w-full whitespace-nowrap px-2 text-[10px] font-bold uppercase tracking-wider ${fuseInputs === option.value ? 'mn-count-option-active' : ''}`}
                   >
                     {option.label}
                   </button>
