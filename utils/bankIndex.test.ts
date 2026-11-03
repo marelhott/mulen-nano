@@ -7,6 +7,7 @@ import {
   emptyBankIndex,
   filterItems,
   findDuplicate,
+  shuffleItems,
   folderPath,
   moveFolder,
   moveItems,

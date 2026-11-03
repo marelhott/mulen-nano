@@ -1,6 +1,6 @@
 import React from 'react';
 import { InfiniteSentinel } from './InfiniteSentinel';
-import { Check, FileText, FolderPlus, Link as LinkIcon, Maximize2, Plus, Search, Trash2, Upload, X } from 'lucide-react';
+import { Check, FileText, FolderPlus, Link as LinkIcon, Maximize2, Plus, Search, Shuffle, Trash2, Upload, X } from 'lucide-react';
 import { BankImagePreview } from './BankImagePreview';
 import {
   BANK_INBOX_ID,
@@ -8,6 +8,7 @@ import {
   deleteFolder,
   emptyBankIndex,
   filterItems,
+  shuffleItems,
   folderPath,
   moveFolder,
   moveItems,
@@ -312,6 +313,7 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
   const [loaded, setLoaded] = React.useState(false);
   const [folderId, setFolderId] = React.useState<string | null>(null);
   const [tag, setTag] = React.useState<string | null>(null);
+  const [shuffleSeed, setShuffleSeed] = React.useState<number | null>(null);
   const [kind, setKind] = React.useState<BankItemKind | null>(null);
   const [query, setQuery] = React.useState('');
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
@@ -396,7 +398,10 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
   }, [reload]);
 
   const scopeItems = React.useMemo(() => filterItems(index, { folderId, kind, query }), [index, folderId, kind, query]);
-  const items = React.useMemo(() => (tag ? scopeItems.filter((item) => item.tags.includes(tag)) : scopeItems), [scopeItems, tag]);
+  const items = React.useMemo(() => {
+    const filtered = tag ? scopeItems.filter((item) => item.tags.includes(tag)) : scopeItems;
+    return shuffleSeed === null ? filtered : shuffleItems(filtered, shuffleSeed);
+  }, [scopeItems, tag, shuffleSeed]);
   const tags = React.useMemo(() => tagCounts(scopeItems), [scopeItems]);
   const shown = items.slice(0, visible);
   const selected = selectedId ? index.items.find((item) => item.id === selectedId) ?? null : null;
@@ -776,6 +781,8 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
             <input type="range" min={128} max={320} step={16} value={thumbnailSize} aria-label="Velikost náhledů" onChange={(event) => setThumbnailSize(Number(event.target.value))} className="w-28 accent-[var(--accent)]" />
           </label>
           <button type="button" onClick={() => setChecked(items.filter((item) => !props.onChoose || item.kind === 'image').map((item) => item.id).slice(0, props.onChoose && !props.multiple ? 1 : undefined))}>Vybrat vše</button>
+          <button type="button" aria-pressed={shuffleSeed !== null} title={shuffleSeed === null ? 'Zobrazit v náhodném pořadí' : 'Zamíchat znovu'} onClick={() => { setShuffleSeed(Math.floor(Math.random() * 2 ** 31)); setVisible(PAGE_SIZE); }} className={`flex items-center gap-1 ${shuffleSeed !== null ? 'font-bold text-[var(--accent)]' : ''}`}><Shuffle className="h-3.5 w-3.5" aria-hidden="true" />{shuffleSeed === null ? 'Náhodně' : 'Zamíchat znovu'}</button>
+          {shuffleSeed !== null && <button type="button" onClick={() => { setShuffleSeed(null); setVisible(PAGE_SIZE); }}>Podle času</button>}
           <button type="button" onClick={() => setChecked([])}>Zrušit výběr ({checked.length})</button>
           <select aria-label="Cílová složka" value={moveTarget} onChange={(e) => setMoveTarget(e.target.value)} className="min-w-0 max-w-48 bg-[var(--bg-panel)] p-1">
             {flattenFolders(index).map(({ folder, depth }) => <option key={folder.id} value={folder.id}>{'– '.repeat(depth)}{folder.name}</option>)}

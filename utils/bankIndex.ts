@@ -166,6 +166,16 @@ export function filterItems(index: BankIndex, filter: BankFilter): BankItem[] {
     .sort((a, b) => b.createdAt - a.createdAt);
 }
 
+/** Stabilní náhodné pořadí: stejné `seed` dá stejné pořadí, takže se mřížka nepřeskládá při každém překreslení. */
+export function shuffleItems<T extends { id: string }>(items: T[], seed: number): T[] {
+  const rank = (id: string) => {
+    let hash = (seed ^ 2166136261) >>> 0;
+    for (let i = 0; i < id.length; i += 1) hash = Math.imul(hash ^ id.charCodeAt(i), 16777619) >>> 0;
+    return hash;
+  };
+  return items.map((item) => ({ item, key: rank(item.id) })).sort((a, b) => a.key - b.key || (a.item.id < b.item.id ? -1 : 1)).map(({ item }) => item);
+}
+
 /** Štítky s počtem použití, nejčastější první. */
 export function tagCounts(items: BankItem[]): Array<{ tag: string; count: number }> {
   const counts = new Map<string, number>();
