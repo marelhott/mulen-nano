@@ -15,13 +15,11 @@ import { buildBatchRecipe } from '../utils/generationRecipe';
 import { toUserFacingAiError } from '../utils/aiErrorMessage';
 import { decideAdaptiveConcurrency, estimateDataUrlBytes, runConcurrentTasks } from '../utils/concurrencyRunner';
 import { readImageAspectRatio } from '../utils/imageAspect';
-import { serverProviderProxy } from '../services/serverProviderProxy';
 import { prepareIndependentImages, prepareReferenceImages } from '../utils/multiImageInput';
 import {
   COLLAGE_MAX_PER_MODEL,
   COLLAGE_MAX_SOURCES,
   COLLAGE_MIN_SOURCES,
-  COLLAGE_FIDELITY_TAIL,
   COLLAGE_GENERAL_PROMPT,
   buildCollageEditInstruction,
   buildCollagePrompt,
@@ -515,20 +513,12 @@ export function CollageScreen(props: {
     const runCreatedAt = Date.now();
     const runSources = sources.map(({ name, dataUrl, mimeType }) => ({ name, dataUrl, mimeType }));
     runSourcesRef.current = runSources;
-    // Vizuální model nejdřív vymyslí jeden konkrétní koncept spojení; ten dostanou všechny modely.
-    let concept = '';
-    if (fuse && customPrompt.trim().length === 0) {
-      try {
-        const refs = await prepareReferenceImages(runSources);
-        concept = (await serverProviderProxy.composeCollageConcept(refs)).trim();
-      } catch {
-        concept = '';
-      }
-    }
-    const technique = () => pickCollageTechnique(Math.floor(Math.random() * 1000));
+    // Každý model dostane jinou techniku (od náhodného začátku), aby se výsledky lišily.
+    const techniqueStart = Math.floor(Math.random() * 1000);
+    const technique = (modelId: VariantModelId) => pickCollageTechnique(techniqueStart + VARIANT_MODELS.findIndex((m) => m.id === modelId));
     const fusePrompt = (modelId: VariantModelId) => {
       if (customPrompt.trim().length > 0) return customPrompt.trim();
-      const body = concept ? `${concept}\n\n${COLLAGE_FIDELITY_TAIL}` : `${COLLAGE_GENERAL_PROMPT}\n\n${technique()}`;
+      const body = `${COLLAGE_GENERAL_PROMPT}\n\n${technique(modelId)}`;
       return isInstructionEditModel(variantModelById(modelId).model) ? `${buildCollageEditInstruction(runSources.length)}\n\n${body}` : body;
     };
     const pending: VariantOutput[] = fuse

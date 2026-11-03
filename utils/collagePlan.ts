@@ -39,6 +39,7 @@ FIDELITY RULES (most important):
 HOW THEY MERGE:
 - through what they already share: a matching tone, a line that continues from one image into the other, a similar shape, the same direction of light
 - a soft, semi-transparent blend (like a careful double exposure) or a gradual dissolve exactly where the shared tone or line is, not a hard edge
+- the entering subject must belong to the carrier's space: matching scale, perspective, light direction and shadows, with edges that dissolve into the surroundings instead of sitting on top of them
 - one consistent light and perspective across the whole picture
 - the rest of the picture stays calm and untouched; less is more
 
