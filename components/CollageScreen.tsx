@@ -14,13 +14,17 @@ import { ImageDatabase } from '../utils/imageDatabase';
 import { buildBatchRecipe } from '../utils/generationRecipe';
 import { toUserFacingAiError } from '../utils/aiErrorMessage';
 import { decideAdaptiveConcurrency, estimateDataUrlBytes, runConcurrentTasks } from '../utils/concurrencyRunner';
-import { prepareIndependentImages } from '../utils/multiImageInput';
+import { prepareIndependentImages, prepareReferenceImages } from '../utils/multiImageInput';
 import {
   COLLAGE_MAX_PER_MODEL,
   COLLAGE_MAX_SOURCES,
   COLLAGE_MIN_SOURCES,
+  COLLAGE_GENERAL_PROMPT,
+  buildCollageEditInstruction,
+  buildCollagePrompt,
   buildSingleSourceCollagePrompt,
   pickCollageTechnique,
+  rotateInputs,
 } from '../utils/collagePlan';
 import {
   deleteCollageRun,
@@ -32,7 +36,7 @@ import {
   saveCollageRun,
   type CollageRunRecord,
 } from '../utils/collageHistoryDB';
-import { VARIANT_MODELS, formatVariantsDate, planBatchVariantTasks, variantModelById, type VariantModelId } from '../utils/variantsPlan';
+import { VARIANT_MODELS, formatVariantsDate, isInstructionEditModel, planBatchVariantTasks, planVariantTasks, variantModelById, type VariantModelId } from '../utils/variantsPlan';
 import type { ToastType } from './Toast';
 
 type SourceImage = { id: string; name: string; dataUrl: string; mimeType: string };
@@ -170,8 +174,12 @@ export function CollageScreen(props: {
   const savedRuns = React.useRef(new Set<string>());
   const historyWarned = React.useRef(false);
 
-  const activePrompt = React.useMemo(() => buildSingleSourceCollagePrompt(customPrompt), [customPrompt]);
-  const totalImages = sources.length * selectedModels.length * count;
+  const [fuseInputs, setFuseInputs] = React.useState<boolean>(() => readStored('collage.fuse', true, (raw) => raw !== '0'));
+  // Spojení více vstupů do jednoho díla dává smysl jen od dvou obrázků.
+  const fuse = fuseInputs && sources.length >= 2;
+  const activePrompt = React.useMemo(() => (fuse ? buildCollagePrompt(customPrompt) : buildSingleSourceCollagePrompt(customPrompt)), [customPrompt, fuse]);
+  const defaultPromptText = fuse ? COLLAGE_GENERAL_PROMPT : buildSingleSourceCollagePrompt('');
+  const totalImages = (fuse ? 1 : sources.length) * selectedModels.length * count;
   const errorCount = outputs.filter((item) => item.status === 'error').length;
   const canGenerate = sources.length >= COLLAGE_MIN_SOURCES && selectedModels.length > 0 && !isGenerating;
 
@@ -388,7 +396,8 @@ export function CollageScreen(props: {
 
   const runTasks = React.useCallback(
     async (targets: VariantOutput[], runSources: Array<{ name: string; dataUrl: string; mimeType: string }>) => {
-      const prepared = await prepareIndependentImages(runSources);
+      const fused = targets[0]?.sourceIndex === undefined;
+      const prepared = fused ? await prepareReferenceImages(runSources) : await prepareIndependentImages(runSources);
       const sizes = prepared.map((item) => estimateDataUrlBytes(item.data));
       const decision = decideAdaptiveConcurrency({ section: 'batch', itemCount: targets.length, averageBytes: sizes.reduce((a, b) => a + b, 0) / sizes.length, maxBytes: Math.max(...sizes) });
       const inputs = prepared.map((item) => ({ data: item.data, mimeType: item.mimeType }));
@@ -410,7 +419,9 @@ export function CollageScreen(props: {
         worker: async (output) => {
           const model = variantModelById(output.modelId);
           const provider = ProviderFactory.getProvider(AIProviderType.OPENROUTER, providerSettings, model.model);
-          const result = await provider.generateImage([inputs[output.sourceIndex ?? 0]], output.prompt, model.resolution, 'Original', false);
+          // Qwen Edit bere první vstup jako základ, proto se základní obrázek střídá podle varianty.
+          const ordered = fused ? (isInstructionEditModel(model.model) ? rotateInputs(inputs, output.variantIndex) : inputs) : [inputs[output.sourceIndex ?? 0]];
+          const result = await provider.generateImage(ordered, output.prompt, model.resolution, 'Original', false);
 
           setOutputs((prev) => prev.map((item) => (item.id === output.id ? { ...item, status: 'done' as const, dataUrl: result.imageBase64 } : item)));
           await persistCollage(output, result.imageBase64);
@@ -423,7 +434,7 @@ export function CollageScreen(props: {
               promptMode: 'simple',
               resolution: model.resolution ?? 'Original',
               aspectRatio: 'Original',
-              sourceImageCount: 1,
+              sourceImageCount: fused ? inputs.length : 1,
               styleImageCount: 0,
               createdAt: Date.now(),
             });
@@ -487,7 +498,7 @@ export function CollageScreen(props: {
       onToast({ message: 'Vyber aspoň jeden model.', type: 'error' });
       return;
     }
-    const incompatible = selectedModels.map((id) => imageModelInputError(variantModelById(id).model, 1)).find(Boolean);
+    const incompatible = selectedModels.map((id) => imageModelInputError(variantModelById(id).model, fuse ? sources.length : 1)).find(Boolean);
     if (incompatible) {
       onToast({ type: 'error', message: incompatible });
       return;
@@ -498,19 +509,37 @@ export function CollageScreen(props: {
     const runCreatedAt = Date.now();
     const runSources = sources.map(({ name, dataUrl, mimeType }) => ({ name, dataUrl, mimeType }));
     runSourcesRef.current = runSources;
-    const tasks = planBatchVariantTasks(selectedModels, count, runSources.length, (sourceIndex, modelId, index) => makeId(`collage-${sourceIndex}-${modelId}-${index}`));
-    const pending: VariantOutput[] = tasks.map((task, i) => ({
-      id: task.id,
-      modelId: task.modelId,
-      variantIndex: task.variantIndex,
-      sourceIndex: task.sourceIndex,
-      runId,
-      prompt: buildSingleSourceCollagePrompt(customPrompt, pickCollageTechnique(Math.floor(Math.random() * 1000) + i)),
-      status: 'pending' as const,
-      createdAt: runCreatedAt + i,
-      sourceDataUrl: runSources[task.sourceIndex].dataUrl,
-      sourceName: runSources[task.sourceIndex].name,
-    }));
+    const technique = () => pickCollageTechnique(Math.floor(Math.random() * 1000));
+    const fusePrompt = (modelId: VariantModelId) => {
+      if (customPrompt.trim().length > 0) return customPrompt.trim();
+      return isInstructionEditModel(variantModelById(modelId).model)
+        ? `${buildCollageEditInstruction(runSources.length)}\n\n${technique()}`
+        : `${COLLAGE_GENERAL_PROMPT}\n\n${technique()}`;
+    };
+    const pending: VariantOutput[] = fuse
+      ? planVariantTasks(selectedModels, count, (modelId, index) => makeId(`collage-${modelId}-${index}`)).map((task, i) => ({
+          id: task.id,
+          modelId: task.modelId,
+          variantIndex: task.variantIndex,
+          runId,
+          prompt: fusePrompt(task.modelId),
+          status: 'pending' as const,
+          createdAt: runCreatedAt + i,
+          sourceDataUrl: runSources[0].dataUrl,
+          sourceName: 'kolaz',
+        }))
+      : planBatchVariantTasks(selectedModels, count, runSources.length, (sourceIndex, modelId, index) => makeId(`collage-${sourceIndex}-${modelId}-${index}`)).map((task, i) => ({
+          id: task.id,
+          modelId: task.modelId,
+          variantIndex: task.variantIndex,
+          sourceIndex: task.sourceIndex,
+          runId,
+          prompt: buildSingleSourceCollagePrompt(customPrompt, pickCollageTechnique(Math.floor(Math.random() * 1000) + i)),
+          status: 'pending' as const,
+          createdAt: runCreatedAt + i,
+          sourceDataUrl: runSources[task.sourceIndex].dataUrl,
+          sourceName: runSources[task.sourceIndex].name,
+        }));
     const modelsUsed = VARIANT_MODELS.filter((m) => selectedModels.includes(m.id)).map((m) => m.id);
     runMeta.current.set(runId, { createdAt: runCreatedAt, sources: runSources, prompt: activePrompt, models: modelsUsed, countPerModel: count });
     const sourceThumbs = await Promise.all(runSources.map((item) => createThumbnail(item.dataUrl, 120).catch(() => '')));
@@ -533,7 +562,7 @@ export function CollageScreen(props: {
     } finally {
       setIsGenerating(false);
     }
-  }, [activePrompt, count, loadHistory, onToast, reportResult, runTasks, selectedModels, sources]);
+  }, [activePrompt, count, customPrompt, fuse, loadHistory, onToast, reportResult, runTasks, selectedModels, sources]);
 
   const handleRetryFailed = React.useCallback(async () => {
     const failedOutputs = outputs.filter((item) => item.status === 'error');
@@ -580,7 +609,7 @@ export function CollageScreen(props: {
             {isGenerating ? 'Běží…' : totalImages > 0 ? `Generovat ${totalImages} koláží` : 'Generovat'}
           </button>
           <div aria-label="Rozsah dávky" className="text-[10px] text-[var(--text-secondary)]">
-            {sources.length} vstupů × {selectedModels.length} modelů × {count} variant = {totalImages}
+            {fuse ? `${sources.length} vstupů spojených v jedno` : `${sources.length} vstupů`} × {selectedModels.length} modelů × {count} variant = {totalImages}
           </div>
 
           {errorCount > 0 && !isGenerating && (
@@ -593,8 +622,30 @@ export function CollageScreen(props: {
             </button>
           )}
 
+          {sources.length >= 2 ? (
+            <div className="space-y-1">
+              <h3 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Zpracování vstupů</h3>
+              <div className="mn-count-selector">
+                {[{ value: true, label: 'Spojit do jednoho' }, { value: false, label: 'Každý zvlášť' }].map((option) => (
+                  <button
+                    key={option.label}
+                    type="button"
+                    aria-pressed={fuseInputs === option.value}
+                    onClick={() => {
+                      setFuseInputs(option.value);
+                      writeStored('collage.fuse', option.value ? '1' : '0');
+                    }}
+                    className={`mn-count-option ${fuseInputs === option.value ? 'mn-count-option-active' : ''}`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <div className="space-y-1">
-            <h3 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Počet na model a vstup</h3>
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">{fuse ? 'Počet na model' : 'Počet na model a vstup'}</h3>
             <div className="mn-count-selector">
               {Array.from({ length: COLLAGE_MAX_PER_MODEL }, (_, i) => i + 1).map((n) => (
                 <button
@@ -690,10 +741,10 @@ export function CollageScreen(props: {
             {showPrompt ? (
               <>
                 <textarea
-                  value={customPrompt.trim().length === 0 ? buildSingleSourceCollagePrompt('') : customPrompt}
+                  value={customPrompt.trim().length === 0 ? defaultPromptText : customPrompt}
                   onChange={(e) => {
                     const value = e.target.value;
-                    const next = value === buildSingleSourceCollagePrompt('') ? '' : value;
+                    const next = value === defaultPromptText ? '' : value;
                     setCustomPrompt(next);
                     writeStored('collage.prompt', next);
                   }}
@@ -762,7 +813,7 @@ export function CollageScreen(props: {
       </section>
 
       <AtelierRightPanel onOpenLibrary={onOpenLibrary} modelSelector={false}>
-        <ImageModelSelector inputCount={1} selected={selectedModels.map((id) => variantModelById(id).model)}
+        <ImageModelSelector inputCount={fuse ? sources.length : 1} selected={selectedModels.map((id) => variantModelById(id).model)}
           onSelect={(model) => { const item = VARIANT_MODELS.find((entry) => entry.model === model); if (item) toggleModel(item.id); }} disabled={isGenerating} />
 
         <AtelierSection title="Aktivní Prompt">

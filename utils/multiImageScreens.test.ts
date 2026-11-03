@@ -69,6 +69,7 @@ describe('víceobrázkové vstupy obrazovek', () => {
       localStorage.setItem(`${section}.models`, 'gpt');
       localStorage.setItem(`${section}.count`, '1');
     }
+    localStorage.setItem('collage.fuse', '0');
     mocks.generate.mockResolvedValue({ imageBase64: 'generated-image', modelId: 'openai/gpt-image-2.5-sunburst' });
     container = document.createElement('div');
     document.body.append(container);
@@ -78,6 +79,18 @@ describe('víceobrázkové vstupy obrazovek', () => {
     await act(async () => root.unmount());
     container.remove();
     vi.unstubAllGlobals();
+  });
+
+  it('Koláž: ve výchozím režimu spojí všechny vstupy do jednoho požadavku na model', async () => {
+    localStorage.setItem('collage.fuse', '1');
+    await act(async () => root.render(React.createElement(CollageScreen, {
+      providerSettings: {} as ProviderSettings, onOpenSettings: vi.fn(), onToast: mocks.toast,
+    })));
+    await upload(3);
+    await clickButton('Generovat');
+    expect(mocks.generate).toHaveBeenCalledTimes(1);
+    expect(mocks.generate.mock.calls[0][0]).toHaveLength(3);
+    expect(mocks.generate.mock.calls[0][1]).toContain('metamorphosis');
   });
 
   for (const [name, Screen] of [['Varianty', VariantsScreen], ['Koláž', CollageScreen]] as const) {
