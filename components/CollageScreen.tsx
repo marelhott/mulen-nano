@@ -179,7 +179,8 @@ export function CollageScreen(props: {
   const fuse = fuseInputs && sources.length >= 2;
   const activePrompt = React.useMemo(() => (fuse ? buildCollagePrompt(customPrompt) : buildSingleSourceCollagePrompt(customPrompt)), [customPrompt, fuse]);
   const defaultPromptText = fuse ? COLLAGE_GENERAL_PROMPT : buildSingleSourceCollagePrompt('');
-  const totalImages = (fuse ? 1 : sources.length) * selectedModels.length * count;
+  const effectiveCount = fuse ? 1 : count;
+  const totalImages = (fuse ? 1 : sources.length) * selectedModels.length * effectiveCount;
   const errorCount = outputs.filter((item) => item.status === 'error').length;
   const canGenerate = sources.length >= COLLAGE_MIN_SOURCES && selectedModels.length > 0 && !isGenerating;
 
@@ -517,7 +518,7 @@ export function CollageScreen(props: {
         : `${COLLAGE_GENERAL_PROMPT}\n\n${technique()}`;
     };
     const pending: VariantOutput[] = fuse
-      ? planVariantTasks(selectedModels, count, (modelId, index) => makeId(`collage-${modelId}-${index}`)).map((task, i) => ({
+      ? planVariantTasks(selectedModels, 1, (modelId, index) => makeId(`collage-${modelId}-${index}`)).map((task, i) => ({
           id: task.id,
           modelId: task.modelId,
           variantIndex: task.variantIndex,
@@ -609,7 +610,7 @@ export function CollageScreen(props: {
             {isGenerating ? 'Běží…' : totalImages > 0 ? `Generovat ${totalImages} koláží` : 'Generovat'}
           </button>
           <div aria-label="Rozsah dávky" className="text-[10px] text-[var(--text-secondary)]">
-            {fuse ? `${sources.length} vstupů spojených v jedno` : `${sources.length} vstupů`} × {selectedModels.length} modelů × {count} variant = {totalImages}
+            {fuse ? `${sources.length} vstupů → 1 výstup × ${selectedModels.length} modelů = ${totalImages}` : `${sources.length} vstupů × ${selectedModels.length} modelů × ${count} variant = ${totalImages}`}
           </div>
 
           {errorCount > 0 && !isGenerating && (
@@ -644,6 +645,7 @@ export function CollageScreen(props: {
             </div>
           ) : null}
 
+          {fuse ? null : (
           <div className="space-y-1">
             <h3 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">{fuse ? 'Počet na model' : 'Počet na model a vstup'}</h3>
             <div className="mn-count-selector">
@@ -662,6 +664,7 @@ export function CollageScreen(props: {
               ))}
             </div>
           </div>
+          )}
 
           <div className="space-y-1">
             <h3 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
