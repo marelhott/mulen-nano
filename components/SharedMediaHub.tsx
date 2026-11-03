@@ -31,6 +31,9 @@ function Feed(props: { onToast: (toast: Toast) => void; onChoose?: (files: File[
   const [section, setSection] = useState('');
   const [visible, setVisible] = useState(80);
   const [preview, setPreview] = useState<GalleryImage | null>(null);
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
+  const toggle = (id: string) => setChecked((current) => { const next = new Set(current); if (!next.delete(id)) next.add(id); return next; });
   const download = async (image: GalleryImage) => {
     try {
       const response = await fetch(image.url);
@@ -51,6 +54,21 @@ function Feed(props: { onToast: (toast: Toast) => void; onChoose?: (files: File[
     const refresh = setInterval(changed, 4 * 60 * 1000);
     return () => { clearTimeout(timer); clearInterval(refresh); window.removeEventListener(MEDIA_CHANGED_EVENT, changed); window.removeEventListener(BANK_CHANGED_EVENT, changed); };
   }, [reload]);
+  const removeChecked = async () => {
+    const ids = [...checked];
+    if (!ids.length || !window.confirm(`Smazat ${ids.length} vybraných výsledků i z R2?`)) return;
+    setDeleting(true);
+    let failed = 0;
+    let lastError = '';
+    // Sekvenčně: každé smazání přepisuje sdílený index knihovny.
+    for (const id of ids) {
+      try { await deleteImage(id); setChecked((current) => { const next = new Set(current); next.delete(id); return next; }); }
+      catch (error) { failed += 1; lastError = error instanceof Error ? error.message : 'Smazání selhalo.'; }
+    }
+    await reload();
+    setDeleting(false);
+    props.onToast(failed ? { message: `Smazáno ${ids.length - failed}, selhalo ${failed}. ${lastError}`, type: 'error' } : { message: `Smazáno: ${ids.length}`, type: 'success' });
+  };
   const label = (image: GalleryImage) => String(image.params?.section || image.params?.operation || 'Nano');
   const sections = [...new Set(images.map(label))];
   const filtered = images.filter((image) => (!section || label(image) === section) && image.prompt.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
@@ -64,12 +82,16 @@ function Feed(props: { onToast: (toast: Toast) => void; onChoose?: (files: File[
       <input aria-label="Hledat ve výsledcích" placeholder="Hledat podle promptu" value={query} onChange={(e) => { setQuery(e.target.value); setVisible(80); }} className="min-w-0 flex-1 bg-transparent p-1 text-[var(--text-primary)]" />
       <select aria-label="Sekce výsledků" value={section} onChange={(e) => { setSection(e.target.value); setVisible(80); }} className="bg-[var(--bg-panel)] text-[var(--text-primary)]"><option value="">Všechny sekce</option>{sections.map((name) => <option key={name}>{name}</option>)}</select>
       <span className="text-[var(--text-secondary)]">{filtered.length} výsledků</span>
+      <button type="button" disabled={deleting || !filtered.length} onClick={() => setChecked(new Set(filtered.map((image) => image.id)))}>Vybrat vše</button>
+      <button type="button" disabled={deleting || !checked.size} onClick={() => setChecked(new Set())}>Zrušit výběr ({checked.size})</button>
+      <button type="button" disabled={deleting || !checked.size} onClick={() => void removeChecked()} className="flex items-center gap-1 text-red-400 disabled:opacity-40"><Trash2 className="h-4 w-4" aria-hidden="true" />{deleting ? 'Mažu…' : `Smazat vybrané (${checked.size})`}</button>
     </div>
     <div className="min-h-0 flex-1 overflow-auto p-4 sm:p-6 custom-scrollbar">
       {!filtered.length && <p className="py-12 text-center text-sm text-[var(--text-secondary)]">{loading ? 'Načítám…' : 'Zatím žádné výsledky.'}</p>}
       {[...groups.entries()].map(([id, group]) => <section key={id} className="mb-6">
         <h3 className="mb-2 text-[10px] text-[var(--text-secondary)]">{new Date(Math.max(...group.map((image) => image.timestamp))).toLocaleString('cs-CZ', { dateStyle: 'short', timeStyle: 'short' })} · {label(group[0])}</h3>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{group.map((image) => <article key={image.id} className="min-w-0 overflow-hidden rounded-md border border-[var(--border-color)]">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{group.map((image) => <article key={image.id} className={`relative min-w-0 overflow-hidden rounded-md border ${checked.has(image.id) ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]' : 'border-[var(--border-color)]'}`}>
+          <input type="checkbox" checked={checked.has(image.id)} disabled={deleting} onChange={() => toggle(image.id)} aria-label={`Vybrat: ${image.prompt}`} className="absolute left-2 top-2 z-[1] h-5 w-5 accent-[var(--accent)]" />
           <button type="button" className="block aspect-square w-full" onClick={() => setPreview(image)} aria-label={`Zvětšit: ${image.prompt}`}><img src={image.thumbnail || image.url} alt={image.prompt} loading="lazy" className="h-full w-full object-cover" /></button>
           <div className="flex items-center gap-2 p-2 text-[11px] text-[var(--text-secondary)]"><span className="min-w-0 flex-1 truncate" title={image.prompt}>{image.prompt}</span>
             <button type="button" onClick={() => void download(image)} title="Stáhnout originál" className="p-1"><Download className="h-4 w-4" /></button>
