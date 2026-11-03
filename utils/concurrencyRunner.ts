@@ -61,11 +61,20 @@ export function isRetriableNetworkError(error: unknown): boolean {
   ].some((part) => message.includes(part));
 }
 
+/** OpenRouter rezervuje kredit pro každý běžící požadavek; při souběhu může část dočasně odmítnout, dokud ostatní nedoběhnou. */
+export function isCreditHoldError(error: unknown): boolean {
+  const message = String(error instanceof Error ? error.message : error || '').toLowerCase();
+  return message.includes('in-flight requests') || message.includes('exceed your available credits');
+}
+
+const CREDIT_HOLD_MAX_ATTEMPTS = 6;
+const CREDIT_HOLD_DELAY_MS = 8000;
+
 export function defaultRetryPolicy(overrides?: Partial<RetryPolicy>): RetryPolicy {
   return {
     maxAttempts: overrides?.maxAttempts ?? 3,
     baseDelayMs: overrides?.baseDelayMs ?? 900,
-    shouldRetry: overrides?.shouldRetry ?? isRetriableNetworkError,
+    shouldRetry: overrides?.shouldRetry ?? ((error) => isRetriableNetworkError(error) || isCreditHoldError(error)),
   };
 }
 
@@ -175,8 +184,9 @@ export async function runConcurrentTasks<TItem, TResult>(params: {
           emitProgress();
           break;
         } catch (error) {
+          const creditHold = isCreditHoldError(error);
           const canRetry =
-            attempt < retry.maxAttempts &&
+            attempt < (creditHold ? Math.max(retry.maxAttempts, CREDIT_HOLD_MAX_ATTEMPTS) : retry.maxAttempts) &&
             Boolean(retry.shouldRetry?.(error));
 
           if (isRetryAttempt) retrying -= 1;
@@ -185,7 +195,7 @@ export async function runConcurrentTasks<TItem, TResult>(params: {
           if (canRetry) {
             params.onTaskStateChange?.({ index, attempt, status: 'retrying', error });
             emitProgress();
-            const delayMs = (retry.baseDelayMs ?? 900) * attempt;
+            const delayMs = (creditHold ? CREDIT_HOLD_DELAY_MS : (retry.baseDelayMs ?? 900)) * attempt;
             await sleep(delayMs);
             continue;
           }

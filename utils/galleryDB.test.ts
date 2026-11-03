@@ -5,7 +5,7 @@ vi.mock('../services/bankService', () => ({ hasBankToken: mocks.token, loadBankI
 vi.mock('./variantsHistoryDB', () => ({ deleteVariantsImage: vi.fn() }));
 vi.mock('./collageHistoryDB', () => ({ deleteCollageImage: vi.fn() }));
 vi.mock('../services/mediaSync', () => ({ mediaChanged: vi.fn(), syncGeneratedRecord: mocks.sync, waitForGeneratedSync: mocks.wait }));
-import { notifyGeneratedImagesDeleted } from './generatedImageEvents';
+import { isGeneratedImageDeleted, notifyGeneratedImagesDeleted } from './generatedImageEvents';
 import { deleteImage, getAllImages, saveToGallery } from './galleryDB';
 beforeEach(() => {
   vi.clearAllMocks(); mocks.token.mockReturnValue(true); mocks.list.mockResolvedValue([]); mocks.index.mockResolvedValue({ items: [] }); mocks.urls.mockResolvedValue({ 'items/a.png': 'signed-original', 'thumbs/a.jpg': 'signed-thumb' }); mocks.deleteBank.mockResolvedValue(undefined);
@@ -42,6 +42,18 @@ describe('Společný feed', () => {
     expect(mocks.wait).toHaveBeenCalledWith('a');
     expect(mocks.deleteBank).toHaveBeenCalledWith(['cloud-a'], 'feed');
     expect(mocks.remove).toHaveBeenCalledWith('a');
+  });
+  it('výsledek zmizí hned, i když upload ještě běží, a při selhání úklidu se vrátí', async () => {
+    let finish!: () => void;
+    mocks.wait.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+    mocks.deleteBank.mockRejectedValueOnce(new Error('R2 spadlo'));
+    mocks.index.mockResolvedValue({ items: [{ id: 'cloud-z', galleryId: 'z' }] });
+    const pending = deleteImage('z');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(isGeneratedImageDeleted('z')).toBe(true);
+    finish();
+    await expect(pending).rejects.toThrow('R2 spadlo');
+    expect(isGeneratedImageDeleted('z')).toBe(false);
   });
   it('smazání během přípravy obrázku zabrání pozdnímu uploadu do R2', async () => {
     let finish!: (blob: Blob) => void;

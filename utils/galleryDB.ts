@@ -1,5 +1,5 @@
 import { removeGeneratedImageCopies } from './generatedImageDeletion';
-import { isGeneratedImageDeleted } from './generatedImageEvents';
+import { isGeneratedImageDeleted, notifyGeneratedImagesDeleted, unmarkGeneratedImagesDeleted } from './generatedImageEvents';
 import { clearGeneratedLibraryImages, getGeneratedLibraryImageRecord, listGeneratedLibraryImages, resolveBlobFromSource, saveGeneratedLibraryImage, type SingleUserGeneratedImage } from './singleUserMediaStore';
 import { dispatchCloudSyncEvent } from './cloudSyncEvents';
 import { deleteBankItems, getBankUrls, hasBankToken, loadBankIndex } from '../services/bankService';
@@ -93,15 +93,21 @@ export const getAllImages = async (): Promise<GalleryImage[]> => {
 };
 
 export const deleteImage = async (id: string): Promise<void> => {
-  await waitForGeneratedSync(id);
   const existing = await getGeneratedLibraryImageRecord(id);
-  if (hasBankToken()) {
-    const index = await loadBankIndex('feed');
-    await deleteBankItems(index.items.filter((item) => item.galleryId === id).map((item) => item.id), 'feed');
-  } else if (existing?.remoteStoragePath?.startsWith('r2:')) {
-    throw new Error('Pro smazání z R2 odemkni knihovnu.');
+  if (!hasBankToken() && existing?.remoteStoragePath?.startsWith('r2:')) throw new Error('Pro smazání z R2 odemkni knihovnu.');
+  // Výsledek zmizí ze všech obrazovek hned; úklid v R2 počká na případný rozběhnutý upload a dobíhá potom.
+  notifyGeneratedImagesDeleted([id]);
+  try {
+    await waitForGeneratedSync(id);
+    if (hasBankToken()) {
+      const index = await loadBankIndex('feed');
+      await deleteBankItems(index.items.filter((item) => item.galleryId === id).map((item) => item.id), 'feed');
+    }
+    await removeGeneratedImageCopies([id]);
+  } catch (error) {
+    unmarkGeneratedImagesDeleted([id]);
+    throw error;
   }
-  await removeGeneratedImageCopies([id]);
   mediaChanged();
 };
 

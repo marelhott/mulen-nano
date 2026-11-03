@@ -30,6 +30,10 @@ export function toUserFacingAiError(error: unknown, fallback = 'Generování sel
     return 'Vybraný model vyčerpal kvótu u Google AI Studio. Jiné modely mohou dál fungovat. Zkus to později; další pokusy mohou narazit na stejný limit.';
   }
 
+  if (normalized.includes('in-flight requests') || normalized.includes('exceed your available credits')) {
+    return 'Kredit je dočasně zablokovaný souběžnými požadavky (OpenRouter si rezervuje kredit u každého běžícího obrázku). Aplikace to zkouší znovu; pokud to nepomůže, generuj méně obrázků najednou nebo dobij kredit.';
+  }
+
   if (normalized.includes('429') || normalized.includes('rate limit') || normalized.includes('resource_exhausted')) {
     return 'Provider je teď přetížený nebo jsi narazil na limit. Počkej chvíli a zkus to znovu.';
   }

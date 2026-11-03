@@ -20,6 +20,13 @@ export function notifyGeneratedImagesDeleted(ids: string[]): void {
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(GENERATED_IMAGES_DELETED_EVENT, { detail: ids }));
 }
 
+/** Vrátí výsledek, jehož smazání v R2 selhalo, aby se po obnovení zase zobrazil. */
+export function unmarkGeneratedImagesDeleted(ids: string[]): void {
+  isGeneratedImageDeleted(ids[0] ?? '');
+  ids.forEach((id) => deleted.delete(id));
+  try { if (typeof window !== 'undefined') localStorage.setItem(DELETED_KEY, JSON.stringify([...deleted])); } catch { /* Úložiště může být plné. */ }
+}
+
 export function subscribeToGeneratedImageDeletion(listener: (ids: Set<string>) => void): () => void {
   const changed = (event: Event) => listener(new Set((event as CustomEvent<string[]>).detail));
   const storage = (event: StorageEvent) => {

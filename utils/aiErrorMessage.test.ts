@@ -29,3 +29,10 @@ describe('toUserFacingAiError', () => {
     expect(toUserFacingAiError('')).toBe('Generování selhalo. Zkus to prosím znovu.');
   });
 });
+
+describe('kredit zablokovaný souběžnými požadavky', () => {
+  const message = 'This request would exceed your available credits given your current in-flight requests. Retry after in-flight requests settle, or add credits.';
+  it('rozpozná chybu a vrátí srozumitelnou hlášku', () => {
+    expect(toUserFacingAiError(new Error(message))).toContain('souběžnými požadavky');
+  });
+});
