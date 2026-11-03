@@ -55,6 +55,7 @@ export function bankLogout(): void {
     // úložiště může být zakázané
   }
   urlCache.clear();
+  precheck = null;
   notify(BANK_AUTH_EVENT);
 }
 
@@ -112,17 +113,37 @@ export async function loadBankIndex(space: BankSpace = 'library'): Promise<BankI
   return normalizeBankIndex(index);
 }
 
+// Index pro rychlou kontrolu duplicit během jedné dávky nahrávání; konečné rozhodnutí vždy dělá zápis indexu.
+const PRECHECK_TTL_MS = 20_000;
+let precheck: { space: string; at: number; promise: Promise<BankIndex> } | null = null;
+
+/** Zahodí zapamatovaný index; volá se na začátku každé dávky nahrávání. */
+export function resetBankUploadCache(): void {
+  precheck = null;
+}
+
+function loadIndexForPrecheck(space: BankSpace | undefined): Promise<BankIndex> {
+  const key = space ?? 'library';
+  if (precheck?.space === key && Date.now() - precheck.at < PRECHECK_TTL_MS) return precheck.promise;
+  const promise = loadBankIndex(space);
+  const entry = { space: key, at: Date.now(), promise };
+  precheck = entry;
+  promise.catch(() => { if (precheck === entry) precheck = null; });
+  return promise;
+}
+
 // Všechny zápisy jdou jedním řetězem, aby si vlastní souběžné změny nepřekážely.
 let writeChain: Promise<unknown> = Promise.resolve();
 
 /** Načte čerstvý index, aplikuje změnu a uloží; při souběhu s jiným klientem změnu zopakuje nad novějším stavem. */
-export function mutateBank(mutator: (index: BankIndex) => BankIndex, space: BankSpace = 'library'): Promise<BankIndex> {
+export function mutateBank(mutator: (index: BankIndex) => BankIndex, space: BankSpace = 'library', opts: { keepPrecheck?: boolean } = {}): Promise<BankIndex> {
   const run = async (): Promise<BankIndex> => {
     let current = await loadBankIndex(space);
     for (let attempt = 0; attempt <= MAX_CONFLICT_RETRIES; attempt += 1) {
       const next = normalizeBankIndex({ ...mutator(current), rev: current.rev + 1 });
       try {
         await call({ op: 'index-put', index: next, space });
+        if (!opts.keepPrecheck) precheck = null;
         notify(BANK_CHANGED_EVENT);
         return next;
       } catch (error: any) {
@@ -209,15 +230,72 @@ export async function hashBankFile(file: Blob): Promise<string> {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+type CommitEntry = { item: BankItem; retained: BankItem; replaced: BankItem[]; done: (entry: CommitEntry) => void; fail: (error: unknown) => void };
+const commitQueues = new Map<string, CommitEntry[]>();
+
+/** Položky nahrané souběžně se zapíšou do indexu jednou změnou místo jedné změny na soubor. */
+export function commitBankItem(item: BankItem, space: BankSpace | undefined): Promise<CommitEntry> {
+  const key = space ?? 'library';
+  return new Promise<CommitEntry>((resolve, reject) => {
+    const entry: CommitEntry = { item, retained: item, replaced: [], done: resolve, fail: reject };
+    const queued = commitQueues.get(key);
+    if (queued) { queued.push(entry); return; }
+    const batch = [entry];
+    commitQueues.set(key, batch);
+    const release = () => { if (commitQueues.get(key) === batch) commitQueues.delete(key); };
+    mutateBank((index) => {
+      release();
+      let next = index;
+      for (const queuedEntry of batch) {
+        const existing = findDuplicate(next, queuedEntry.item);
+        if (existing) {
+          queuedEntry.retained = existing;
+          queuedEntry.replaced = [];
+          continue;
+        }
+        queuedEntry.retained = queuedEntry.item;
+        // Nová editace stejného výsledku nahradí jeho předchozí verzi ve feedu.
+        const galleryId = queuedEntry.item.galleryId;
+        queuedEntry.replaced = galleryId ? next.items.filter((candidate) => candidate.galleryId === galleryId) : [];
+        const base = galleryId ? { ...next, items: next.items.filter((candidate) => candidate.galleryId !== galleryId) } : next;
+        next = addItem(base, queuedEntry.item);
+      }
+      return next;
+    }, space, { keepPrecheck: true }).then(
+      () => batch.forEach((queuedEntry) => queuedEntry.done(queuedEntry)),
+      (error) => { release(); batch.forEach((queuedEntry) => queuedEntry.fail(error)); },
+    );
+  });
+}
+
+// Stejný obsah nahrávaný souběžně (dvakrát ve výběru) se přenese jen jednou.
+const inflightUploads = new Map<string, Promise<BankItem>>();
+
 export async function uploadBankImage(file: File, opts: {
   folderId: string; tags?: string[]; source?: string; space?: BankSpace;
   galleryId?: string; generation?: BankItem['generation']; createdAt?: number;
 }): Promise<BankItem & { reused?: boolean }> {
   if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) throw new Error('Podporované obrázky: JPEG, PNG, WebP a GIF.');
   if (!file.size || file.size > 40 * 1024 * 1024) throw new Error('Obrázek musí být menší než 40 MB.');
-  const [contentHash, current] = await Promise.all([hashBankFile(file), loadBankIndex(opts.space)]);
+  const [contentHash, current] = await Promise.all([hashBankFile(file), loadIndexForPrecheck(opts.space)]);
   const duplicate = findDuplicate(current, { contentHash, galleryId: opts.galleryId });
   if (duplicate) return { ...duplicate, reused: true };
+  const inflightKey = opts.galleryId ? '' : `${opts.space ?? 'library'}:${contentHash}`;
+  const running = inflightKey ? inflightUploads.get(inflightKey) : undefined;
+  if (running) return { ...(await running), reused: true };
+  const upload = transferAndCommit(file, contentHash, opts);
+  if (inflightKey) {
+    inflightUploads.set(inflightKey, upload);
+    const clear = () => { if (inflightUploads.get(inflightKey) === upload) inflightUploads.delete(inflightKey); };
+    upload.then(clear, clear);
+  }
+  return await upload;
+}
+
+async function transferAndCommit(file: File, contentHash: string, opts: {
+  folderId: string; tags?: string[]; source?: string; space?: BankSpace;
+  galleryId?: string; generation?: BankItem['generation']; createdAt?: number;
+}): Promise<BankItem & { reused?: boolean }> {
   const [{ blob: thumb, width, height }, slot] = await Promise.all([makeThumbnail(file), call<{ id: string; itemKey: string; thumbKey: string; itemUrl: string; thumbUrl: string }>({
     op: 'upload-url',
     contentType: file.type,
@@ -244,38 +322,25 @@ export async function uploadBankImage(file: File, opts: {
     height,
     folderId: opts.folderId,
     tags: opts.tags ?? [],
-    createdAt: Date.now(),
+    createdAt: opts.createdAt ?? Date.now(),
     source: opts.source ?? 'počítač',
     contentHash,
     fileName: file.name,
     galleryId: opts.galleryId,
     generation: opts.generation,
   };
-  item.createdAt = opts.createdAt ?? item.createdAt;
-  let retained = item;
-  let replaced: BankItem[] = [];
+  let committed: CommitEntry;
   try {
-    await mutateBank((index) => {
-      const existing = findDuplicate(index, item);
-      if (existing) {
-        retained = existing;
-        return index;
-      }
-      retained = item;
-      // Nová editace stejného výsledku nahradí jeho předchozí verzi ve feedu.
-      replaced = item.galleryId ? index.items.filter((entry) => entry.galleryId === item.galleryId) : [];
-      const base = item.galleryId ? { ...index, items: index.items.filter((entry) => entry.galleryId !== item.galleryId) } : index;
-      return addItem(base, item);
-    }, opts.space);
+    committed = await commitBankItem(item, opts.space);
   } catch (error) {
     void deleteBankObjects([slot.itemKey, slot.thumbKey]).catch(() => undefined);
     throw error;
   }
-  if (retained.id !== item.id) {
+  if (committed.retained.id !== item.id) {
     await deleteBankObjects([slot.itemKey, slot.thumbKey]).catch(() => undefined);
-    return { ...retained, reused: true };
+    return { ...committed.retained, reused: true };
   }
-  const oldKeys = replaced.flatMap((entry) => [entry.itemKey, entry.thumbKey].filter((key): key is string => Boolean(key)));
+  const oldKeys = committed.replaced.flatMap((entry) => [entry.itemKey, entry.thumbKey].filter((key): key is string => Boolean(key)));
   if (oldKeys.length) await deleteBankObjects(oldKeys).catch(() => undefined);
   return item;
 }

@@ -34,6 +34,7 @@ import {
   hasBankToken,
   loadBankIndex,
   mutateBank,
+  resetBankUploadCache,
   uploadBankImage,
   type BankStatus,
 } from '../services/bankService';
@@ -456,6 +457,7 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
       if (images.length < files.length) onToast({ message: 'Některé soubory nejsou JPEG, PNG, WebP ani GIF, přeskočeno.', type: 'warning' });
       if (images.length === 0) return;
       uploadBusy.current = true;
+      resetBankUploadCache();
       const target = folderId ?? BANK_INBOX_ID;
       let ok = 0;
       let duplicates = 0;
@@ -468,7 +470,7 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
       });
       setPendingUploads(pending);
       try {
-        await runConcurrentTasks({ items: pending, concurrency: 3, retry: { maxAttempts: 1 }, worker: async (entry) => {
+        await runConcurrentTasks({ items: pending, concurrency: 6, retry: { maxAttempts: 1 }, worker: async (entry) => {
           setPendingUploads((current) => current.map((item) => item.id === entry.id ? { ...item, running: true } : item));
           const file = entry.file;
           try {
@@ -764,7 +766,7 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
 
         {uploading ? (
           <div className="border-b border-[var(--border-color)] px-5 py-1.5 text-[9px] font-bold uppercase tracking-widest text-[var(--accent)]">
-            Dokončeno {uploading.done}/{uploading.total} · až 3 současně
+            Dokončeno {uploading.done}/{uploading.total} · až 6 současně
           </div>
         ) : null}
 
