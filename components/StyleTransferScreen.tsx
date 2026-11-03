@@ -89,9 +89,13 @@ export function StyleTransferScreen(props: {
   const [highRes, setHighRes] = React.useState(false);
   const [preserveColors, setPreserveColors] = React.useState(false);
   const [outputs, setOutputs] = React.useState<OutputItem[]>([]);
+  const outputsRef = React.useRef(outputs);
+  outputsRef.current = outputs;
   useGeneratedImageDeletion((ids) => {
+    // Náhled zavřít jen tehdy, když se maže právě ten zvětšený výsledek.
+    const gone = outputsRef.current.filter((image) => ids.has(image.id)).map((image) => image.url);
     setOutputs((prev) => prev.filter((image) => !ids.has(image.id)));
-    setLightboxUrl(null);
+    setLightboxUrl((prev) => (prev && gone.includes(prev) ? null : prev));
   });
   const [lightboxUrl, setLightboxUrl] = React.useState<string | null>(null);
   const mountedRef = React.useRef(true);

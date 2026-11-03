@@ -68,7 +68,7 @@ export type VariantOutput = {
 
 type HistoryRun = { run: VariantsRunRecord; items: VariantOutput[] };
 
-type Preview = { generated: string; original: string | null; prompt: string; createdAt: number };
+type Preview = { id?: string; generated: string; original: string | null; prompt: string; createdAt: number };
 
 type RunMeta = {
   sources: SourceImage[];
@@ -380,7 +380,7 @@ export function VariantsScreen(props: {
   useGeneratedImageDeletion((ids) => {
     setOutputs((prev) => prev.filter((item) => !ids.has(item.id)));
     setHistory((prev) => prev.map((entry) => ({ ...entry, items: entry.items.filter((item) => !ids.has(item.id)) })).filter((entry) => entry.items.length > 0));
-    setPreview(null);
+    setPreview((prev) => (prev?.id && ids.has(prev.id) ? null : prev));
   });
 
   const handleDeleteImage = React.useCallback(
@@ -431,7 +431,7 @@ export function VariantsScreen(props: {
   const handleOpen = React.useCallback(
     async (output: VariantOutput) => {
       if (output.dataUrl) {
-        setPreview({ generated: output.dataUrl, original: output.sourceDataUrl || null, prompt: output.prompt, createdAt: output.createdAt });
+        setPreview({ id: output.id, generated: output.dataUrl, original: output.sourceDataUrl || null, prompt: output.prompt, createdAt: output.createdAt });
         return;
       }
       try {
@@ -440,7 +440,7 @@ export function VariantsScreen(props: {
           onToast({ message: 'Plný obrázek už v historii není.', type: 'warning' });
           return;
         }
-        setPreview({ generated: image.dataUrl, original: stored?.sources?.[output.sourceIndex ?? 0]?.dataUrl ?? stored?.dataUrl ?? null, prompt: output.prompt, createdAt: output.createdAt });
+        setPreview({ id: output.id, generated: image.dataUrl, original: stored?.sources?.[output.sourceIndex ?? 0]?.dataUrl ?? stored?.dataUrl ?? null, prompt: output.prompt, createdAt: output.createdAt });
       } catch (error) {
         onToast({ message: toUserFacingAiError(error, 'Obrázek se nepodařilo otevřít.'), type: 'error' });
       }

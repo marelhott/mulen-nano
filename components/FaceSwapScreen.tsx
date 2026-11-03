@@ -56,9 +56,13 @@ export function FaceSwapScreen(props: {
   const [outputCount, setOutputCount] = React.useState<1 | 2 | 3>(2);
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [outputs, setOutputs] = React.useState<FaceSwapOutputCard[]>([]);
+  const outputsRef = React.useRef(outputs);
+  outputsRef.current = outputs;
   useGeneratedImageDeletion((ids) => {
+    // Náhled zavřít jen tehdy, když se maže právě ten zvětšený výsledek.
+    const gone = outputsRef.current.filter((image) => ids.has(image.id)).map((image) => image.dataUrl);
     setOutputs((prev) => prev.filter((image) => !ids.has(image.id)));
-    setLightboxUrl(null);
+    setLightboxUrl((prev) => (prev && gone.includes(prev) ? null : prev));
   });
   const [runMeta, setRunMeta] = React.useState<string>('Zatím žádný výstup');
   const [lightboxUrl, setLightboxUrl] = React.useState<string | null>(null);
