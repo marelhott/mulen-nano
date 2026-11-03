@@ -13,7 +13,7 @@ function normalizeBaseUrl(v: unknown): string {
 
 export async function fetchPublicConfig(opts: { maxAgeMs?: number } = {}): Promise<PublicConfig> {
   const maxAgeMs = typeof opts.maxAgeMs === 'number' ? Math.max(0, opts.maxAgeMs) : 30_000;
-  if (cached && Date.now() - cached.at <= maxAgeMs) return cached.value;
+  if (cached && Date.now() - cached.at < maxAgeMs) return cached.value;
 
   try {
     const ctrl = new AbortController();
