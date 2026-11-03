@@ -25,6 +25,7 @@ import {
   buildCollagePrompt,
   buildSingleSourceCollagePrompt,
   pickCollageTechnique,
+  buildFuseDirective,
   rotateInputs,
 } from '../utils/collagePlan';
 import {
@@ -175,6 +176,7 @@ export function CollageScreen(props: {
   const savedRuns = React.useRef(new Set<string>());
   const historyWarned = React.useRef(false);
 
+  const fuseShifts = React.useRef(new Map<string, number>());
   const [lastRunPrompt, setLastRunPrompt] = React.useState<string | null>(null);
   const [fuseInputs, setFuseInputs] = React.useState<boolean>(() => readStored('collage.fuse', true, (raw) => raw !== '0'));
   // Spojení více vstupů do jednoho díla dává smysl jen od dvou obrázků.
@@ -424,7 +426,7 @@ export function CollageScreen(props: {
           const model = variantModelById(output.modelId);
           const provider = ProviderFactory.getProvider(AIProviderType.OPENROUTER, providerSettings, model.model);
           // Qwen Edit bere první vstup jako základ, proto se základní obrázek střídá podle varianty.
-          const ordered = fused ? (isInstructionEditModel(model.model) ? rotateInputs(inputs, output.variantIndex) : inputs) : [inputs[output.sourceIndex ?? 0]];
+          const ordered = fused ? rotateInputs(inputs, fuseShifts.current.get(output.id) ?? 0) : [inputs[output.sourceIndex ?? 0]];
           const result = await provider.generateImage(ordered, output.prompt, model.resolution, aspectRatio, false);
 
           setOutputs((prev) => prev.map((item) => (item.id === output.id ? { ...item, status: 'done' as const, dataUrl: result.imageBase64 } : item)));
@@ -514,11 +516,16 @@ export function CollageScreen(props: {
     const runSources = sources.map(({ name, dataUrl, mimeType }) => ({ name, dataUrl, mimeType }));
     runSourcesRef.current = runSources;
     // Každý model dostane jinou techniku (od náhodného začátku), aby se výsledky lišily.
-    const techniqueStart = Math.floor(Math.random() * 1000);
-    const technique = (modelId: VariantModelId) => pickCollageTechnique(techniqueStart + VARIANT_MODELS.findIndex((m) => m.id === modelId));
-    const fusePrompt = (modelId: VariantModelId) => {
+    // Každý model dostane jinou nosnou fotku, místo vstupu i techniku (od náhodného začátku).
+    const directiveStart = Math.floor(Math.random() * 1000);
+    const fuseDirective = (modelId: VariantModelId, taskId: string) => {
+      const directive = buildFuseDirective(directiveStart + VARIANT_MODELS.findIndex((m) => m.id === modelId), runSources.length);
+      fuseShifts.current.set(taskId, directive.shift);
+      return directive.text;
+    };
+    const fusePrompt = (modelId: VariantModelId, taskId: string) => {
       if (customPrompt.trim().length > 0) return customPrompt.trim();
-      const body = `${COLLAGE_GENERAL_PROMPT}\n\n${technique(modelId)}`;
+      const body = `${COLLAGE_GENERAL_PROMPT}\n\n${fuseDirective(modelId, taskId)}`;
       return isInstructionEditModel(variantModelById(modelId).model) ? `${buildCollageEditInstruction(runSources.length)}\n\n${body}` : body;
     };
     const pending: VariantOutput[] = fuse
@@ -527,7 +534,7 @@ export function CollageScreen(props: {
           modelId: task.modelId,
           variantIndex: task.variantIndex,
           runId,
-          prompt: fusePrompt(task.modelId),
+          prompt: fusePrompt(task.modelId, task.id),
           status: 'pending' as const,
           createdAt: runCreatedAt + i,
           sourceDataUrl: runSources[0].dataUrl,

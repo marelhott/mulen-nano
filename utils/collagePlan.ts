@@ -72,6 +72,19 @@ export const COLLAGE_TECHNIQUES = [
   'Technique: quiet inset. A small, precisely placed part of the second image blends into the first at a point where their shapes rhyme.',
 ];
 
+const ENTRY_ZONES = ['the upper part of the frame', 'the left side', 'the right side', 'the lower part of the frame', 'the horizon or the middle band', 'the centre'];
+
+/** Pořadí vstupů (kdo je nosný), místo vstupu a technika; každý model dostane jinou kombinaci, ať se výsledky skutečně liší. */
+export function buildFuseDirective(seed: number, imageCount: number): { shift: number; text: string } {
+  const n = Math.max(1, imageCount);
+  const shift = ((Math.floor(seed) % n) + n) % n;
+  const zone = ENTRY_ZONES[((Math.floor(seed / 2) % ENTRY_ZONES.length) + ENTRY_ZONES.length) % ENTRY_ZONES.length];
+  return {
+    shift,
+    text: `This variant: the carrier is the FIRST attached image. ${n > 1 ? 'The other attached images' : 'The second idea'} enter it through ${zone}, and the rest of the frame stays untouched.\n${pickCollageTechnique(seed)}`,
+  };
+}
+
 export function pickCollageTechnique(seed: number): string {
   return COLLAGE_TECHNIQUES[((Math.floor(seed) % COLLAGE_TECHNIQUES.length) + COLLAGE_TECHNIQUES.length) % COLLAGE_TECHNIQUES.length];
 }
