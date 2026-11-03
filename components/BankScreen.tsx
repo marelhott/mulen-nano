@@ -133,7 +133,7 @@ export function BankGate(props: { status: BankStatus | null; error: string; onLo
 
 // --- karta, detail --------------------------------------------------------------------------------
 
-function ItemCard(props: { item: BankItem; selected: boolean; version: number; onSelect: () => void; onOpen: () => void; onImageError: (key: string) => void }) {
+function ItemCard(props: { item: BankItem; selected: boolean; version: number; onSelect: (event: React.MouseEvent) => void; onOpen: () => void; onImageError: (key: string) => void }) {
   const { item, selected } = props;
   const thumb = getCachedBankUrl(item.thumbKey);
   return (
@@ -758,7 +758,8 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
             if (!window.confirm(`Smazat ${checked.length} vybraných položek z knihovny?`)) return;
             void deleteBankItems(checked).then(() => { setChecked([]); return reload(); }).catch((error) => handleError(error, 'Smazání selhalo.'));
           }}><Trash2 className="h-3 w-3" aria-label="Smazat vybrané" /></button>
-          {props.onChoose && <button type="button" disabled={!checked.length} className="ml-auto text-[var(--accent)]" onClick={() => props.onChoose?.(index.items.filter((item) => checked.includes(item.id) && item.kind === 'image'))}>Použít vybrané ({checked.length})</button>}
+          {props.onChoose && props.multiple && !checked.length && <span className="ml-auto text-[10px] text-[var(--text-3)]">Klik = použít hned · Ctrl/⌘/Shift + klik = výběr více</span>}
+          {props.onChoose && checked.length > 0 && <button type="button" className="ml-auto text-[var(--accent)]" onClick={() => props.onChoose?.(index.items.filter((item) => checked.includes(item.id) && item.kind === 'image'))}>Použít vybrané ({checked.length})</button>}
         </div>
 
         {draft ? (
@@ -814,8 +815,10 @@ export function BankScreen(props: { onToast: (toast: { message: string; type: To
               </div>)}
               {shown.map((item) => (
                 <div key={item.id} className="group relative min-w-0">
-                  <ItemCard item={item} selected={checked.includes(item.id)} version={urlVersion} onSelect={() => {
+                  <ItemCard item={item} selected={checked.includes(item.id)} version={urlVersion} onSelect={(event) => {
                     if (props.onChoose && item.kind !== 'image') { setSelectedId(item.id); return; }
+                    // Výběr zdroje: prostý klik použije obrázek hned, Ctrl/⌘/Shift klik přidává do výběru.
+                    if (props.onChoose && (!props.multiple || (!(event.ctrlKey || event.metaKey || event.shiftKey) && !checked.length))) { props.onChoose([item]); return; }
                     setChecked((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : props.onChoose && !props.multiple ? [item.id] : [...current, item.id]);
                   }} onOpen={() => { if (item.kind === 'image') setPreviewId(item.id); else setSelectedId(item.id); }} onImageError={handleImageError} />
                   {item.kind === 'image' && <button type="button" aria-label={`Zvětšit: ${item.title}`} title="Zvětšit obrázek" onClick={() => setPreviewId(item.id)} className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded bg-[var(--bg-elevated)] opacity-0 focus-visible:opacity-100 group-hover:opacity-100"><Maximize2 size={14} /></button>}

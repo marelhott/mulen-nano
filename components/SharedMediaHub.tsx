@@ -55,6 +55,18 @@ function Feed(props: { onToast: (toast: Toast) => void; onChoose?: (files: File[
     const refresh = setInterval(changed, 4 * 60 * 1000);
     return () => { clearTimeout(timer); clearInterval(refresh); window.removeEventListener(MEDIA_CHANGED_EVENT, changed); window.removeEventListener(BANK_CHANGED_EVENT, changed); };
   }, [reload]);
+  const useImages = async (list: GalleryImage[]) => {
+    try {
+      const files: File[] = [];
+      for (const image of list) {
+        const response = await fetch(image.url);
+        if (!response.ok) throw new Error('Stažení originálu selhalo.');
+        const blob = await response.blob();
+        files.push(new File([blob], `${image.id}.${blob.type.split('/')[1] || 'png'}`, { type: blob.type }));
+      }
+      props.onChoose?.(files);
+    } catch (error) { props.onToast({ message: error instanceof Error ? error.message : 'Výběr selhal.', type: 'error' }); }
+  };
   const removeChecked = async () => {
     const ids = [...checked];
     if (!ids.length || !window.confirm(`Smazat ${ids.length} vybraných výsledků i z R2?`)) return;
@@ -84,6 +96,8 @@ function Feed(props: { onToast: (toast: Toast) => void; onChoose?: (files: File[
       <select aria-label="Sekce výsledků" value={section} onChange={(e) => { setSection(e.target.value); setVisible(80); }} className="bg-[var(--bg-panel)] text-[var(--text-primary)]"><option value="">Všechny sekce</option>{sections.map((name) => <option key={name}>{name}</option>)}</select>
       <span className="text-[var(--text-secondary)]">{filtered.length} výsledků</span>
       <button type="button" disabled={deleting || !filtered.length} onClick={() => setChecked(new Set(filtered.map((image) => image.id)))}>Vybrat vše</button>
+      {props.onChoose && <button type="button" disabled={deleting || !checked.size} className="text-[var(--accent)] disabled:opacity-40" onClick={() => void useImages(filtered.filter((image) => checked.has(image.id)))}>Použít vybrané ({checked.size})</button>}
+      {props.onChoose && !checked.size && <span className="text-[10px] text-[var(--text-secondary)]">Klik = použít hned · Ctrl/⌘/Shift + klik = výběr více · dvojklik = zvětšit</span>}
       <button type="button" disabled={deleting || !checked.size} onClick={() => setChecked(new Set())}>Zrušit výběr ({checked.size})</button>
       <button type="button" disabled={deleting || !checked.size} onClick={() => void removeChecked()} className="flex items-center gap-1 text-red-400 disabled:opacity-40"><Trash2 className="h-4 w-4" aria-hidden="true" />{deleting ? 'Mažu…' : `Smazat vybrané (${checked.size})`}</button>
     </div>
@@ -93,7 +107,7 @@ function Feed(props: { onToast: (toast: Toast) => void; onChoose?: (files: File[
         <h3 className="mb-2 text-[10px] text-[var(--text-secondary)]">{new Date(Math.max(...group.map((image) => image.timestamp))).toLocaleString('cs-CZ', { dateStyle: 'short', timeStyle: 'short' })} · {label(group[0])}</h3>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{group.map((image) => <article key={image.id} className={`relative min-w-0 overflow-hidden rounded-md border ${checked.has(image.id) ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]' : 'border-[var(--border-color)]'}`}>
           <input type="checkbox" checked={checked.has(image.id)} disabled={deleting} onChange={() => toggle(image.id)} aria-label={`Vybrat: ${image.prompt}`} className="absolute left-2 top-2 z-[1] h-5 w-5 accent-[var(--accent)]" />
-          <button type="button" className="block aspect-square w-full" onClick={() => setPreview(image)} aria-label={`Zvětšit: ${image.prompt}`}><img src={image.thumbnail || image.url} alt={image.prompt} loading="lazy" className="h-full w-full object-cover" /></button>
+          <button type="button" className="block aspect-square w-full" onClick={(event) => { if (event.ctrlKey || event.metaKey || event.shiftKey || checked.size) toggle(image.id); else if (props.onChoose) void useImages([image]); else setPreview(image); }} onDoubleClick={() => setPreview(image)} aria-label={props.onChoose ? `Použít: ${image.prompt}` : `Zvětšit: ${image.prompt}`}><img src={image.thumbnail || image.url} alt={image.prompt} loading="lazy" className="h-full w-full object-cover" /></button>
           <div className="flex items-center gap-2 p-2 text-[11px] text-[var(--text-secondary)]"><span className="min-w-0 flex-1 truncate" title={image.prompt}>{image.prompt}</span>
             <button type="button" onClick={() => void download(image)} title="Stáhnout originál" className="p-1"><Download className="h-4 w-4" /></button>
             <button type="button" title="Smazat výsledek" className="p-1" onClick={() => { if (window.confirm('Smazat tento výsledek i z R2?')) void deleteImage(image.id).then(reload).catch((error: Error) => props.onToast({ message: error.message, type: 'error' })); }}><Trash2 className="h-4 w-4" /></button>
